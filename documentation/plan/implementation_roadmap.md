@@ -2,7 +2,25 @@
 
 Based on all documentation, here's a suggested implementation sequence:
 
-### Phase 1: Foundation (Weeks 1-3)
+### Phase 1: Accounts & Authentication (Weeks 1-2)
+**Priority:** Critical foundation
+
+**Tasks:**
+1. Set up Django accounts app
+2. Configure Django AllAuth (email/password authentication)
+3. Integrate social login providers (Google, Facebook)
+4. Implement JWT token authentication (djangorestframework-simplejwt)
+5. Create user registration and login endpoints
+6. Set up password reset and email verification flows
+7. Configure CORS and security settings
+8. Create user profile model and endpoints
+9. Write authentication tests
+
+**Deliverable:** Fully functional authentication system with social login and JWT tokens.
+
+---
+
+### Phase 2: Foundation (Weeks 3-5)
 **Priority:** Critical infrastructure
 
 **Tasks:**
@@ -19,7 +37,7 @@ Based on all documentation, here's a suggested implementation sequence:
 
 ---
 
-### Phase 2: Stage 1 - Property Creation (Weeks 4-6)
+### Phase 3: Stage 1 - Property Creation (Weeks 6-8)
 **Priority:** Core functionality
 
 **Tasks:**
@@ -34,7 +52,7 @@ Based on all documentation, here's a suggested implementation sequence:
 
 ---
 
-### Phase 3: Stage 2 - Context Retrieval (Weeks 7-10)
+### Phase 4: Stage 2 - Context Retrieval (Weeks 9-12)
 **Priority:** High value feature
 
 **Tasks:**
@@ -56,7 +74,7 @@ Based on all documentation, here's a suggested implementation sequence:
 
 ---
 
-### Phase 4: Stage 3 - Rating System (Weeks 11-13)
+### Phase 5: Stage 3 - Rating System (Weeks 13-15)
 **Priority:** Differentiating feature
 
 **Tasks:**
@@ -77,7 +95,7 @@ Based on all documentation, here's a suggested implementation sequence:
 
 ---
 
-### Phase 5: Automatic Rerun Logic (Weeks 14-15)
+### Phase 6: Automatic Rerun Logic (Weeks 16-17)
 **Priority:** Polish and UX
 
 **Tasks:**
@@ -93,7 +111,7 @@ Based on all documentation, here's a suggested implementation sequence:
 
 ---
 
-### Phase 6: Collaboration & Advanced Features (Weeks 16-18)
+### Phase 7: Collaboration & Advanced Features (Weeks 18-20)
 **Priority:** Nice-to-have
 
 **Tasks:**
@@ -159,13 +177,13 @@ You've reviewed all clarification questions and provided answers. ✓
 
 **Week 1 Tasks:**
 1. Set up Django project structure
-2. Define models (refer to `architecture_decisions_20260106.md`)
-3. Configure django-fsm
-4. Set up Django Channels
-5. Configure Redis and Celery
-6. Write model tests
+2. Create accounts app
+3. Configure Django AllAuth
+4. Set up JWT authentication
+5. Configure social login providers
+6. Write authentication tests
 
-**Deliverable:** Working backend foundation with passing tests.
+**Deliverable:** Working authentication system with passing tests.
 
 ---
 
@@ -305,7 +323,7 @@ Use structured logging (structlog) for:
 
 ### User Data
 - Encrypt sensitive fields (not applicable for public property data, but consider future features)
-- Implement proper authentication (Django's built-in)
+- Implement proper authentication (Django AllAuth + JWT)
 - Authorization checks on all API endpoints (user can only edit their own lists)
 
 ### Rate Limiting
@@ -366,7 +384,8 @@ Your Homely project has a **solid architectural foundation** and **well-defined 
 - Collaborative features add significant value
 
 **Recommendations:**
-- Start with Phase 1 foundation (state machines, WebSockets, Celery)
+- Start with Phase 1 authentication (Django AllAuth + JWT)
+- Build Phase 2 foundation (state machines, WebSockets, Celery)
 - Implement Stages 1-3 sequentially (don't build everything at once)
 - Get user feedback early (after Stage 1 and Stage 2)
 - Monitor external API costs closely
