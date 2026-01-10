@@ -1,0 +1,374 @@
+## Implementation Roadmap
+
+Based on all documentation, here's a suggested implementation sequence:
+
+### Phase 1: Foundation (Weeks 1-3)
+**Priority:** Critical infrastructure
+
+**Tasks:**
+1. Set up Django models:
+   - Property, PropertyList, ContextOptions, RatingCriteria, ContextData, CriterionScore
+   - Add state fields to Property and PropertyList
+2. Integrate django-fsm for state machines
+3. Set up Django Channels for WebSocket support
+4. Configure Redis for caching and Celery
+5. Set up Celery workers and task infrastructure
+6. Create basic API endpoints (Property CRUD, PropertyList CRUD)
+
+**Deliverable:** Working backend with state management and async infrastructure.
+
+---
+
+### Phase 2: Stage 1 - Property Creation (Weeks 4-6)
+**Priority:** Core functionality
+
+**Tasks:**
+1. Implement Property List creation UI
+2. Implement Property creation UI (three methods: manual form, URL extraction, text extraction)
+3. Build deduplication logic
+4. Implement Context Options configuration UI
+5. Implement Rating Criteria configuration UI (with reference-with-copy-on-write)
+6. Basic property detail page
+
+**Deliverable:** Users can create lists and add properties.
+
+---
+
+### Phase 3: Stage 2 - Context Retrieval (Weeks 7-10)
+**Priority:** High value feature
+
+**Tasks:**
+1. Implement IContextService interface and factory
+2. Build concrete service implementations:
+   - CrimeService (UK Police API)
+   - SchoolRatingService (DfE API)
+   - BroadbandService (Ofcom)
+   - MobileCoverageService (Ofcom)
+   - PlacesOfInterestService (Google Maps API)
+3. Implement service orchestration (Celery tasks)
+4. Implement completion aggregation (post_save signals + WebSocket)
+5. Build progress indicators on frontend
+6. Implement smart caching (Redis)
+7. Add manual trigger buttons (individual + bulk)
+8. Implement error handling and retry mechanism
+
+**Deliverable:** Users can retrieve context data for properties.
+
+---
+
+### Phase 4: Stage 3 - Rating System (Weeks 11-13)
+**Priority:** Differentiating feature
+
+**Tasks:**
+1. Implement RatingCriteria configuration UI (all 21 criteria, weights, dealbreakers)
+2. Build criterion scoring strategies:
+   - MinMaxNormalization
+   - InvertedNormalization
+   - OrdinalMapping
+   - BooleanScoring
+   - ThresholdBased
+3. Implement dealbreaker evaluation
+4. Build rating aggregation logic
+5. Create rating calculation Celery task
+6. Build rating display UI (badges, breakdown modal)
+7. Add manual trigger (individual + bulk)
+
+**Deliverable:** Users can rate and compare properties.
+
+---
+
+### Phase 5: Automatic Rerun Logic (Weeks 14-15)
+**Priority:** Polish and UX
+
+**Tasks:**
+1. Implement field dependency matrix
+2. Build field change detection
+3. Add confirmation dialogs
+4. Implement cache invalidation on field change
+5. Build automatic service rerun triggering
+6. Build automatic rating recalculation
+7. Handle context options modification (add/remove services)
+
+**Deliverable:** System automatically maintains data consistency.
+
+---
+
+### Phase 6: Collaboration & Advanced Features (Weeks 16-18)
+**Priority:** Nice-to-have
+
+**Tasks:**
+1. User permissions (viewers, contributors)
+2. Real-time collaboration (WebSocket for multi-user edits)
+3. Comments and tags
+4. Saved locations
+5. Export functionality
+6. Advanced search and filtering
+
+**Deliverable:** Full collaborative experience.
+
+---
+
+## Next Steps - Immediate Actions
+
+### Step 1: Review and Approve ✓ (Complete)
+You've reviewed all clarification questions and provided answers. ✓
+
+### Step 2: Update Original Diagrams (This Week)
+
+**For Diagram 1 (Property List workflows):**
+1. Open in draw.io
+2. Create 4 separate pages (as described above)
+3. Add state labels
+4. Clarify timing of context options and rating criteria
+5. Use color coding for stages
+
+**For Diagram 2 (Property workflows):**
+1. Fix "Stage1" → "New"
+2. Add Stage 3 workflow as new page
+3. Add automatic rerun workflow as new page
+4. Add error/retry workflow as new page
+5. Annotate parallel service execution
+6. Show per-service error handling
+
+**Estimated Time:** 4-6 hours
+
+---
+
+### Step 3: Create Additional Diagrams (Optional but Recommended)
+
+**Entity Relationship Diagram (ERD):**
+- Shows database schema
+- Relationships between models
+- Cardinality (1:M, M:M)
+- Key fields
+
+**Sequence Diagrams:**
+- "Add Property with Automatic Stage 2" (temporal flow across actors)
+- "Rating Calculation Pipeline" (showing async progression)
+- "Collaborative Real-time Edit" (multi-user WebSocket flow)
+
+**Swim Lane Diagrams:**
+- Separate lanes for: Frontend | Backend | Celery Workers | External APIs
+- Shows data flow across boundaries
+
+**Estimated Time:** 6-8 hours
+
+---
+
+### Step 4: Begin Implementation (Next Week)
+
+**Week 1 Tasks:**
+1. Set up Django project structure
+2. Define models (refer to `architecture_decisions_20260106.md`)
+3. Configure django-fsm
+4. Set up Django Channels
+5. Configure Redis and Celery
+6. Write model tests
+
+**Deliverable:** Working backend foundation with passing tests.
+
+---
+
+## Reference Guide: When to Use Each Document
+
+| Task | Document to Reference |
+|------|----------------------|
+| Deciding on architectural approach | `architecture_decisions_20260106.md` |
+| Implementing state transitions | `state_machine_diagrams_20260106.md` |
+| Building rating calculation | `stage3_rating_workflow_20260106.md` |
+| Handling field changes | `automatic_rerun_workflows_20260106.md` |
+| Implementing error handling | `service_error_retry_flow_20260106.md` |
+| Understanding original diagram issues | `workflow_diagrams_evaluation_20260106.md` |
+| Making implementation decisions | `clarification_questions_20260106.md` (your answers) |
+
+---
+
+## Key Architectural Highlights
+
+These decisions are critical to the project's success:
+
+### 1. **State Machines are Mandatory**
+Use django-fsm for both Property and PropertyList. This ensures:
+- Invalid state transitions are prevented
+- Audit trail is automatic
+- Business logic is enforced
+- Testing is simplified
+
+### 2. **WebSocket Real-time Updates are Essential**
+Don't rely on polling. Django Channels + WebSocket provides:
+- Instant progress updates (e.g., "3/5 services complete")
+- Better UX (feels fast and responsive)
+- Lower server load
+- Collaborative editing support
+
+### 3. **Partial Success is User-Friendly**
+Properties should complete Stage 2 even if some services fail:
+- Users aren't blocked by one API failure
+- Failed services can be retried independently
+- Rating can proceed with available data
+- Critical for time-sensitive house hunting
+
+### 4. **Caching is Critical for Cost Control**
+External API calls are expensive (financially and performance-wise):
+- Smart service-specific caching (Crime: 30 days, Broadband: 7 days)
+- Cache invalidation on field changes
+- Reduces redundant API calls
+- Improves response times
+
+### 5. **Confirmation Dialogs Prevent Accidents**
+Field changes that trigger expensive operations need confirmation:
+- Postcode change → 5 service reruns
+- Show user what will happen
+- Prevent accidental costly operations
+- "Don't ask again" option for power users
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+- State machine transitions (valid and invalid)
+- Criterion scoring strategies
+- Field dependency detection
+- Error classification
+- Cache key generation
+
+### Integration Tests
+- Full property lifecycle (creation → Stage 2 → Stage 3)
+- Service orchestration (parallel execution)
+- WebSocket message delivery
+- Bulk operations
+- Automatic rerun triggering
+
+### E2E Tests
+- User completes full workflow (create list → add property → retrieve reports → rate)
+- Collaborative editing
+- Error recovery (service fails → manual retry)
+- Field edit → automatic rerun
+
+---
+
+## Performance Benchmarks (Target)
+
+| Operation | Target Performance |
+|-----------|-------------------|
+| Property creation | < 500ms |
+| Stage 2 triggering (5 services) | < 1s (queue Celery tasks) |
+| Individual service execution | < 10s (external API dependent) |
+| Stage 3 rating calculation | < 2s |
+| WebSocket message delivery | < 100ms |
+| Page load (property list with 20 properties) | < 2s |
+| Bulk rating (100 properties) | < 30s (parallel Celery) |
+
+---
+
+## Monitoring and Observability
+
+### Key Metrics to Track
+
+**Service Health:**
+- Service success rate by service name
+- Average service execution time
+- Error rate by error type
+- Cache hit rate
+
+**User Experience:**
+- Time from property creation to Stage2Complete
+- Rating calculation time
+- WebSocket message latency
+- Failed service retry success rate
+
+**System Health:**
+- Celery queue length
+- Redis memory usage
+- Database query performance
+- WebSocket connection count
+
+### Logging
+
+Use structured logging (structlog) for:
+- State transitions
+- Service execution (start, complete, fail)
+- API calls to external services
+- User actions (create, edit, delete)
+- Errors and exceptions
+
+---
+
+## Security Considerations
+
+### API Keys
+- Store external API keys in environment variables (never in code)
+- Use different keys for development/staging/production
+- Rotate keys periodically
+- Monitor usage to detect abuse
+
+### User Data
+- Encrypt sensitive fields (not applicable for public property data, but consider future features)
+- Implement proper authentication (Django's built-in)
+- Authorization checks on all API endpoints (user can only edit their own lists)
+
+### Rate Limiting
+- Implement API rate limiting to prevent abuse
+- Per-user limits for expensive operations (Stage 2 triggering)
+- Global limits for external API calls (respect third-party rate limits)
+
+---
+
+## Cost Estimation
+
+### External API Costs (Monthly, assuming 100 active users)
+
+| Service | Cost Model | Estimated Usage | Monthly Cost |
+|---------|------------|-----------------|--------------|
+| Google Maps (POI) | $200 free/month, then $0.017/request | 2000 properties × 13 POI types = 26,000 requests | ~$442 |
+| Ideal Postcodes | £9/200 lookups | 200 properties = 200 lookups | £9 |
+| UK Police API | FREE | Unlimited | £0 |
+| Ofcom (Broadband/Mobile) | FREE (likely) | Unlimited | £0 |
+| Department for Education | FREE | Unlimited | £0 |
+
+**Total: ~£450/month** (dominated by Google Maps)
+
+### Optimization Strategies:
+1. **Cache aggressively** (POI data doesn't change often)
+2. **Batch POI requests** (one request for multiple POI types)
+3. **Consider alternative POI providers** (OpenStreetMap, cheaper options)
+4. **User quotas** (limit properties per list for free tier)
+
+---
+
+## Final Checklist Before Implementation
+
+- [ ] All clarification questions answered ✓
+- [ ] Architecture decisions documented ✓
+- [ ] State machines designed ✓
+- [ ] Workflows documented ✓
+- [ ] Original diagrams updated (TO DO)
+- [ ] ERD created (OPTIONAL)
+- [ ] Sequence diagrams created (OPTIONAL)
+- [ ] Development environment set up
+- [ ] External API keys obtained
+- [ ] Django project initialized
+- [ ] CI/CD pipeline configured
+- [ ] Monitoring and logging infrastructure ready
+
+---
+
+## Conclusion
+
+Your Homely project has a **solid architectural foundation** and **well-defined workflows**. The three-stage approach (Creation → Context → Rating) provides clear separation of concerns and a logical user experience.
+
+**Strengths:**
+- Comprehensive feature set addressing real house-hunting pain points
+- Smart use of external APIs for automated data gathering
+- Flexible configuration (context options, rating criteria)
+- Progressive loading for good UX
+- Collaborative features add significant value
+
+**Recommendations:**
+- Start with Phase 1 foundation (state machines, WebSockets, Celery)
+- Implement Stages 1-3 sequentially (don't build everything at once)
+- Get user feedback early (after Stage 1 and Stage 2)
+- Monitor external API costs closely
+- Invest in error handling and retry logic (external APIs will fail)
+
