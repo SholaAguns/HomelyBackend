@@ -13,6 +13,8 @@ from django.conf import settings
 from .serializers import (
     RegisterSerializer,
     UserSerializer,
+    LoginSerializer,
+    LogoutSerializer,
     ChangePasswordSerializer,
     UserProfileUpdateSerializer,
     PasswordResetRequestSerializer,
@@ -42,6 +44,7 @@ class RegisterView(generics.CreateAPIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    serializer_class = LoginSerializer
 
     def post(self, request):
         email = request.data.get('email')
@@ -72,6 +75,7 @@ class LoginView(APIView):
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = LogoutSerializer
 
     def post(self, request):
         try:
@@ -94,6 +98,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = ChangePasswordSerializer
 
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
@@ -128,6 +133,7 @@ class CurrentUserView(generics.RetrieveAPIView):
 
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
+    serializer_class = PasswordResetRequestSerializer
 
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
@@ -165,6 +171,7 @@ class PasswordResetRequestView(APIView):
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
+    serializer_class = PasswordResetConfirmSerializer
 
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
