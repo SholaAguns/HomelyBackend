@@ -1,4 +1,5 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
@@ -201,3 +202,48 @@ class PasswordResetConfirmView(APIView):
                 )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserViewSet(viewsets.GenericViewSet):
+    """
+    ViewSet for user operations
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserSerializer
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        """Get current user details"""
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get', 'put', 'patch'], serializer_class=UserProfileUpdateSerializer)
+    def profile(self, request):
+        """Get or update user profile"""
+        profile = request.user.profile
+
+        if request.method == 'GET':
+            serializer = UserProfileUpdateSerializer(profile)
+            return Response(serializer.data)
+
+        serializer = UserProfileUpdateSerializer(profile, data=request.data, partial=request.method == 'PATCH')
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], serializer_class=ChangePasswordSerializer)
+    def change_password(self, request):
+        """Change user password"""
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if not request.user.check_password(serializer.validated_data.get('old_password')):
+            return Response(
+                {'old_password': 'Wrong password'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        request.user.set_password(serializer.validated_data.get('new_password'))
+        request.user.save()
+
+        return Response({'message': 'Password updated successfully'})
