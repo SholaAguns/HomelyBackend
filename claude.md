@@ -6,4 +6,6 @@
 
 - Once any feature has been successfully implemented, ask me if you should proceed with running existing/ creating new unit tests
 
-- Read documentation/plan/summary files for project context on initilaisation 
+- Read documentation/plan/summary files for project context on initilaisation
+
+- when implmentation decisions are made that differ from the plan update the planning documentation to refelect that
