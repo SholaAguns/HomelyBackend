@@ -36,6 +36,20 @@ class UserProfileModelTest(TestCase):
         self.assertEqual(profile.phone_number, "1234567890")
         self.assertEqual(profile.avatar, "https://example.com/avatar.jpg")
 
+    def test_profile_uuid_auto_generated(self):
+        """Profile UUID auto-generated and unique"""
+        profile = self.user.profile
+        self.assertIsNotNone(profile.uuid)
+
+        # Create another user and verify different UUID
+        user2 = User.objects.create_user(
+            username='test2@test.com',
+            email='test2@test.com',
+            password='testpass123'
+        )
+        self.assertIsNotNone(user2.profile.uuid)
+        self.assertNotEqual(profile.uuid, user2.profile.uuid)
+
 
 class RegisterViewTest(APITestCase):
     def test_register_success(self):
@@ -158,35 +172,6 @@ class LogoutViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
-class CurrentUserViewTest(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            username='test@test.com',
-            email='test@test.com',
-            password='testpass123',
-            first_name='Test',
-            last_name='User'
-        )
-        self.refresh = RefreshToken.for_user(self.user)
-        self.access = str(self.refresh.access_token)
-
-    def test_get_current_user(self):
-        """Get current user info"""
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
-        response = self.client.get('/api/accounts/me/')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['email'], 'test@test.com')
-        self.assertEqual(response.data['first_name'], 'Test')
-        self.assertIn('profile', response.data)
-
-    def test_get_current_user_unauthorized(self):
-        """Accessing /me without auth fails"""
-        response = self.client.get('/api/accounts/me/')
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-
 class UserProfileViewTest(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(
@@ -202,7 +187,7 @@ class UserProfileViewTest(APITestCase):
     def test_get_profile(self):
         """Get user profile"""
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
-        response = self.client.get('/api/accounts/profile/')
+        response = self.client.get('/api/accounts/users/profile/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['email'], 'test@test.com')
@@ -217,7 +202,7 @@ class UserProfileViewTest(APITestCase):
             'bio': 'New bio',
             'phone_number': '9876543210'
         }
-        response = self.client.patch('/api/accounts/profile/', data)
+        response = self.client.patch('/api/accounts/users/profile/', data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['first_name'], 'Updated')
@@ -246,7 +231,7 @@ class ChangePasswordViewTest(APITestCase):
             'old_password': 'oldpass123',
             'new_password': 'NewPass123!'
         }
-        response = self.client.post('/api/accounts/change-password/', data)
+        response = self.client.post('/api/accounts/users/change_password/', data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -261,7 +246,7 @@ class ChangePasswordViewTest(APITestCase):
             'old_password': 'wrongpass',
             'new_password': 'NewPass123!'
         }
-        response = self.client.post('/api/accounts/change-password/', data)
+        response = self.client.post('/api/accounts/users/change_password/', data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('old_password', response.data)
@@ -313,5 +298,58 @@ class TokenRefreshTest(APITestCase):
         """Refresh with invalid token fails"""
         data = {'refresh': 'invalid_token'}
         response = self.client.post('/api/accounts/token/refresh/', data)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class UserViewSetTest(APITestCase):
+    def setUp(self):
+        self.user1 = User.objects.create_user(
+            username='user1@test.com',
+            email='user1@test.com',
+            password='testpass123',
+            first_name='User',
+            last_name='One'
+        )
+        self.user2 = User.objects.create_user(
+            username='user2@test.com',
+            email='user2@test.com',
+            password='testpass123',
+            first_name='User',
+            last_name='Two'
+        )
+        self.refresh = RefreshToken.for_user(self.user1)
+        self.access = str(self.refresh.access_token)
+
+    def test_list_users(self):
+        """List all users"""
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        response = self.client.get('/api/accounts/users/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_retrieve_user_by_uuid(self):
+        """Get user by UUID"""
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        uuid = self.user2.profile.uuid
+        response = self.client.get(f'/api/accounts/users/{uuid}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], 'user2@test.com')
+        self.assertEqual(response.data['first_name'], 'User')
+        self.assertIn('profile', response.data)
+        self.assertEqual(str(response.data['profile']['uuid']), str(uuid))
+
+    def test_list_users_unauthorized(self):
+        """List users requires authentication"""
+        response = self.client.get('/api/accounts/users/')
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_retrieve_user_unauthorized(self):
+        """Retrieve user by UUID requires authentication"""
+        uuid = self.user1.profile.uuid
+        response = self.client.get(f'/api/accounts/users/{uuid}/')
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
