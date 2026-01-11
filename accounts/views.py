@@ -11,6 +11,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.conf import settings
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from .serializers import (
     RegisterSerializer,
     UserSerializer,
@@ -204,22 +205,26 @@ class PasswordResetConfirmView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class UserViewSet(viewsets.GenericViewSet):
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for user operations
     """
-    permission_classes = [IsAuthenticated]
+    queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'profile__uuid'
+    lookup_url_kwarg = 'uuid'
 
-    @action(detail=False, methods=['get'])
-    def me(self, request):
-        """Get current user details"""
-        serializer = UserSerializer(request.user)
-        return Response(serializer.data)
+    def get_queryset(self):
+        return User.objects.select_related('profile').all()
 
-    @action(detail=False, methods=['get', 'put', 'patch'], serializer_class=UserProfileUpdateSerializer)
+    @extend_schema(
+        request=UserProfileUpdateSerializer,
+        responses={200: UserProfileUpdateSerializer}
+    )
+    @action(detail=False, methods=['get', 'put', 'patch'])
     def profile(self, request):
-        """Get or update user profile"""
+        """Get or update current user's profile"""
         profile = request.user.profile
 
         if request.method == 'GET':
@@ -231,7 +236,11 @@ class UserViewSet(viewsets.GenericViewSet):
         serializer.save()
         return Response(serializer.data)
 
-    @action(detail=False, methods=['post'], serializer_class=ChangePasswordSerializer)
+    @extend_schema(
+        request=ChangePasswordSerializer,
+        responses={200: {'type': 'object', 'properties': {'message': {'type': 'string'}}}}
+    )
+    @action(detail=False, methods=['post'])
     def change_password(self, request):
         """Change user password"""
         serializer = ChangePasswordSerializer(data=request.data)
