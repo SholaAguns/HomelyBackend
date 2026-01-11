@@ -9,3 +9,5 @@
 - Read documentation/plan/summary files for project context on initilaisation
 
 - when implmentation decisions are made that differ from the plan update the planning documentation to refelect that
+
+- when beginning work on a task mark it as "- in progress" and once comeplete mark it as "- done"

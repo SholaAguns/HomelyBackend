@@ -50,3 +50,5 @@ ipython_config.py
 __pypackages__/
 
 commands
+
+claude_responses/
