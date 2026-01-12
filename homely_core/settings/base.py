@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.sites',
 
     # Third-party apps
+    'channels',
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
@@ -71,6 +72,17 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'homely_core.wsgi.application'
+ASGI_APPLICATION = 'homely_core.asgi.application'
+
+# Channel layers configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [os.getenv('REDIS_URL', 'redis://127.0.0.1:6379')],
+        },
+    },
+}
 
 
 # Database

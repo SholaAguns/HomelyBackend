@@ -2,6 +2,8 @@ asgiref==3.11.0
 attrs==25.4.0
 certifi==2026.1.4
 cffi==2.0.0
+channels==4.2.0
+channels-redis==4.2.1
 charset-normalizer==3.4.4
 cryptography==44.0.0
 dj-database-url==2.3.0
