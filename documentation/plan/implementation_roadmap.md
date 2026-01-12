@@ -24,7 +24,7 @@ Based on all documentation, here's a suggested implementation sequence:
 **Priority:** Critical infrastructure
 
 **Tasks:**
-1. Set up Django models:
+1. Set up Django models: - in progress
    - Property, PropertyList, ContextOptions, RatingCriteria, ContextData, CriterionScore
    - Add state fields to Property and PropertyList
 2. Integrate django-fsm for state machines

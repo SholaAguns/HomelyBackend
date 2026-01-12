@@ -6,7 +6,8 @@
       "Bash(python manage.py:*)",
       "Bash(timeout 5 python:*)",
       "Bash(timeout /t 3)",
-      "Bash(source .venv/Scripts/activate)"
+      "Bash(source .venv/Scripts/activate)",
+      "Bash(findstr:*)"
     ]
   }
 }

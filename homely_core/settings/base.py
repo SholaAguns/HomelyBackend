@@ -32,9 +32,11 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    'django_fsm',
 
     # Local apps
     'accounts',
+    'property',
 ]
 
 SITE_ID = 1
