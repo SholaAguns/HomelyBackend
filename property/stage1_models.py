@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django_fsm import FSMField, transition
+import uuid
 
 
 class PropertyList(models.Model):
@@ -11,6 +12,7 @@ class PropertyList(models.Model):
         ('ACTIVE', 'Active'),
     ]
 
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='property_lists')
     title = models.CharField(max_length=255)
     state = FSMField(default='DRAFT', choices=STATE_CHOICES)
@@ -63,6 +65,7 @@ class Property(models.Model):
         ('STAGE3_COMPLETE', 'Stage 3 Complete'),
     ]
 
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     property_list = models.ForeignKey(PropertyList, on_delete=models.CASCADE, related_name='properties')
     state = FSMField(default='NEW', choices=STATE_CHOICES)
 
@@ -159,6 +162,7 @@ class Property(models.Model):
 class SavedLocation(models.Model):
     """User's saved locations for distance calculations"""
 
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_locations')
     name = models.CharField(max_length=255)
     address = models.CharField(max_length=500)
