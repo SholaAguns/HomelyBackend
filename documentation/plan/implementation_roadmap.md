@@ -31,7 +31,7 @@ Based on all documentation, here's a suggested implementation sequence:
 2. Integrate django-fsm for state machines - done
 3. Set up Django Channels for WebSocket support - done
 4. Configure Redis for caching and Celery - done
-5. Set up Celery workers and task infrastructure
+5. Set up Celery workers and task infrastructure - done
 6. Create basic API endpoints (Property CRUD, PropertyList CRUD)
 
 **Deliverable:** Working backend with state management and async infrastructure.
