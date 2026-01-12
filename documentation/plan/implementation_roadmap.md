@@ -28,7 +28,7 @@ Based on all documentation, here's a suggested implementation sequence:
    - Property, PropertyList, ContextOptions, RatingCriteria, ContextData, CriterionScore
    - Add state fields to Property and PropertyList
    - Add unique_together constraints for PropertyList (owner+title) and RatingCriteria (owner+name)
-2. Integrate django-fsm for state machines
+2. Integrate django-fsm for state machines - done
 3. Set up Django Channels for WebSocket support
 4. Configure Redis for caching and Celery
 5. Set up Celery workers and task infrastructure

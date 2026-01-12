@@ -8,8 +8,12 @@
 
 - Read documentation/plan/summary files for project context on initilaisation
 
+- Read documentation/plan/implementation_roadmap.md for implementation steps
+
 - when implmentation decisions are made that differ from the plan update the planning documentation to refelect that
 
 - when beginning work on a task mark it as "- in progress" and once comeplete mark it as "- done"
 
 - project settings files in settings folder (base, dev and prod .py files)
+
+- always seek my explicit approval before running any migrations
