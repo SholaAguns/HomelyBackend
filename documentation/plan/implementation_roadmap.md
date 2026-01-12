@@ -24,9 +24,10 @@ Based on all documentation, here's a suggested implementation sequence:
 **Priority:** Critical infrastructure
 
 **Tasks:**
-1. Set up Django models: - in progress
+1. Set up Django models: - done
    - Property, PropertyList, ContextOptions, RatingCriteria, ContextData, CriterionScore
    - Add state fields to Property and PropertyList
+   - Add unique_together constraints for PropertyList (owner+title) and RatingCriteria (owner+name)
 2. Integrate django-fsm for state machines
 3. Set up Django Channels for WebSocket support
 4. Configure Redis for caching and Celery

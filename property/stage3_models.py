@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
-from stage1_models import Property
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from .stage1_models import Property
 
 class RatingCriteria(models.Model):
     """Defines a set of criteria for rating properties"""
@@ -15,6 +17,7 @@ class RatingCriteria(models.Model):
         db_table = 'rating_criteria'
         verbose_name_plural = 'Rating criteria'
         ordering = ['-created_at']
+        unique_together = [['owner', 'name']]
 
     def __str__(self):
         return f"{self.name} ({self.owner.username})"

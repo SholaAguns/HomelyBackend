@@ -1,5 +1,48 @@
 from django.db import models
-from stage1_models import PropertyList, Property, ContextOptions
+from .stage1_models import PropertyList, Property
+
+
+class ContextOptions(models.Model):
+    """Configuration for which context services to enable for a property list"""
+
+    property_list = models.OneToOneField(PropertyList, on_delete=models.CASCADE, related_name='context_options')
+
+    # Service toggles
+    enable_crime = models.BooleanField(default=False)
+    enable_schools = models.BooleanField(default=False)
+    enable_broadband = models.BooleanField(default=False)
+    enable_mobile = models.BooleanField(default=False)
+
+    # POI configuration
+    enable_poi = models.BooleanField(default=False)
+    poi_types = models.JSONField(default=list, blank=True)
+    poi_search_radius_meters = models.IntegerField(default=1600)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'context_options'
+
+    def __str__(self):
+        return f"Context Options for {self.property_list.title}"
+
+    def get_enabled_services(self):
+        """Returns list of enabled service names"""
+        services = []
+        if self.enable_crime:
+            services.append('crime')
+        if self.enable_schools:
+            services.append('schools')
+        if self.enable_broadband:
+            services.append('broadband')
+        if self.enable_mobile:
+            services.append('mobile')
+        if self.enable_poi:
+            services.append('poi')
+        return services
+
+
 
 class ContextData(models.Model):
     """Stores context service results and execution state"""

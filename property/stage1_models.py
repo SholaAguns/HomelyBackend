@@ -1,8 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django_fsm import FSMField, transition
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
 
 
 class PropertyList(models.Model):
@@ -31,6 +29,7 @@ class PropertyList(models.Model):
     class Meta:
         db_table = 'property_lists'
         ordering = ['-created_at']
+        unique_together = [['owner', 'title']]
 
     def __str__(self):
         return f"{self.title} ({self.owner.username})"
@@ -51,47 +50,6 @@ class PropertyList(models.Model):
             'stage3_in_progress': properties.filter(state='STAGE3_IN_PROGRESS').count(),
             'stage3_complete': properties.filter(state='STAGE3_COMPLETE').count(),
         }
-
-
-class ContextOptions(models.Model):
-    """Configuration for which context services to enable for a property list"""
-
-    property_list = models.OneToOneField(PropertyList, on_delete=models.CASCADE, related_name='context_options')
-
-    # Service toggles
-    enable_crime = models.BooleanField(default=False)
-    enable_schools = models.BooleanField(default=False)
-    enable_broadband = models.BooleanField(default=False)
-    enable_mobile = models.BooleanField(default=False)
-
-    # POI configuration
-    enable_poi = models.BooleanField(default=False)
-    poi_types = models.JSONField(default=list, blank=True)
-    poi_search_radius_meters = models.IntegerField(default=1600)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'context_options'
-
-    def __str__(self):
-        return f"Context Options for {self.property_list.title}"
-
-    def get_enabled_services(self):
-        """Returns list of enabled service names"""
-        services = []
-        if self.enable_crime:
-            services.append('crime')
-        if self.enable_schools:
-            services.append('schools')
-        if self.enable_broadband:
-            services.append('broadband')
-        if self.enable_mobile:
-            services.append('mobile')
-        if self.enable_poi:
-            services.append('poi')
-        return services
 
 
 class Property(models.Model):
@@ -216,28 +174,3 @@ class SavedLocation(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.user.username})"
-
-
-class StateTransitionLog(models.Model):
-    """Audit trail for state transitions"""
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-
-    from_state = models.CharField(max_length=30)
-    to_state = models.CharField(max_length=30)
-    transition_name = models.CharField(max_length=50)
-
-    triggered_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
-    triggered_by_system = models.BooleanField(default=False)
-
-    timestamp = models.DateTimeField(auto_now_add=True)
-    metadata = models.JSONField(default=dict, blank=True)
-
-    class Meta:
-        db_table = 'state_transition_logs'
-        ordering = ['-timestamp']
-
-    def __str__(self):
-        return f"{self.from_state} → {self.to_state} ({self.timestamp})"
