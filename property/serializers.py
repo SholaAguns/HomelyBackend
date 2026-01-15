@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.contrib.auth.models import User
 from property.models import Property, PropertyList, SavedLocation
 
 
@@ -8,17 +9,51 @@ class PropertyListSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
     properties_count = serializers.SerializerMethodField()
     status_summary = serializers.SerializerMethodField()
+    rating_criteria = serializers.SlugRelatedField(
+        slug_field='uuid',
+        queryset=None,  # Will be set in __init__
+        required=False,
+        allow_null=True
+    )
+    rating_criteria_source = serializers.SlugRelatedField(
+        slug_field='uuid',
+        queryset=None,  # Will be set in __init__
+        required=False,
+        allow_null=True,
+        read_only=True
+    )
+    viewers = serializers.SlugRelatedField(
+        slug_field='email',
+        queryset=User.objects.all(),
+        many=True,
+        required=False
+    )
+    contributors = serializers.SlugRelatedField(
+        slug_field='email',
+        queryset=User.objects.all(),
+        many=True,
+        required=False
+    )
 
     class Meta:
         model = PropertyList
         fields = [
-            'id', 'uuid', 'owner', 'title', 'state',
+            'uuid', 'owner', 'title', 'state',
             'rating_criteria', 'rating_criteria_source',
             'viewers', 'contributors',
             'properties_count', 'status_summary',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'uuid', 'owner', 'state', 'created_at', 'updated_at']
+        read_only_fields = ['uuid', 'owner', 'state', 'created_at', 'updated_at']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Import here to avoid circular import
+        from property.stage3_models import RatingCriteria
+        if self.fields.get('rating_criteria'):
+            self.fields['rating_criteria'].queryset = RatingCriteria.objects.all()
+        if self.fields.get('rating_criteria_source'):
+            self.fields['rating_criteria_source'].queryset = RatingCriteria.objects.all()
 
     def get_properties_count(self, obj):
         return obj.properties.count()
@@ -35,14 +70,17 @@ class PropertyListSerializer(serializers.ModelSerializer):
 class PropertySerializer(serializers.ModelSerializer):
     """Serializer for Property model"""
 
+    property_list = serializers.SlugRelatedField(
+        slug_field='uuid',
+        queryset=PropertyList.objects.all()
+    )
     property_list_title = serializers.ReadOnlyField(source='property_list.title')
-    property_list_uuid = serializers.ReadOnlyField(source='property_list.uuid')
     state_display = serializers.CharField(source='get_state_display', read_only=True)
 
     class Meta:
         model = Property
         fields = [
-            'id', 'uuid', 'property_list', 'property_list_uuid', 'property_list_title',
+            'uuid', 'property_list', 'property_list_title',
             'state', 'state_display',
             'title', 'address_line_1', 'address_line_2', 'city', 'postcode',
             'latitude', 'longitude',
@@ -56,7 +94,7 @@ class PropertySerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'id', 'uuid', 'state', 'state_display', 'property_list_uuid', 'property_list_title',
+            'uuid', 'state', 'state_display', 'property_list_title',
             'normalized_address', 'uprn',
             'overall_rating', 'rating_breakdown', 'disqualified', 'disqualification_reason',
             'created_at', 'updated_at'
@@ -98,8 +136,8 @@ class SavedLocationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SavedLocation
-        fields = ['id', 'uuid', 'user', 'name', 'address', 'latitude', 'longitude', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'uuid', 'user', 'created_at', 'updated_at']
+        fields = ['uuid', 'user', 'name', 'address', 'latitude', 'longitude', 'created_at', 'updated_at']
+        read_only_fields = ['uuid', 'user', 'created_at', 'updated_at']
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
