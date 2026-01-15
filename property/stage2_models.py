@@ -1,11 +1,13 @@
 from django.db import models
 from .stage1_models import PropertyList, Property
+import uuid
 
 
 class ContextOptions(models.Model):
     """Configuration for which context services to enable for a property list"""
 
     property_list = models.OneToOneField(PropertyList, on_delete=models.CASCADE, related_name='context_options')
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
     # Service toggles
     enable_crime = models.BooleanField(default=False)
@@ -55,6 +57,7 @@ class ContextData(models.Model):
     ]
 
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='context_data')
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     service_name = models.CharField(max_length=50)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
 

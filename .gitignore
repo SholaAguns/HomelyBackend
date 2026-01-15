@@ -52,3 +52,5 @@ __pypackages__/
 commands
 
 claude_responses/
+
+.idea/

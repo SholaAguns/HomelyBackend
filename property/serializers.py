@@ -9,19 +9,6 @@ class PropertyListSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
     properties_count = serializers.SerializerMethodField()
     status_summary = serializers.SerializerMethodField()
-    rating_criteria = serializers.SlugRelatedField(
-        slug_field='uuid',
-        queryset=None,  # Will be set in __init__
-        required=False,
-        allow_null=True
-    )
-    rating_criteria_source = serializers.SlugRelatedField(
-        slug_field='uuid',
-        queryset=None,  # Will be set in __init__
-        required=False,
-        allow_null=True,
-        read_only=True
-    )
     viewers = serializers.SlugRelatedField(
         slug_field='email',
         queryset=User.objects.all(),
@@ -39,21 +26,11 @@ class PropertyListSerializer(serializers.ModelSerializer):
         model = PropertyList
         fields = [
             'uuid', 'owner', 'title', 'state',
-            'rating_criteria', 'rating_criteria_source',
             'viewers', 'contributors',
             'properties_count', 'status_summary',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['uuid', 'owner', 'state', 'created_at', 'updated_at']
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Import here to avoid circular import
-        from property.stage3_models import RatingCriteria
-        if self.fields.get('rating_criteria'):
-            self.fields['rating_criteria'].queryset = RatingCriteria.objects.all()
-        if self.fields.get('rating_criteria_source'):
-            self.fields['rating_criteria_source'].queryset = RatingCriteria.objects.all()
 
     def get_properties_count(self, obj):
         return obj.properties.count()
