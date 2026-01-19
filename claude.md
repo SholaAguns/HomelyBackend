@@ -1,6 +1,6 @@
 - Be extremely concise in your responses sacrifice grammar for conciseness
 
-- Any response you write that requires my response or deliberation or is more than 3 lines long should be written into a file in the documentation/calude_responses folder
+- Any response you write that requires my response or deliberation or is more than 3 lines long should be written into a file in the documentation/claude_responses folder
 
 - Working local machine is a windows machine
 
@@ -8,7 +8,7 @@
 
 - Read documentation/plan/summary files for project context on initilaisation
 
-- Read documentation/plan/implementation_roadmap.md for implementation steps
+- Read documentation/plan/backend_implementation_roadmap.md for implementation steps
 
 - when implmentation decisions are made that differ from the plan update the planning documentation to refelect that
 

@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=homely_db
+      - POSTGRES_USER=homely_user
+      - POSTGRES_PASSWORD=homely_pass
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: .
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://homely_user:homely_pass@db:5432/homely_db
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/2
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DEBUG=True
+    depends_on:
+      - db
+      - redis
+
+  celery:
+    build: .
+    command: celery -A homely_core worker -l info
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://homely_user:homely_pass@db:5432/homely_db
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/2
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DEBUG=True
+    depends_on:
+      - db
+      - redis
+
+  frontend:
+    build: ../HomelyFrontend
+    volumes:
+      - ../HomelyFrontend:/app
+      - /app/node_modules
+    ports:
+      - "4200:4200"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
