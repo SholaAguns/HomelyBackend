@@ -54,3 +54,4 @@ commands
 claude_responses/
 
 .idea/
+*.pyc

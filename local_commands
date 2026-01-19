@@ -1,0 +1,4 @@
+claude --model claude-sonnet-4-5-20250929 --add-dir ../HomelyFrontend
+
+
+Lets create docker containers for the django app, redis, celery and angular frontend (dockerfile alreayd exists)
