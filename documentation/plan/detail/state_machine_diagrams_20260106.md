@@ -10,13 +10,13 @@ This document provides formal state machine definitions for PropertyList and Pro
 
 ### States
 
-| State | Description | UI Indicator | Next Actions Available |
-|-------|-------------|--------------|------------------------|
-| **NEW** | Initial state after property creation. No context data retrieved. | "New" badge | • Retrieve Context Reports<br>• Edit details<br>• Delete |
-| **STAGE2_IN_PROGRESS** | Context services are running (at least one service pending/in-progress). | "Retrieving reports..." + progress bar | • View progress<br>• Cancel (future feature)<br>• Edit non-dependent fields |
-| **STAGE2_COMPLETE** | All context services have completed (success or failure). | "Reports ready" or "X/Y reports ready" | • View reports<br>• Retry failed services<br>• Calculate rating<br>• Edit details |
-| **STAGE3_IN_PROGRESS** | Rating calculation is running. | "Calculating rating..." | • View progress |
-| **STAGE3_COMPLETE** | Rating has been calculated. | Rating score badge (e.g., "87.5") | • View rating breakdown<br>• Recalculate rating<br>• Edit details |
+| State                  | Description                                                              | UI Indicator                           | Next Actions Available                                                            |
+| ---------------------- | ------------------------------------------------------------------------ | -------------------------------------- | --------------------------------------------------------------------------------- |
+| **NEW**                | Initial state after property creation. No context data retrieved.        | "New" badge                            | • Retrieve Context Reports<br>• Edit details<br>• Delete                          |
+| **STAGE2_IN_PROGRESS** | Context services are running (at least one service pending/in-progress). | "Retrieving reports..." + progress bar | • View progress<br>• Cancel (future feature)<br>• Edit non-dependent fields       |
+| **STAGE2_COMPLETE**    | All context services have completed (success or failure).                | "Reports ready" or "X/Y reports ready" | • View reports<br>• Retry failed services<br>• Calculate rating<br>• Edit details |
+| **STAGE3_IN_PROGRESS** | Rating calculation is running.                                           | "Calculating rating..."                | • View progress                                                                   |
+| **STAGE3_COMPLETE**    | Rating has been calculated.                                              | Rating score badge (e.g., "87.5")      | • View rating breakdown<br>• Recalculate rating<br>• Edit details                 |
 
 ### Transitions
 
