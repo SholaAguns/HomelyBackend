@@ -27,11 +27,11 @@ CreateFromInputEndpoint -.-> NoteCreateFromInputEndpoint["2 endpoints create_fro
 ## Implementation Roadmap
 
 ### Phase 1: Core Backend Infrastructure
-- [ ] Property model updates (ensure external_url field exists)
-- [ ] PropertyCreationRequest schema (unsaved Property model structure)
-- [ ] create_property_endpoint (manual creation, should already exist)
-- [ ] Error handling patterns
-- [ ] Validation layer
+- [x] Property model updates (ensure external_url field exists)
+- [x] PropertyCreationRequest schema (unsaved Property model structure)
+- [x] create_property_endpoint (manual creation, should already exist)
+- [x] Error handling patterns
+- [x] Validation layer
 
 ### Phase 2: Service Layer
 - [ ] IPropertyCreationService interface

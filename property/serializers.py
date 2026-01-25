@@ -1,5 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.core.validators import URLValidator
+from django.core.exceptions import ValidationError as DjangoValidationError
+import re
+from decimal import Decimal
 from property.models import Property, PropertyList, SavedLocation
 
 
@@ -83,6 +87,80 @@ class PropertySerializer(serializers.ModelSerializer):
         if request and value.owner != request.user:
             raise serializers.ValidationError("Cannot add property to another user's list")
         return value
+
+    def validate_postcode(self, value):
+        """Validate UK postcode format"""
+        if not value:
+            return value
+
+        # UK postcode regex pattern
+        uk_postcode_pattern = r'^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$'
+        if not re.match(uk_postcode_pattern, value.upper().strip()):
+            raise serializers.ValidationError("Invalid UK postcode format")
+        return value.upper().strip()
+
+    def validate_external_url(self, value):
+        """Validate external URL format"""
+        if not value:
+            return value
+
+        validator = URLValidator()
+        try:
+            validator(value)
+        except DjangoValidationError:
+            raise serializers.ValidationError("Invalid URL format")
+        return value
+
+    def validate_price(self, value):
+        """Validate price is positive and within reasonable range"""
+        if value is not None:
+            if value <= 0:
+                raise serializers.ValidationError("Price must be greater than zero")
+            if value > Decimal('100000000'):  # 100 million
+                raise serializers.ValidationError("Price exceeds maximum allowed value")
+        return value
+
+    def validate_latitude(self, value):
+        """Validate latitude is within UK bounds"""
+        if value is not None:
+            # UK latitude range approximately 49.9 to 60.9
+            if not (Decimal('49.0') <= value <= Decimal('61.0')):
+                raise serializers.ValidationError("Latitude must be within UK bounds (49.0 to 61.0)")
+        return value
+
+    def validate_longitude(self, value):
+        """Validate longitude is within UK bounds"""
+        if value is not None:
+            # UK longitude range approximately -8.6 to 1.8
+            if not (Decimal('-9.0') <= value <= Decimal('2.0')):
+                raise serializers.ValidationError("Longitude must be within UK bounds (-9.0 to 2.0)")
+        return value
+
+    def validate_bedrooms(self, value):
+        """Validate bedrooms is positive"""
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Bedrooms cannot be negative")
+        if value is not None and value > 50:
+            raise serializers.ValidationError("Bedrooms exceeds reasonable maximum")
+        return value
+
+    def validate_bathrooms(self, value):
+        """Validate bathrooms is positive"""
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Bathrooms cannot be negative")
+        if value is not None and value > 20:
+            raise serializers.ValidationError("Bathrooms exceeds reasonable maximum")
+        return value
+
+    def validate(self, data):
+        """Cross-field validation"""
+        # Ensure at minimum title and postcode exist
+        if not data.get('title'):
+            raise serializers.ValidationError({'title': 'Property title is required'})
+        if not data.get('postcode'):
+            raise serializers.ValidationError({'postcode': 'Postcode is required'})
+
+        return data
 
 
 class PropertyDetailSerializer(PropertySerializer):
