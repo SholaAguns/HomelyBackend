@@ -4,7 +4,50 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
-from property.models import Property, PropertyList, SavedLocation
+from property.models import Property, PropertyList, SavedLocation, SearchCriteria
+
+
+class SearchCriteriaSerializer(serializers.ModelSerializer):
+    """Serializer for SearchCriteria model"""
+
+    class Meta:
+        model = SearchCriteria
+        fields = [
+            'id', 'area', 'bedrooms_min', 'bedrooms_max',
+            'bathrooms_min', 'bathrooms_max', 'price_min', 'price_max',
+            'radius', 'property_types', 'max_days_since_added',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_area(self, value):
+        """Validate area is not empty"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Area cannot be empty")
+        return value.strip()
+
+    def validate(self, data):
+        """Cross-field validation"""
+        # Validate min/max ranges
+        if data.get('bedrooms_min') and data.get('bedrooms_max'):
+            if data['bedrooms_min'] > data['bedrooms_max']:
+                raise serializers.ValidationError({
+                    'bedrooms_min': 'Minimum bedrooms cannot be greater than maximum'
+                })
+
+        if data.get('bathrooms_min') and data.get('bathrooms_max'):
+            if data['bathrooms_min'] > data['bathrooms_max']:
+                raise serializers.ValidationError({
+                    'bathrooms_min': 'Minimum bathrooms cannot be greater than maximum'
+                })
+
+        if data.get('price_min') and data.get('price_max'):
+            if data['price_min'] > data['price_max']:
+                raise serializers.ValidationError({
+                    'price_min': 'Minimum price cannot be greater than maximum'
+                })
+
+        return data
 
 
 class CreateFromInputSerializer(serializers.Serializer):
@@ -28,12 +71,25 @@ class CreateFromInputSerializer(serializers.Serializer):
         return value.strip()
 
 
+class BulkPropertyCreationSerializer(serializers.Serializer):
+    """Serializer for bulk property creation from search"""
+
+    search_criteria = SearchCriteriaSerializer(required=True)
+    max_properties = serializers.IntegerField(
+        default=100,
+        min_value=1,
+        max_value=100,
+        help_text="Maximum number of properties to scrape (1-100)"
+    )
+
+
 class PropertyListSerializer(serializers.ModelSerializer):
     """Serializer for PropertyList model"""
 
     owner = serializers.ReadOnlyField(source='owner.username')
     properties_count = serializers.SerializerMethodField()
     status_summary = serializers.SerializerMethodField()
+    search_criteria = SearchCriteriaSerializer(read_only=True)
     viewers = serializers.SlugRelatedField(
         slug_field='email',
         queryset=User.objects.all(),
@@ -51,7 +107,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
         model = PropertyList
         fields = [
             'uuid', 'owner', 'title', 'state',
-            'viewers', 'contributors',
+            'search_criteria', 'viewers', 'contributors',
             'properties_count', 'status_summary',
             'created_at', 'updated_at'
         ]
