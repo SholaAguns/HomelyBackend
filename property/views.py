@@ -2,12 +2,13 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 from property.models import Property, PropertyList, SavedLocation
 from property.serializers import (
     PropertySerializer, PropertyDetailSerializer,
     PropertyListSerializer, PropertyListDetailSerializer,
-    SavedLocationSerializer
+    SavedLocationSerializer, CreateFromInputSerializer
 )
 from property.tasks import retrieve_context_data, calculate_property_rating
 from property.services import property_creation_service_factory
@@ -150,23 +151,53 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    @extend_schema(
+        request=CreateFromInputSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Property data extracted successfully",
+                examples=[
+                    OpenApiExample(
+                        'Success Response',
+                        value={
+                            "success": True,
+                            "property_data": {
+                                "title": "3 bedroom house in London",
+                                "price": "500000.00",
+                                "address_line_1": "123 Example Street",
+                                "city": "London",
+                                "postcode": "SW1A 1AA",
+                                "bedrooms": 3,
+                                "bathrooms": 2,
+                                "garden": True,
+                                "parking": False,
+                                "external_url": "https://www.rightmove.co.uk/properties/123456",
+                                "external_id": "123456"
+                            },
+                            "source": "RightmoveService",
+                            "message": "Property data extracted successfully"
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(description="Invalid input or extraction failed"),
+        },
+        description="Extract property data from URL or text input. Returns unsaved property data that can be used to populate the property creation form."
+    )
     @action(detail=False, methods=['post'], url_path='create-from-input')
     def create_from_input(self, request):
-        input_data = request.data.get('input_data')
-        input_type = request.data.get('input_type', 'url')
+        """
+        Extract property data from URL or text input.
 
-        # Validate input
-        if not input_data:
-            return Response(
-                {'error': 'input_data is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        Returns unsaved property data that can be used to populate
+        the property creation form.
+        """
+        # Validate input using serializer
+        serializer = CreateFromInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if input_type not in ['url', 'text']:
-            return Response(
-                {'error': 'input_type must be "url" or "text"'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        input_data = serializer.validated_data['input_data']
+        input_type = serializer.validated_data['input_type']
 
         # Get appropriate service
         service = property_creation_service_factory(input_data, input_type)

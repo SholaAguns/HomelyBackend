@@ -7,6 +7,27 @@ from decimal import Decimal
 from property.models import Property, PropertyList, SavedLocation
 
 
+class CreateFromInputSerializer(serializers.Serializer):
+    """Serializer for create-from-input endpoint request"""
+
+    input_data = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        help_text="URL or text to extract property data from"
+    )
+    input_type = serializers.ChoiceField(
+        choices=['url', 'text'],
+        default='url',
+        help_text="Type of input: 'url' or 'text'"
+    )
+
+    def validate_input_data(self, value):
+        """Validate input_data is not empty"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Input data cannot be empty")
+        return value.strip()
+
+
 class PropertyListSerializer(serializers.ModelSerializer):
     """Serializer for PropertyList model"""
 
