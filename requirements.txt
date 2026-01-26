@@ -1,5 +1,6 @@
 asgiref==3.11.0
 attrs==25.4.0
+beautifulsoup4==4.12.3
 certifi==2026.1.4
 cffi==2.0.0
 celery==5.4.0

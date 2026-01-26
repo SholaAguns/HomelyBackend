@@ -34,20 +34,20 @@ CreateFromInputEndpoint -.-> NoteCreateFromInputEndpoint["2 endpoints create_fro
 - [x] Validation layer
 
 ### Phase 2: Service Layer
-- [ ] IPropertyCreationService interface
-- [ ] property_creation_service_factory
-- [ ] RightmoveService implementation
-  - [ ] URL scraping logic
-  - [ ] Data extraction to PropertyCreationRequest
+- [x] IPropertyCreationService interface
+- [x] property_creation_service_factory
+- [x] RightmoveService implementation
+  - [x] URL scraping logic
+  - [x] Data extraction to PropertyCreationRequest
 - [ ] HTMLParserService (future)
-- [ ] Service selection logic in factory
+- [x] Service selection logic in factory
 
 ### Phase 3: Input Endpoints
-- [ ] create_from_input_endpoint (single endpoint with parameter)
-  - [ ] URL input handling
-  - [ ] Text input handling
-- [ ] Service factory integration
-- [ ] Response structure (unsaved Property model)
+- [x] create_from_input_endpoint (single endpoint with parameter)
+  - [x] URL input handling
+  - [x] Text input handling
+- [x] Service factory integration
+- [x] Response structure (unsaved Property model)
 
 ### Phase 4: Frontend Components
 - [ ] CreatePropertyComponent (creation options page)

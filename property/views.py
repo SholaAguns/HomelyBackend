@@ -10,6 +10,7 @@ from property.serializers import (
     SavedLocationSerializer
 )
 from property.tasks import retrieve_context_data, calculate_property_rating
+from property.services import property_creation_service_factory
 
 
 class PropertyListViewSet(viewsets.ModelViewSet):
@@ -147,6 +148,64 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['post'], url_path='create-from-input')
+    def create_from_input(self, request):
+        input_data = request.data.get('input_data')
+        input_type = request.data.get('input_type', 'url')
+
+        # Validate input
+        if not input_data:
+            return Response(
+                {'error': 'input_data is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if input_type not in ['url', 'text']:
+            return Response(
+                {'error': 'input_type must be "url" or "text"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get appropriate service
+        service = property_creation_service_factory(input_data, input_type)
+
+        if not service:
+            return Response(
+                {
+                    'error': 'No service available to handle this input',
+                    'message': f'Could not find a service to process this {input_type}'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Extract property data
+        try:
+            property_data = service.extract_property_data(input_data)
+
+            return Response({
+                'success': True,
+                'property_data': property_data,
+                'source': service.__class__.__name__,
+                'message': 'Property data extracted successfully'
+            })
+
+        except ValueError as e:
+            return Response(
+                {
+                    'error': 'Extraction failed',
+                    'message': str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {
+                    'error': 'Unexpected error',
+                    'message': str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
