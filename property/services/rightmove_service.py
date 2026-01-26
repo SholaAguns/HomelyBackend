@@ -1,131 +1,520 @@
 """
 Rightmove property listing scraper service
+Supports both single property extraction and bulk search scraping
 """
 import re
-from typing import Dict, Any
+import json
+import time
+from typing import Dict, Any, List, Optional
 from decimal import Decimal
+from datetime import datetime, timezone
 from property.services.interface import IPropertyCreationService
 
 
 class RightmoveService(IPropertyCreationService):
+    """
+    Service for extracting property data from Rightmove.
+
+    Supports two modes:
+    1. Single property from URL (extract_property_data)
+    2. Bulk properties from search (scrape_properties_by_search)
+    """
+
+    BASE_URL = "https://www.rightmove.co.uk"
+    PROPERTY_SEARCH_URL = BASE_URL + "/property-to-rent/find.html"
+    GET_LOCATION_URL = "https://los.rightmove.co.uk/typeahead"
 
     RIGHTMOVE_DOMAINS = [
         'rightmove.co.uk',
         'www.rightmove.co.uk'
     ]
 
+    HEADERS = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                      'AppleWebKit/537.36 (KHTML, like Gecko) '
+                      'Chrome/135.0.0.0 Safari/537.36',
+        'Upgrade-Insecure-Requests': '1',
+    }
+
+    # ========================================================================
+    # IPropertyCreationService Interface Methods
+    # ========================================================================
+
     def can_handle(self, input_data: str) -> bool:
+        """Check if this service can handle the input URL"""
         return any(domain in input_data.lower() for domain in self.RIGHTMOVE_DOMAINS)
 
     def extract_property_data(self, input_data: str) -> Dict[str, Any]:
+        """
+        Extract property data from a Rightmove URL.
+        Uses the API approach (fetch JSON from __NEXT_DATA__) instead of HTML parsing.
+
+        Args:
+            input_data: Rightmove property URL
+
+        Returns:
+            Dict with property data
+
+        Raises:
+            ValueError: If extraction fails
+        """
         try:
-            # Import here to avoid dependency issues if packages not installed
             import requests
-            from bs4 import BeautifulSoup
         except ImportError as e:
             raise ValueError(
                 f"Required packages not installed: {e}. "
                 "Install with: pip install requests beautifulsoup4"
             )
 
+        # Extract property ID from URL
+        property_id = self.extract_property_id_from_url(input_data)
+        if not property_id:
+            raise ValueError("Could not extract property ID from URL")
+
+        # Fetch property data via API
+        property_data = self.fetch_single_property(property_id)
+
+        # Add the original URL
+        property_data['external_url'] = input_data
+
+        return property_data
+
+    # ========================================================================
+    # Helper Methods (from POC)
+    # ========================================================================
+
+    def clean_price(self, text: str) -> int:
+        """Extract integer price from strings like '£1,250 pcm' or '£300 pw'."""
+        if not text:
+            return 0
+        t = text.replace('£', '').replace(',', '').lower()
+        t = t.replace('pcm', '').replace('per month', '').replace('pw', '').replace('per week', '')
+        m = re.search(r'\d+', t)
+        return int(m.group()) if m else 0
+
+    def safe_int(self, v) -> int:
+        """Convert to int, default to 0 on failure."""
         try:
-            # Fetch the page
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-            response = requests.get(input_data, headers=headers, timeout=10)
+            return int(v)
+        except:
+            return 0
+
+    def clean_date(self, s: str) -> Optional[datetime]:
+        """
+        Parse ISO date like '2025-04-28T12:34:56Z' into datetime with timezone.
+        Returns None if input is blank or invalid.
+        """
+        if not s:
+            return None
+
+        try:
+            if s.endswith('Z'):
+                dt = datetime.fromisoformat(s.rstrip('Z'))
+                return dt.replace(tzinfo=timezone.utc)
+            else:
+                from django.utils import timezone as django_timezone
+                dt = datetime.fromisoformat(s)
+                return django_timezone.make_aware(dt)
+        except ValueError:
+            return None
+
+    # ========================================================================
+    # Single Property Methods
+    # ========================================================================
+
+    def extract_property_id_from_url(self, url: str) -> Optional[str]:
+        """
+        Extract property ID from Rightmove URL.
+
+        Handles formats:
+        - /properties/123456789
+        - /property-to-rent/123456789.html
+
+        Returns:
+            Property ID as string, or None if not found
+        """
+        # Try /properties/ID pattern
+        match = re.search(r'/properties/(\d+)', url)
+        if match:
+            return match.group(1)
+
+        # Try /property-to-rent/ID.html pattern
+        match = re.search(r'/property-to-rent/(\d+)\.html', url)
+        if match:
+            return match.group(1)
+
+        return None
+
+    def fetch_single_property(self, property_id: str) -> Dict[str, Any]:
+        """
+        Fetch single property data from Rightmove API.
+
+        Uses the search endpoint to fetch data for a specific property ID.
+        This is more reliable than HTML scraping.
+
+        Args:
+            property_id: Rightmove property ID
+
+        Returns:
+            Dict with property data
+
+        Raises:
+            ValueError: If fetch or parsing fails
+        """
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+        except ImportError as e:
+            raise ValueError(f"Required packages not installed: {e}")
+
+        try:
+            # Build property URL
+            url = f"{self.BASE_URL}/properties/{property_id}"
+
+            # Fetch page
+            response = requests.get(url, headers=self.HEADERS, timeout=15)
             response.raise_for_status()
 
-            # Parse HTML
-            soup = BeautifulSoup(response.content, 'html.parser')
+            # Parse JSON from __NEXT_DATA__ script tag
+            html = response.content.decode('cp1252', errors='replace')
+            soup = BeautifulSoup(html, 'html.parser')
+            script_tag = soup.find('script', id='__NEXT_DATA__', type='application/json')
 
-            # Extract data using Rightmove's HTML structure
-            property_data = {
-                'external_url': input_data,
-            }
+            if not script_tag or not script_tag.string:
+                # Fallback to basic HTML scraping if API data not available
+                return self._extract_from_html(soup, url, property_id)
 
-            # Extract title
-            title_elem = soup.find('h1', {'itemprop': 'name'}) or soup.find('h1')
-            if title_elem:
-                property_data['title'] = title_elem.get_text(strip=True)
+            # Parse JSON
+            raw = script_tag.string.replace('\n', '').replace('\r', '')
+            data = json.loads(raw)
 
-            # Extract price
-            price_elem = soup.find('span', {'class': 'property-header-price'})
-            if not price_elem:
-                price_elem = soup.find(string=re.compile(r'£[\d,]+'))
-            if price_elem:
-                price_text = price_elem.get_text(strip=True) if hasattr(price_elem, 'get_text') else str(price_elem)
-                price_match = re.search(r'£([\d,]+)', price_text)
-                if price_match:
-                    property_data['price'] = Decimal(price_match.group(1).replace(',', ''))
-
-            # Extract address
-            address_elem = soup.find('address', {'itemprop': 'address'}) or soup.find('address')
-            if address_elem:
-                address_text = address_elem.get_text(strip=True)
-                # Split address into components (simple heuristic)
-                address_parts = [p.strip() for p in address_text.split(',')]
-                if len(address_parts) > 0:
-                    property_data['address_line_1'] = address_parts[0]
-                if len(address_parts) > 1:
-                    property_data['city'] = address_parts[-2] if len(address_parts) > 2 else address_parts[-1]
-                # Extract postcode (UK format)
-                postcode_match = re.search(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}', address_text)
-                if postcode_match:
-                    property_data['postcode'] = postcode_match.group(0)
-
-            # Extract bedrooms
-            bedrooms_elem = soup.find(string=re.compile(r'\d+\s*bedroom', re.IGNORECASE))
-            if bedrooms_elem:
-                bedrooms_match = re.search(r'(\d+)\s*bedroom', str(bedrooms_elem), re.IGNORECASE)
-                if bedrooms_match:
-                    property_data['bedrooms'] = int(bedrooms_match.group(1))
-
-            # Extract bathrooms
-            bathrooms_elem = soup.find(string=re.compile(r'\d+\s*bathroom', re.IGNORECASE))
-            if bathrooms_elem:
-                bathrooms_match = re.search(r'(\d+)\s*bathroom', str(bathrooms_elem), re.IGNORECASE)
-                if bathrooms_match:
-                    property_data['bathrooms'] = int(bathrooms_match.group(1))
-
-            # Extract property type and other details from key features
-            features_section = soup.find('div', {'class': re.compile(r'key.*features', re.IGNORECASE)})
-            if features_section:
-                features_text = features_section.get_text(strip=True).lower()
-
-                # Check for garden
-                if 'garden' in features_text:
-                    property_data['garden'] = True
-
-                # Check for parking
-                if any(word in features_text for word in ['parking', 'garage', 'drive']):
-                    property_data['parking'] = True
-
-                # Extract furnished status
-                if 'furnished' in features_text:
-                    if 'unfurnished' in features_text:
-                        property_data['furnished_status'] = 'Unfurnished'
-                    elif 'part furnished' in features_text or 'part-furnished' in features_text:
-                        property_data['furnished_status'] = 'Part Furnished'
-                    else:
-                        property_data['furnished_status'] = 'Furnished'
-
-            # Extract property ID from URL
-            property_id_match = re.search(r'/properties/(\d+)', input_data)
-            if property_id_match:
-                property_data['external_id'] = property_id_match.group(1)
-
-            # Validate minimum required fields
-            if 'title' not in property_data:
-                raise ValueError("Could not extract property title from Rightmove listing")
-
-            # Set default postcode if not found (will need manual entry)
-            if 'postcode' not in property_data:
-                property_data['postcode'] = 'UNKNOWN'
+            # Extract property data from JSON structure
+            # This structure may vary, so we need to handle different paths
+            property_data = self._extract_property_from_json(data, property_id)
 
             return property_data
 
         except requests.RequestException as e:
-            raise ValueError(f"Failed to fetch Rightmove listing: {e}")
+            raise ValueError(f"Failed to fetch Rightmove property: {e}")
         except Exception as e:
-            raise ValueError(f"Failed to parse Rightmove listing: {e}")
+            raise ValueError(f"Failed to parse Rightmove property: {e}")
+
+    def _extract_property_from_json(self, data: dict, property_id: str) -> Dict[str, Any]:
+        """Extract property data from __NEXT_DATA__ JSON structure"""
+        # Try to find property in various possible paths
+        property_info = None
+
+        # Path 1: props.pageProps.propertyData
+        if 'props' in data and 'pageProps' in data['props']:
+            page_props = data['props']['pageProps']
+            if 'propertyData' in page_props:
+                property_info = page_props['propertyData']
+
+        if not property_info:
+            raise ValueError("Could not find property data in JSON structure")
+
+        # Extract data (similar to POC extraction logic)
+        return self._parse_property_json(property_info, property_id)
+
+    def _parse_property_json(self, p: dict, property_id: str) -> Dict[str, Any]:
+        """Parse property JSON object into standardized dict"""
+        # Core fields
+        external_id = p.get('id', property_id)
+        address = p.get('displayAddress', '')
+        summary = p.get('summary', '')
+        lat = p.get('location', {}).get('latitude')
+        lng = p.get('location', {}).get('longitude')
+
+        # Pricing
+        price_info = p.get('price', {})
+        price_amount = price_info.get('amount') or self.clean_price(
+            price_info.get('displayPrices', [{}])[0].get('displayPrice', ''))
+        price_frequency = price_info.get('frequency', '')
+        currency_code = price_info.get('currencyCode', 'GBP')
+
+        # Details
+        bedrooms = p.get('bedrooms', 0)
+        bathrooms = p.get('bathrooms', 0)
+        property_type = p.get('propertySubType', '')
+        full_desc = p.get('propertyTypeFullDescription', '')
+
+        # Dates
+        let_date = self.clean_date(p.get('letAvailableDate', ''))
+        first_vis = self.clean_date(p.get('firstVisibleDate', ''))
+
+        # Images
+        images = []
+        for img in p.get('images', []):
+            images.append({
+                'source_url': img.get('srcUrl'),
+                'url': img.get('url'),
+                'caption': img.get('caption', '')
+            })
+        for img in p.get('propertyImages', {}).get('images', []):
+            images.append({
+                'source_url': img.get('srcUrl'),
+                'url': img.get('url'),
+                'caption': img.get('caption', '')
+            })
+
+        return {
+            'external_id': str(external_id),
+            'title': address,  # Use address as title
+            'address': address,
+            'summary': summary,
+            'latitude': lat,
+            'longitude': lng,
+            'price': Decimal(str(price_amount)) if price_amount else Decimal('0'),
+            'price_frequency': price_frequency,
+            'currency_code': currency_code,
+            'bedrooms': bedrooms,
+            'bathrooms': bathrooms,
+            'property_type': property_type,
+            'property_type_full_description': full_desc,
+            'let_available_date': let_date,
+            'first_visible_date': first_vis,
+            'images': images,
+        }
+
+    def _extract_from_html(self, soup, url: str, property_id: str) -> Dict[str, Any]:
+        """Fallback HTML extraction if JSON not available"""
+        property_data = {
+            'external_id': property_id,
+            'external_url': url,
+        }
+
+        # Extract title
+        title_elem = soup.find('h1', {'itemprop': 'name'}) or soup.find('h1')
+        if title_elem:
+            property_data['title'] = title_elem.get_text(strip=True)
+
+        # Extract price
+        price_elem = soup.find('span', {'class': 'property-header-price'})
+        if not price_elem:
+            price_elem = soup.find(string=re.compile(r'£[\d,]+'))
+        if price_elem:
+            price_text = price_elem.get_text(strip=True) if hasattr(price_elem, 'get_text') else str(price_elem)
+            price_match = re.search(r'£([\d,]+)', price_text)
+            if price_match:
+                property_data['price'] = Decimal(price_match.group(1).replace(',', ''))
+
+        # Extract address
+        address_elem = soup.find('address', {'itemprop': 'address'}) or soup.find('address')
+        if address_elem:
+            address_text = address_elem.get_text(strip=True)
+            property_data['address'] = address_text
+
+            # Extract postcode
+            postcode_match = re.search(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}', address_text)
+            if postcode_match:
+                property_data['postcode'] = postcode_match.group(0)
+
+        # Extract bedrooms
+        bedrooms_elem = soup.find(string=re.compile(r'\d+\s*bedroom', re.IGNORECASE))
+        if bedrooms_elem:
+            bedrooms_match = re.search(r'(\d+)\s*bedroom', str(bedrooms_elem), re.IGNORECASE)
+            if bedrooms_match:
+                property_data['bedrooms'] = int(bedrooms_match.group(1))
+
+        # Extract bathrooms
+        bathrooms_elem = soup.find(string=re.compile(r'\d+\s*bathroom', re.IGNORECASE))
+        if bathrooms_elem:
+            bathrooms_match = re.search(r'(\d+)\s*bathroom', str(bathrooms_elem), re.IGNORECASE)
+            if bathrooms_match:
+                property_data['bathrooms'] = int(bathrooms_match.group(1))
+
+        # Check for garden
+        features_section = soup.find('div', {'class': re.compile(r'key.*features', re.IGNORECASE)})
+        if features_section:
+            features_text = features_section.get_text(strip=True).lower()
+            if 'garden' in features_text:
+                property_data['garden'] = True
+
+        return property_data
+
+    # ========================================================================
+    # Bulk Search Methods (from POC)
+    # ========================================================================
+
+    def fetch_page(self, session, params: dict):
+        """
+        Fetch a search results page and extract JSON data.
+
+        Returns:
+            Tuple of (search_results_dict, full_data_dict)
+        """
+        try:
+            from bs4 import BeautifulSoup
+        except ImportError:
+            raise ValueError("BeautifulSoup not installed")
+
+        resp = session.get(self.PROPERTY_SEARCH_URL, headers=self.HEADERS, params=params, timeout=15)
+        html = resp.content.decode('cp1252', errors='replace')
+        soup = BeautifulSoup(html, 'html.parser')
+
+        tag = soup.find('script', id='__NEXT_DATA__', type='application/json')
+        if not tag or not tag.string:
+            return None, None
+
+        raw = tag.string.replace('\n', '').replace('\r', '')
+        data = json.loads(raw)
+
+        sr = data.get('props', {}) \
+            .get('pageProps', {}) \
+            .get('searchResults', {})
+
+        return sr, data
+
+    def get_location_id(self, session, area: str) -> str:
+        """
+        Get Rightmove location ID from area string using typeahead API.
+
+        Args:
+            session: requests.Session
+            area: Location string (e.g., "Manchester", "SW1A 1AA")
+
+        Returns:
+            Location ID string in format "TYPE^ID"
+        """
+        params = {
+            'query': area,
+            'limit': '2',
+            'exclude': 'STREET',
+        }
+
+        try:
+            response = session.get(self.GET_LOCATION_URL, headers=self.HEADERS, params=params, timeout=15)
+            data = response.json()
+
+            matches = data.get('matches', [])
+            if matches:
+                first_id = matches[0].get('id')
+                first_type = matches[0].get('type')
+                return f'{first_type}^{first_id}'
+            else:
+                return ''
+        except Exception as e:
+            raise ValueError(f"Failed to get location ID for '{area}': {e}")
+
+    def scrape_properties_by_search(
+        self,
+        search_criteria: dict,
+        max_properties: int = 100,
+        progress_callback=None
+    ) -> List[Dict[str, Any]]:
+        """
+        Scrape properties from Rightmove search.
+
+        Args:
+            search_criteria: Dict with search parameters
+                - area (required): Location string
+                - bedrooms_min: Minimum bedrooms
+                - bedrooms_max: Maximum bedrooms
+                - price_min: Minimum price
+                - price_max: Maximum price
+                - radius: Search radius (miles)
+                - property_types: Property types (comma-separated)
+                - max_days_since_added: Max days since added
+            max_properties: Maximum number of properties to scrape
+            progress_callback: Optional callback(created, total) for progress updates
+
+        Returns:
+            List of property data dicts
+
+        Raises:
+            ValueError: If search fails
+        """
+        try:
+            import requests
+        except ImportError:
+            raise ValueError("requests library not installed")
+
+        session = requests.Session()
+
+        # Get location ID
+        area = search_criteria.get('area')
+        if not area:
+            raise ValueError("Search criteria must include 'area'")
+
+        location_id = self.get_location_id(session, area)
+        if not location_id:
+            raise ValueError(f"Could not find location ID for '{area}'")
+
+        # Build search params
+        params = {
+            'searchLocation': area,
+            'useLocationIdentifier': 'true',
+            'radius': str(search_criteria.get('radius', 30)),
+            '_includeLetAgreed': 'on',
+            'locationIdentifier': location_id
+        }
+
+        # Add optional params
+        if search_criteria.get('price_min'):
+            params['minPrice'] = str(search_criteria['price_min'])
+        if search_criteria.get('price_max'):
+            params['maxPrice'] = str(search_criteria['price_max'])
+        if search_criteria.get('bedrooms_min'):
+            params['minBedrooms'] = str(search_criteria['bedrooms_min'])
+        if search_criteria.get('bedrooms_max'):
+            params['maxBedrooms'] = str(search_criteria['bedrooms_max'])
+        if search_criteria.get('property_types'):
+            params['propertyTypes'] = str(search_criteria['property_types'])
+        if search_criteria.get('max_days_since_added'):
+            params['maxDaysSinceAdded'] = str(search_criteria['max_days_since_added'])
+
+        # Fetch first page to get total count
+        first_sr, _ = self.fetch_page(session, params)
+        if not first_sr:
+            raise ValueError("No search results found")
+
+        pag = first_sr.get('pagination', {})
+        total = pag.get('total', 0)
+        page_size = pag.get('pageSize', 0)
+
+        if page_size <= 0:
+            if total > 0:
+                total_pages = 1
+            else:
+                return []
+        else:
+            total_pages = (total // page_size) + (1 if total % page_size else 0)
+
+        # Limit total properties
+        properties_to_scrape = min(total, max_properties)
+        pages_to_scrape = min(total_pages, (properties_to_scrape // page_size) + 1)
+
+        # Scrape pages
+        all_properties = []
+
+        for page_idx in range(pages_to_scrape):
+            offset = page_idx * page_size
+            params['index'] = offset
+
+            sr, _ = self.fetch_page(session, params)
+            if not sr:
+                continue
+
+            for p in sr.get('properties', []):
+                if len(all_properties) >= max_properties:
+                    break
+
+                # Parse property data
+                property_data = self._parse_property_json(p, str(p.get('id')))
+                property_data['link'] = self.BASE_URL + p.get('propertyUrl', '')
+
+                all_properties.append(property_data)
+
+                # Progress callback
+                if progress_callback:
+                    progress_callback(len(all_properties), properties_to_scrape)
+
+            if len(all_properties) >= max_properties:
+                break
+
+            # Rate limiting - wait between pages
+            if page_idx < pages_to_scrape - 1:
+                time.sleep(5)
+
+        return all_properties
