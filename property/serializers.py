@@ -4,7 +4,7 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
-from property.models import Property, PropertyList, SavedLocation, SearchCriteria
+from property.models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask
 
 
 class SearchCriteriaSerializer(serializers.ModelSerializer):
@@ -283,3 +283,40 @@ class PropertyListDetailSerializer(PropertyListSerializer):
 
     class Meta(PropertyListSerializer.Meta):
         fields = PropertyListSerializer.Meta.fields + ['properties']
+
+
+class PropertyListTaskSerializer(serializers.ModelSerializer):
+    """Serializer for PropertyListTask model"""
+
+    property_list_uuid = serializers.ReadOnlyField(source='property_list.uuid')
+    property_list_title = serializers.ReadOnlyField(source='property_list.title')
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    task_type_display = serializers.CharField(source='get_task_type_display', read_only=True)
+    progress_percentage = serializers.IntegerField(read_only=True)
+    websocket_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PropertyListTask
+        fields = [
+            'uuid', 'property_list_uuid', 'property_list_title',
+            'task_type', 'task_type_display', 'status', 'status_display',
+            'celery_task_id', 'total_items', 'completed_items', 'failed_items',
+            'progress_percentage', 'errors', 'error_message', 'metadata',
+            'websocket_url', 'created_at', 'updated_at', 'completed_at'
+        ]
+        read_only_fields = [
+            'uuid', 'property_list_uuid', 'property_list_title',
+            'status', 'status_display', 'task_type_display',
+            'celery_task_id', 'total_items', 'completed_items', 'failed_items',
+            'progress_percentage', 'errors', 'error_message', 'metadata',
+            'websocket_url', 'created_at', 'updated_at', 'completed_at'
+        ]
+
+    def get_websocket_url(self, obj):
+        """Return websocket URL for progress updates"""
+        request = self.context.get('request')
+        if request:
+            ws_scheme = 'wss' if request.is_secure() else 'ws'
+            host = request.get_host()
+            return f"{ws_scheme}://{host}/ws/property-list/{obj.property_list.uuid}/"
+        return None

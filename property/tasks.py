@@ -1,6 +1,8 @@
 from celery import shared_task
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from django.utils import timezone
+from decimal import Decimal
 
 
 @shared_task(bind=True, max_retries=3)
@@ -93,6 +95,244 @@ def bulk_calculate_ratings(property_ids):
     return f'Queued rating calculation for {len(property_ids)} properties'
 
 
+@shared_task(bind=True, max_retries=0)
+def scrape_rightmove_properties(self, task_uuid, max_properties=100):
+    """
+    Celery task to scrape properties from Rightmove based on search criteria.
+
+    Args:
+        task_uuid: UUID of the PropertyListTask tracking this operation
+        max_properties: Maximum number of properties to scrape
+
+    Returns:
+        Dict with results summary
+    """
+    from property.models import PropertyListTask, Property
+    from property.services import RightmoveService
+    from django.db import transaction
+
+    try:
+        # Get task and property list
+        task = PropertyListTask.objects.get(uuid=task_uuid)
+        property_list = task.property_list
+        search_criteria = property_list.search_criteria
+
+        if not search_criteria:
+            raise ValueError("PropertyList does not have search criteria configured")
+
+        # Update task status
+        task.status = 'IN_PROGRESS'
+        task.celery_task_id = self.request.id
+        task.save(update_fields=['status', 'celery_task_id', 'updated_at'])
+
+        # Send initial websocket update
+        _send_list_websocket_update(
+            property_list.uuid,
+            'scrape_progress',
+            {
+                'status': 'in_progress',
+                'created': 0,
+                'total': 0,
+                'message': 'Starting property search...'
+            }
+        )
+
+        # Convert search criteria to dict
+        criteria_dict = {
+            'area': search_criteria.area,
+            'bedrooms_min': search_criteria.bedrooms_min,
+            'bedrooms_max': search_criteria.bedrooms_max,
+            'bathrooms_min': search_criteria.bathrooms_min,
+            'bathrooms_max': search_criteria.bathrooms_max,
+            'price_min': search_criteria.price_min,
+            'price_max': search_criteria.price_max,
+            'radius': search_criteria.radius,
+            'property_types': search_criteria.property_types,
+            'max_days_since_added': search_criteria.max_days_since_added,
+        }
+
+        # Initialize service and scrape
+        service = RightmoveService()
+
+        def progress_callback(created, total):
+            """Callback for progress updates"""
+            task.total_items = total
+            task.completed_items = created
+            task.save(update_fields=['total_items', 'completed_items', 'updated_at'])
+
+            _send_list_websocket_update(
+                property_list.uuid,
+                'scrape_progress',
+                {
+                    'status': 'in_progress',
+                    'created': created,
+                    'total': total,
+                    'progress': int((created / total) * 100) if total > 0 else 0,
+                    'message': f'Scraped {created} of {total} properties...'
+                }
+            )
+
+        # Scrape properties
+        properties_data = service.scrape_properties_by_search(
+            criteria_dict,
+            max_properties=max_properties,
+            progress_callback=progress_callback
+        )
+
+        # Create Property objects
+        created_count = 0
+        updated_count = 0
+        skipped_count = 0
+
+        for prop_data in properties_data:
+            try:
+                with transaction.atomic():
+                    # Map service data to Property model fields
+                    property_fields = _map_rightmove_to_property(prop_data)
+
+                    # Check for existing property by external_id
+                    external_id = property_fields.get('external_id')
+                    if external_id:
+                        existing = Property.objects.filter(external_id=external_id).first()
+                        if existing:
+                            # Update existing property
+                            for field, value in property_fields.items():
+                                if field not in ['uuid', 'property_list', 'created_at']:
+                                    setattr(existing, field, value)
+                            existing.save()
+
+                            # Add to property list if not already there
+                            if existing.property_list != property_list:
+                                # Property belongs to different list, skip
+                                skipped_count += 1
+                                continue
+
+                            updated_count += 1
+                        else:
+                            # Create new property
+                            property_fields['property_list'] = property_list
+                            Property.objects.create(**property_fields)
+                            created_count += 1
+                    else:
+                        # No external_id, create new
+                        property_fields['property_list'] = property_list
+                        Property.objects.create(**property_fields)
+                        created_count += 1
+
+            except Exception as e:
+                task.failed_items += 1
+                task.add_error(f"Failed to create property: {str(e)}", {'property_data': prop_data})
+                continue
+
+        # Update task to completed
+        task.status = 'COMPLETED'
+        task.completed_at = timezone.now()
+        task.metadata['created_count'] = created_count
+        task.metadata['updated_count'] = updated_count
+        task.metadata['skipped_count'] = skipped_count
+        task.save(update_fields=['status', 'completed_at', 'metadata', 'updated_at'])
+
+        # Send completion websocket update
+        _send_list_websocket_update(
+            property_list.uuid,
+            'scrape_complete',
+            {
+                'status': 'completed',
+                'created': created_count,
+                'updated': updated_count,
+                'skipped': skipped_count,
+                'failed': task.failed_items,
+                'total': len(properties_data),
+                'message': f'Scrape completed: {created_count} created, {updated_count} updated'
+            }
+        )
+
+        return {
+            'status': 'completed',
+            'created': created_count,
+            'updated': updated_count,
+            'skipped': skipped_count,
+            'failed': task.failed_items,
+            'total': len(properties_data)
+        }
+
+    except PropertyListTask.DoesNotExist:
+        return {'status': 'failed', 'error': f'Task {task_uuid} not found'}
+    except Exception as e:
+        # Update task to failed
+        try:
+            task.status = 'FAILED'
+            task.error_message = str(e)
+            task.completed_at = timezone.now()
+            task.save(update_fields=['status', 'error_message', 'completed_at', 'updated_at'])
+
+            # Send failure websocket update
+            _send_list_websocket_update(
+                property_list.uuid,
+                'scrape_failed',
+                {
+                    'status': 'failed',
+                    'error': str(e),
+                    'message': f'Scrape failed: {str(e)}'
+                }
+            )
+        except:
+            pass
+
+        raise
+
+
+def _map_rightmove_to_property(prop_data):
+    """
+    Map Rightmove property data to Property model fields.
+
+    Args:
+        prop_data: Dict from RightmoveService
+
+    Returns:
+        Dict with Property model fields
+    """
+    # Extract images
+    images_data = prop_data.pop('images', [])
+
+    # Map fields
+    mapped = {
+        'external_id': prop_data.get('external_id', ''),
+        'external_url': prop_data.get('link', ''),
+        'title': prop_data.get('title', prop_data.get('address', 'Untitled')),
+        'address_line_1': prop_data.get('address', ''),
+        'address_line_2': '',
+        'city': '',
+        'postcode': '',  # Will need to extract from address
+        'latitude': prop_data.get('latitude'),
+        'longitude': prop_data.get('longitude'),
+        'price': prop_data.get('price', Decimal('0')),
+        'bedrooms': prop_data.get('bedrooms', 0),
+        'bathrooms': prop_data.get('bathrooms', 0),
+        'garden': False,  # Not in current data
+        'parking': False,  # Not in current data
+        'furnished_status': '',
+        'square_area': None,
+    }
+
+    # Try to extract postcode from address
+    if prop_data.get('address'):
+        import re
+        postcode_match = re.search(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}', prop_data['address'])
+        if postcode_match:
+            mapped['postcode'] = postcode_match.group(0)
+
+    # If still no postcode, use placeholder
+    if not mapped['postcode']:
+        mapped['postcode'] = 'UNKNOWN'
+
+    # Store images in metadata for now (will be handled separately)
+    if images_data:
+        mapped['metadata'] = {'images': images_data}
+
+    return mapped
+
+
 def _send_websocket_update(property_id, message_type, data):
     """
     Helper function to send WebSocket updates to connected clients.
@@ -109,6 +349,27 @@ def _send_websocket_update(property_id, message_type, data):
         room_group_name,
         {
             'type': message_type,
+            'data': data
+        }
+    )
+
+
+def _send_list_websocket_update(property_list_uuid, message_type, data):
+    """
+    Helper function to send WebSocket updates for property list operations.
+
+    Args:
+        property_list_uuid: The property list UUID
+        message_type: Type of message (scrape_progress, scrape_complete, etc)
+        data: Message data dictionary
+    """
+    channel_layer = get_channel_layer()
+    room_group_name = f'property_list_{property_list_uuid}'
+
+    async_to_sync(channel_layer.group_send)(
+        room_group_name,
+        {
+            'type': message_type.replace('_', '.'),  # Convert to dotted notation for consumer
             'data': data
         }
     )
