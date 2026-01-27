@@ -4,13 +4,15 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
-from property.models import Property, PropertyList, SavedLocation
+from property.models import Property, PropertyList, SavedLocation, PropertyListTask, SearchCriteria
 from property.serializers import (
     PropertySerializer, PropertyDetailSerializer,
     PropertyListSerializer, PropertyListDetailSerializer,
-    SavedLocationSerializer, CreateFromInputSerializer
+    SavedLocationSerializer, CreateFromInputSerializer,
+    BulkPropertyCreationSerializer, PropertyListTaskSerializer,
+    SearchCriteriaSerializer
 )
-from property.tasks import retrieve_context_data, calculate_property_rating
+from property.tasks import retrieve_context_data, calculate_property_rating, scrape_rightmove_properties
 from property.services import property_creation_service_factory
 
 
@@ -51,6 +53,77 @@ class PropertyListViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @extend_schema(
+        request=BulkPropertyCreationSerializer,
+        responses={
+            202: PropertyListTaskSerializer,
+            400: OpenApiResponse(description="Invalid search criteria"),
+        },
+        description="Start bulk property scraping from Rightmove search criteria. Returns task details for tracking progress."
+    )
+    @action(detail=True, methods=['post'], url_path='create-from-search')
+    def create_from_search(self, request, uuid=None):
+        property_list = self.get_object()
+
+        serializer = BulkPropertyCreationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        search_criteria_data = serializer.validated_data['search_criteria']
+        max_properties = serializer.validated_data.get('max_properties', 100)
+
+        if property_list.search_criteria:
+            search_criteria = property_list.search_criteria
+            for field, value in search_criteria_data.items():
+                setattr(search_criteria, field, value)
+            search_criteria.save()
+        else:
+            search_criteria = SearchCriteria.objects.create(**search_criteria_data)
+            property_list.search_criteria = search_criteria
+            property_list.save()
+
+        task = PropertyListTask.objects.create(
+            property_list=property_list,
+            task_type='SCRAPE_SEARCH',
+            status='QUEUED'
+        )
+
+        scrape_rightmove_properties.delay(str(task.uuid), max_properties=max_properties)
+
+        task_serializer = PropertyListTaskSerializer(task, context={'request': request})
+        return Response(task_serializer.data, status=status.HTTP_202_ACCEPTED)
+
+    @extend_schema(
+        responses={
+            200: PropertyListTaskSerializer,
+            404: OpenApiResponse(description="Task not found"),
+        },
+        description="Get status of a scraping task. Polling fallback for clients without websocket support."
+    )
+    @action(detail=True, methods=['get'], url_path='scrape-status/(?P<task_uuid>[^/.]+)')
+    def scrape_status(self, request, uuid=None, task_uuid=None):
+        """
+        Get scraping task status.
+
+        Polling endpoint for progress updates (fallback for no websocket).
+        Returns current task status, progress, and errors.
+        """
+        property_list = self.get_object()
+
+        try:
+            task = PropertyListTask.objects.get(
+                uuid=task_uuid,
+                property_list=property_list
+            )
+
+            serializer = PropertyListTaskSerializer(task, context={'request': request})
+            return Response(serializer.data)
+
+        except PropertyListTask.DoesNotExist:
+            return Response(
+                {'error': f'Task {task_uuid} not found for this property list'},
+                status=status.HTTP_404_NOT_FOUND
             )
 
 
@@ -180,17 +253,18 @@ class PropertyViewSet(viewsets.ModelViewSet):
                     )
                 ]
             ),
+            201: PropertySerializer,
             400: OpenApiResponse(description="Invalid input or extraction failed"),
         },
-        description="Extract property data from URL or text input. Returns unsaved property data that can be used to populate the property creation form."
+        description="Extract property data from URL or text input. Optionally create Property model if property_list_uuid provided."
     )
     @action(detail=False, methods=['post'], url_path='create-from-input')
     def create_from_input(self, request):
         """
         Extract property data from URL or text input.
 
-        Returns unsaved property data that can be used to populate
-        the property creation form.
+        If property_list_uuid is provided, creates Property model and adds to list.
+        Otherwise, returns unsaved property data that can be used to populate form.
         """
         # Validate input using serializer
         serializer = CreateFromInputSerializer(data=request.data)
@@ -198,6 +272,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
         input_data = serializer.validated_data['input_data']
         input_type = serializer.validated_data['input_type']
+        property_list_uuid = request.data.get('property_list_uuid')
 
         # Get appropriate service
         service = property_creation_service_factory(input_data, input_type)
@@ -215,6 +290,57 @@ class PropertyViewSet(viewsets.ModelViewSet):
         try:
             property_data = service.extract_property_data(input_data)
 
+            # If property_list_uuid provided, create Property model
+            if property_list_uuid:
+                try:
+                    property_list = PropertyList.objects.get(
+                        uuid=property_list_uuid,
+                        owner=request.user
+                    )
+                except PropertyList.DoesNotExist:
+                    return Response(
+                        {'error': 'Property list not found or access denied'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+                property_fields = self._map_extracted_to_property(property_data, property_list)
+
+                if property_fields.get('external_id'):
+                    existing = Property.objects.filter(
+                        external_id=property_fields['external_id'],
+                        property_list=property_list
+                    ).first()
+
+                    if existing:
+                        # Update existing property
+                        for field, value in property_fields.items():
+                            if field not in ['uuid', 'property_list', 'created_at']:
+                                setattr(existing, field, value)
+                        existing.save()
+
+                        property_serializer = PropertySerializer(existing, context={'request': request})
+                        return Response({
+                            'success': True,
+                            'property': property_serializer.data,
+                            'created': False,
+                            'updated': True,
+                            'message': 'Property already exists in list, updated with latest data',
+                            'source': service.__class__.__name__
+                        })
+
+                # Create new property
+                property_obj = Property.objects.create(**property_fields)
+                property_serializer = PropertySerializer(property_obj, context={'request': request})
+
+                return Response({
+                    'success': True,
+                    'property': property_serializer.data,
+                    'created': True,
+                    'message': 'Property created successfully',
+                    'source': service.__class__.__name__
+                }, status=status.HTTP_201_CREATED)
+
+            # No property_list_uuid, just return data
             return Response({
                 'success': True,
                 'property_data': property_data,
@@ -238,6 +364,44 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def _map_extracted_to_property(self, property_data: dict, property_list: PropertyList) -> dict:
+
+        from decimal import Decimal
+
+        # Handle postcode extraction from address if not present
+        postcode = property_data.get('postcode', '')
+        if not postcode and property_data.get('address'):
+            import re
+            postcode_match = re.search(
+                r'[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}',
+                property_data['address']
+            )
+            if postcode_match:
+                postcode = postcode_match.group(0)
+
+        if not postcode:
+            postcode = 'UNKNOWN'
+
+        return {
+            'property_list': property_list,
+            'external_id': property_data.get('external_id', ''),
+            'external_url': property_data.get('external_url', property_data.get('link', '')),
+            'title': property_data.get('title', property_data.get('address', 'Untitled')),
+            'address_line_1': property_data.get('address', property_data.get('address_line_1', '')),
+            'address_line_2': property_data.get('address_line_2', ''),
+            'city': property_data.get('city', ''),
+            'postcode': postcode,
+            'latitude': property_data.get('latitude'),
+            'longitude': property_data.get('longitude'),
+            'price': Decimal(str(property_data.get('price', 0))),
+            'bedrooms': property_data.get('bedrooms', 0),
+            'bathrooms': property_data.get('bathrooms', 0),
+            'garden': property_data.get('garden', False),
+            'parking': property_data.get('parking', False),
+            'furnished_status': property_data.get('furnished_status', ''),
+            'square_area': property_data.get('square_area'),
+        }
 
 
 class SavedLocationViewSet(viewsets.ModelViewSet):
