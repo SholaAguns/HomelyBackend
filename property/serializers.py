@@ -4,7 +4,7 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
-from property.models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask
+from property.models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage
 
 
 class SearchCriteriaSerializer(serializers.ModelSerializer):
@@ -125,6 +125,15 @@ class PropertyListSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class PropertyImageSerializer(serializers.ModelSerializer):
+    """Serializer for PropertyImage model"""
+
+    class Meta:
+        model = PropertyImage
+        fields = ['id', 'source_url', 'url', 'caption', 'order', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
 class PropertySerializer(serializers.ModelSerializer):
     """Serializer for Property model"""
 
@@ -134,6 +143,8 @@ class PropertySerializer(serializers.ModelSerializer):
     )
     property_list_title = serializers.ReadOnlyField(source='property_list.title')
     state_display = serializers.CharField(source='get_state_display', read_only=True)
+    images = PropertyImageSerializer(many=True, read_only=True)
+    primary_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Property
@@ -149,12 +160,14 @@ class PropertySerializer(serializers.ModelSerializer):
             'external_id', 'external_url',
             'normalized_address', 'uprn',
             'overall_rating', 'rating_breakdown', 'disqualified', 'disqualification_reason',
+            'images', 'primary_image',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
             'uuid', 'state', 'state_display', 'property_list_title',
             'normalized_address', 'uprn',
             'overall_rating', 'rating_breakdown', 'disqualified', 'disqualification_reason',
+            'images', 'primary_image',
             'created_at', 'updated_at'
         ]
 
@@ -164,6 +177,11 @@ class PropertySerializer(serializers.ModelSerializer):
         if request and value.owner != request.user:
             raise serializers.ValidationError("Cannot add property to another user's list")
         return value
+
+    def get_primary_image(self, obj):
+        """Get the primary (first) image for the property"""
+        first_image = obj.images.first()
+        return PropertyImageSerializer(first_image).data if first_image else None
 
     def validate_postcode(self, value):
         """Validate UK postcode format"""

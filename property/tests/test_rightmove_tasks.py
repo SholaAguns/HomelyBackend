@@ -264,7 +264,7 @@ class MapRightmoveToPropertyTest(TestCase):
             'link': 'https://www.rightmove.co.uk/properties/123456'
         }
 
-        result = _map_rightmove_to_property(mock_data)
+        result, images = _map_rightmove_to_property(mock_data)
 
         self.assertEqual(result['external_id'], '123456')
         self.assertEqual(result['title'], 'Test Property')
@@ -272,6 +272,7 @@ class MapRightmoveToPropertyTest(TestCase):
         self.assertEqual(result['bedrooms'], 3)
         self.assertEqual(result['bathrooms'], 2)
         self.assertEqual(result['postcode'], 'M1 1AA')
+        self.assertEqual(images, [])
 
     def test_map_extracts_postcode_from_address(self):
         """Extracts UK postcode from address string"""
@@ -284,7 +285,7 @@ class MapRightmoveToPropertyTest(TestCase):
             'bathrooms': 1
         }
 
-        result = _map_rightmove_to_property(mock_data)
+        result, images = _map_rightmove_to_property(mock_data)
 
         self.assertEqual(result['postcode'], 'SW1A 1AA')
 
@@ -299,7 +300,7 @@ class MapRightmoveToPropertyTest(TestCase):
             'bathrooms': 1
         }
 
-        result = _map_rightmove_to_property(mock_data)
+        result, images = _map_rightmove_to_property(mock_data)
 
         self.assertEqual(result['postcode'], 'UNKNOWN')
 
@@ -310,7 +311,7 @@ class MapRightmoveToPropertyTest(TestCase):
             'address': 'Test Address, M1 1AA'
         }
 
-        result = _map_rightmove_to_property(minimal_data)
+        result, images = _map_rightmove_to_property(minimal_data)
 
         self.assertEqual(result['external_id'], '123')
         self.assertEqual(result['bedrooms'], 0)
@@ -318,8 +319,8 @@ class MapRightmoveToPropertyTest(TestCase):
         self.assertEqual(result['price'], Decimal('0'))
         self.assertIsNone(result['latitude'])
 
-    def test_map_handles_images_in_metadata(self):
-        """Images are currently not stored (Property model has no metadata field yet)"""
+    def test_map_handles_images_separately(self):
+        """Images are returned separately from property fields"""
         mock_data = {
             'external_id': '123',
             'title': 'Test',
@@ -333,8 +334,11 @@ class MapRightmoveToPropertyTest(TestCase):
             ]
         }
 
-        result = _map_rightmove_to_property(mock_data)
+        result, images = _map_rightmove_to_property(mock_data)
 
-        # Images are not stored in mapped result (TODO: implement when Property has metadata/image fields)
-        self.assertNotIn('metadata', result)
+        # Images returned separately, not in property fields
         self.assertNotIn('images', result)
+        self.assertEqual(len(images), 2)
+        self.assertEqual(images[0]['url'], 'https://example.com/image1.jpg')
+        self.assertEqual(images[0]['caption'], 'Living Room')
+        self.assertEqual(images[1]['url'], 'https://example.com/image2.jpg')

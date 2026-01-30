@@ -188,6 +188,39 @@ class Property(models.Model):
         completed = self.context_data.filter(status__in=['COMPLETE', 'FAILED']).count()
         return completed == len(enabled_services)
 
+
+class PropertyImage(models.Model):
+    """Images for a property from external sources"""
+
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='images'
+    )
+
+    # Image URLs (not storing files, just external URLs)
+    source_url = models.URLField(max_length=1000, help_text="Original/high-res image URL")
+    url = models.URLField(max_length=1000, help_text="Display/medium size image URL")
+
+    # Metadata
+    caption = models.CharField(max_length=255, blank=True)
+    order = models.IntegerField(default=0, help_text="Display order (0 = primary)")
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'property_images'
+        ordering = ['order', 'created_at']
+        indexes = [
+            models.Index(fields=['property', 'order'])
+        ]
+
+    def __str__(self):
+        return f"{self.property.title} - Image {self.order}"
+
+
 class SavedLocation(models.Model):
     """User's saved locations for distance calculations"""
 

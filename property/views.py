@@ -306,8 +306,13 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
             # If property_list provided, create Property model
             if property_list:
+                from property.models import PropertyImage
+
+                # Extract images before mapping
+                images_data = property_data.pop('images', [])
 
                 property_fields = self._map_extracted_to_property(property_data, property_list)
+                property_obj = None
 
                 if property_fields.get('external_id'):
                     existing = Property.objects.filter(
@@ -321,6 +326,19 @@ class PropertyViewSet(viewsets.ModelViewSet):
                             if field not in ['uuid', 'property_list', 'created_at']:
                                 setattr(existing, field, value)
                         existing.save()
+                        property_obj = existing
+
+                        # Update images
+                        if images_data:
+                            property_obj.images.all().delete()
+                            for idx, image_data in enumerate(images_data):
+                                PropertyImage.objects.create(
+                                    property=property_obj,
+                                    source_url=image_data.get('source_url', image_data.get('srcUrl', '')),
+                                    url=image_data.get('url', ''),
+                                    caption=image_data.get('caption', ''),
+                                    order=idx
+                                )
 
                         property_serializer = PropertySerializer(existing, context={'request': request})
                         return Response({
@@ -334,6 +352,18 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
                 # Create new property
                 property_obj = Property.objects.create(**property_fields)
+
+                # Create images
+                if images_data:
+                    for idx, image_data in enumerate(images_data):
+                        PropertyImage.objects.create(
+                            property=property_obj,
+                            source_url=image_data.get('source_url', image_data.get('srcUrl', '')),
+                            url=image_data.get('url', ''),
+                            caption=image_data.get('caption', ''),
+                            order=idx
+                        )
+
                 property_serializer = PropertySerializer(property_obj, context={'request': request})
 
                 return Response({

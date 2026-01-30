@@ -189,10 +189,12 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
             try:
                 with transaction.atomic():
                     # Map service data to Property model fields
-                    property_fields = _map_rightmove_to_property(prop_data)
+                    property_fields, images_data = _map_rightmove_to_property(prop_data)
 
                     # Check for existing property by external_id
                     external_id = property_fields.get('external_id')
+                    property_obj = None
+
                     if external_id:
                         existing = Property.objects.filter(external_id=external_id).first()
                         if existing:
@@ -208,17 +210,35 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
                                 skipped_count += 1
                                 continue
 
+                            property_obj = existing
                             updated_count += 1
                         else:
                             # Create new property
                             property_fields['property_list'] = property_list
-                            Property.objects.create(**property_fields)
+                            property_obj = Property.objects.create(**property_fields)
                             created_count += 1
                     else:
                         # No external_id, create new
                         property_fields['property_list'] = property_list
-                        Property.objects.create(**property_fields)
+                        property_obj = Property.objects.create(**property_fields)
                         created_count += 1
+
+                    # Create/update images
+                    if property_obj and images_data:
+                        from property.models import PropertyImage
+
+                        # Clear existing images
+                        property_obj.images.all().delete()
+
+                        # Create new images
+                        for idx, image_data in enumerate(images_data):
+                            PropertyImage.objects.create(
+                                property=property_obj,
+                                source_url=image_data.get('source_url', image_data.get('srcUrl', '')),
+                                url=image_data.get('url', ''),
+                                caption=image_data.get('caption', ''),
+                                order=idx
+                            )
 
             except Exception as e:
                 task.failed_items += 1
@@ -303,7 +323,7 @@ def _map_rightmove_to_property(prop_data):
         prop_data: Dict from RightmoveService
 
     Returns:
-        Dict with Property model fields
+        Tuple of (property_fields dict, images_data list)
     """
     # Extract images
     images_data = prop_data.pop('images', [])
@@ -339,11 +359,7 @@ def _map_rightmove_to_property(prop_data):
     if not mapped['postcode']:
         mapped['postcode'] = 'UNKNOWN'
 
-    # TODO: Handle images separately (Property model doesn't have metadata field yet)
-    # if images_data:
-    #     mapped['metadata'] = {'images': images_data}
-
-    return mapped
+    return mapped, images_data
 
 
 def _send_websocket_update(property_id, message_type, data):
