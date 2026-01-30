@@ -250,17 +250,17 @@ Response (without property_list_uuid):
 **Files to modify:**
 - Frontend repo (out of scope for this doc)
 
-### Phase 6: Testing & Edge Cases (1-2 days)
+### Phase 6: Testing & Edge Cases (1-2 days) - done (unit tests)
 
 **Test Cases:**
-- [ ] Single property creation from URL
-- [ ] Bulk creation with 5, 50, 200 properties
-- [ ] Pagination handling (multi-page results)
-- [ ] Duplicate property detection (existing external_id)
-- [ ] Rate limiting (Rightmove blocks)
-- [ ] Network failures mid-scrape
-- [ ] Invalid search criteria (no results)
-- [ ] User cancels mid-scrape
+- [x] Single property creation from URL - done
+- [x] Bulk creation with 5, 50, 200 properties - done (mocked)
+- [x] Pagination handling (multi-page results) - done (mocked)
+- [x] Duplicate property detection (existing external_id) - done
+- [ ] Rate limiting (Rightmove blocks) - not implemented yet
+- [x] Network failures mid-scrape - done (error handling tested)
+- [x] Invalid search criteria (no results) - done
+- [ ] User cancels mid-scrape - not implemented yet (deferred)
 
 **Edge Cases to Handle:**
 1. **Duplicate Properties**

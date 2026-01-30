@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 from django_fsm import FSMField, transition
 import uuid
 
@@ -271,7 +272,7 @@ class PropertyListTask(models.Model):
         """Add an error to the errors list"""
         error_entry = {
             'message': error_msg,
-            'timestamp': models.DateTimeField(auto_now_add=True).default.isoformat(),
+            'timestamp': timezone.now().isoformat(),
         }
         if context:
             error_entry['context'] = context

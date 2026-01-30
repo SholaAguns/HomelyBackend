@@ -110,6 +110,7 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
     from property.models import PropertyListTask, Property
     from property.services import RightmoveService
     from django.db import transaction
+    from django.core.exceptions import ValidationError
 
     try:
         # Get task and property list
@@ -221,7 +222,19 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
 
             except Exception as e:
                 task.failed_items += 1
-                task.add_error(f"Failed to create property: {str(e)}", {'property_data': prop_data})
+                # Convert non-JSON-serializable types for error logging
+                from datetime import datetime, date
+                serializable_data = {}
+                for k, v in prop_data.items():
+                    if isinstance(v, Decimal):
+                        serializable_data[k] = str(v)
+                    elif isinstance(v, (datetime, date)):
+                        serializable_data[k] = v.isoformat()
+                    elif isinstance(v, list):
+                        serializable_data[k] = str(v)  # Lists might contain complex objects
+                    else:
+                        serializable_data[k] = v
+                task.add_error(f"Failed to create property: {str(e)}", {'property_data': serializable_data})
                 continue
 
         # Update task to completed
@@ -256,7 +269,7 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
             'total': len(properties_data)
         }
 
-    except PropertyListTask.DoesNotExist:
+    except (PropertyListTask.DoesNotExist, ValidationError):
         return {'status': 'failed', 'error': f'Task {task_uuid} not found'}
     except Exception as e:
         # Update task to failed
@@ -326,9 +339,9 @@ def _map_rightmove_to_property(prop_data):
     if not mapped['postcode']:
         mapped['postcode'] = 'UNKNOWN'
 
-    # Store images in metadata for now (will be handled separately)
-    if images_data:
-        mapped['metadata'] = {'images': images_data}
+    # TODO: Handle images separately (Property model doesn't have metadata field yet)
+    # if images_data:
+    #     mapped['metadata'] = {'images': images_data}
 
     return mapped
 

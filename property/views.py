@@ -274,6 +274,20 @@ class PropertyViewSet(viewsets.ModelViewSet):
         input_type = serializer.validated_data['input_type']
         property_list_uuid = request.data.get('property_list_uuid')
 
+        # Validate property_list access BEFORE extracting data
+        property_list = None
+        if property_list_uuid:
+            try:
+                property_list = PropertyList.objects.get(
+                    uuid=property_list_uuid,
+                    owner=request.user
+                )
+            except PropertyList.DoesNotExist:
+                return Response(
+                    {'error': 'Property list not found or access denied'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
         # Get appropriate service
         service = property_creation_service_factory(input_data, input_type)
 
@@ -290,18 +304,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
         try:
             property_data = service.extract_property_data(input_data)
 
-            # If property_list_uuid provided, create Property model
-            if property_list_uuid:
-                try:
-                    property_list = PropertyList.objects.get(
-                        uuid=property_list_uuid,
-                        owner=request.user
-                    )
-                except PropertyList.DoesNotExist:
-                    return Response(
-                        {'error': 'Property list not found or access denied'},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
+            # If property_list provided, create Property model
+            if property_list:
 
                 property_fields = self._map_extracted_to_property(property_data, property_list)
 
