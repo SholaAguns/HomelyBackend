@@ -2,6 +2,7 @@
 Rightmove property listing scraper service
 Supports both single property extraction and bulk search scraping
 """
+import logging
 import re
 import json
 import time
@@ -9,6 +10,8 @@ from typing import Dict, Any, List, Optional
 from decimal import Decimal
 from datetime import datetime, timezone
 from property.services.interface import IPropertyCreationService
+
+logger = logging.getLogger('property.services.rightmove')
 
 
 class RightmoveService(IPropertyCreationService):
@@ -196,8 +199,10 @@ class RightmoveService(IPropertyCreationService):
             return property_data
 
         except requests.RequestException as e:
+            logger.error("fetch_single_property request failed for property_id=%s: %s", property_id, e, exc_info=True)
             raise ValueError(f"Failed to fetch Rightmove property: {e}")
         except Exception as e:
+            logger.error("fetch_single_property parse failed for property_id=%s: %s", property_id, e, exc_info=True)
             raise ValueError(f"Failed to parse Rightmove property: {e}")
 
     def _extract_property_from_json(self, data: dict, property_id: str) -> Dict[str, Any]:
@@ -384,6 +389,7 @@ class RightmoveService(IPropertyCreationService):
         }
 
         try:
+            logger.debug("get_location_id fetching typeahead for area=%s", area)
             response = session.get(self.GET_LOCATION_URL, headers=self.HEADERS, params=params, timeout=15)
             data = response.json()
 
@@ -391,10 +397,14 @@ class RightmoveService(IPropertyCreationService):
             if matches:
                 first_id = matches[0].get('id')
                 first_type = matches[0].get('type')
-                return f'{first_type}^{first_id}'
+                location_id = f'{first_type}^{first_id}'
+                logger.debug("get_location_id area=%s resolved to location_id=%s", area, location_id)
+                return location_id
             else:
+                logger.debug("get_location_id area=%s returned no matches", area)
                 return ''
         except Exception as e:
+            logger.error("get_location_id failed for area=%s: %s", area, e, exc_info=True)
             raise ValueError(f"Failed to get location ID for '{area}': {e}")
 
     def scrape_properties_by_search(
@@ -435,10 +445,13 @@ class RightmoveService(IPropertyCreationService):
         # Get location ID
         area = search_criteria.get('area')
         if not area:
+            logger.error("scrape_properties_by_search called with no area in search_criteria")
             raise ValueError("Search criteria must include 'area'")
 
+        logger.debug("scrape_properties_by_search area=%s max_properties=%d", area, max_properties)
         location_id = self.get_location_id(session, area)
         if not location_id:
+            logger.error("scrape_properties_by_search could not resolve location for area=%s", area)
             raise ValueError(f"Could not find location ID for '{area}'")
 
         # Build search params
@@ -484,6 +497,7 @@ class RightmoveService(IPropertyCreationService):
         # Limit total properties
         properties_to_scrape = min(total, max_properties)
         pages_to_scrape = min(total_pages, (properties_to_scrape // page_size) + 1)
+        logger.debug("scrape_properties_by_search total=%d page_size=%d pages_to_scrape=%d properties_to_scrape=%d", total, page_size, pages_to_scrape, properties_to_scrape)
 
         # Scrape pages
         all_properties = []
@@ -491,9 +505,11 @@ class RightmoveService(IPropertyCreationService):
         for page_idx in range(pages_to_scrape):
             offset = page_idx * page_size
             params['index'] = offset
+            logger.debug("scrape_properties_by_search fetching page=%d offset=%d", page_idx, offset)
 
             sr, _ = self.fetch_page(session, params)
             if not sr:
+                logger.debug("scrape_properties_by_search page=%d returned no data, skipping", page_idx)
                 continue
 
             for p in sr.get('properties', []):

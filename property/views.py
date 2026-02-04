@@ -1,8 +1,13 @@
+import logging
+
+from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+
+logger = logging.getLogger('property.views')
 
 from property.models import Property, PropertyList, SavedLocation, PropertyListTask, SearchCriteria
 from property.serializers import (
@@ -66,22 +71,26 @@ class PropertyListViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='create-from-search')
     def create_from_search(self, request, uuid=None):
         property_list = self.get_object()
+        logger.debug("create_from_search requested for property_list=%s by user=%s", uuid, request.user.id)
 
         serializer = BulkPropertyCreationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         search_criteria_data = serializer.validated_data['search_criteria']
         max_properties = serializer.validated_data.get('max_properties', 100)
+        logger.debug("create_from_search criteria=%s max_properties=%d", search_criteria_data, max_properties)
 
         if property_list.search_criteria:
             search_criteria = property_list.search_criteria
             for field, value in search_criteria_data.items():
                 setattr(search_criteria, field, value)
             search_criteria.save()
+            logger.debug("create_from_search updated existing search_criteria=%s", search_criteria.id)
         else:
             search_criteria = SearchCriteria.objects.create(**search_criteria_data)
             property_list.search_criteria = search_criteria
             property_list.save()
+            logger.debug("create_from_search created new search_criteria=%s", search_criteria.id)
 
         task = PropertyListTask.objects.create(
             property_list=property_list,
@@ -89,7 +98,10 @@ class PropertyListViewSet(viewsets.ModelViewSet):
             status='QUEUED'
         )
 
-        scrape_rightmove_properties.delay(str(task.uuid), max_properties=max_properties)
+        transaction.on_commit(
+            lambda: scrape_rightmove_properties.delay(str(task.uuid), max_properties=max_properties)
+        )
+        logger.debug("create_from_search queued task=%s", task.uuid)
 
         task_serializer = PropertyListTaskSerializer(task, context={'request': request})
         return Response(task_serializer.data, status=status.HTTP_202_ACCEPTED)

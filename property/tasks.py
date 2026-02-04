@@ -1,8 +1,12 @@
+import logging
+
 from celery import shared_task
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.utils import timezone
 from decimal import Decimal
+
+logger = logging.getLogger('property.tasks')
 
 
 @shared_task(bind=True, max_retries=3)
@@ -112,6 +116,8 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
     from django.db import transaction
     from django.core.exceptions import ValidationError
 
+    logger.debug("scrape_rightmove_properties started task_uuid=%s max_properties=%d", task_uuid, max_properties)
+
     try:
         # Get task and property list
         task = PropertyListTask.objects.get(uuid=task_uuid)
@@ -119,12 +125,14 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
         search_criteria = property_list.search_criteria
 
         if not search_criteria:
+            logger.error("scrape_rightmove_properties task=%s property_list=%s has no search_criteria", task_uuid, property_list.uuid)
             raise ValueError("PropertyList does not have search criteria configured")
 
         # Update task status
         task.status = 'IN_PROGRESS'
         task.celery_task_id = self.request.id
         task.save(update_fields=['status', 'celery_task_id', 'updated_at'])
+        logger.debug("scrape_rightmove_properties task=%s status=IN_PROGRESS", task_uuid)
 
         # Send initial websocket update
         _send_list_websocket_update(
@@ -174,11 +182,13 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
             )
 
         # Scrape properties
+        logger.debug("scrape_rightmove_properties task=%s calling scrape_properties_by_search", task_uuid)
         properties_data = service.scrape_properties_by_search(
             criteria_dict,
             max_properties=max_properties,
             progress_callback=progress_callback
         )
+        logger.debug("scrape_rightmove_properties task=%s scrape returned %d properties", task_uuid, len(properties_data))
 
         # Create Property objects
         created_count = 0
@@ -207,21 +217,25 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
                             # Add to property list if not already there
                             if existing.property_list != property_list:
                                 # Property belongs to different list, skip
+                                logger.debug("scrape_rightmove_properties task=%s skipped external_id=%s (belongs to different list)", task_uuid, external_id)
                                 skipped_count += 1
                                 continue
 
                             property_obj = existing
                             updated_count += 1
+                            logger.debug("scrape_rightmove_properties task=%s updated external_id=%s", task_uuid, external_id)
                         else:
                             # Create new property
                             property_fields['property_list'] = property_list
                             property_obj = Property.objects.create(**property_fields)
                             created_count += 1
+                            logger.debug("scrape_rightmove_properties task=%s created external_id=%s", task_uuid, external_id)
                     else:
                         # No external_id, create new
                         property_fields['property_list'] = property_list
                         property_obj = Property.objects.create(**property_fields)
                         created_count += 1
+                        logger.debug("scrape_rightmove_properties task=%s created property (no external_id)", task_uuid)
 
                     # Create/update images
                     if property_obj and images_data:
@@ -241,6 +255,7 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
                             )
 
             except Exception as e:
+                logger.error("scrape_rightmove_properties task=%s failed to create property: %s", task_uuid, e, exc_info=True)
                 task.failed_items += 1
                 # Convert non-JSON-serializable types for error logging
                 from datetime import datetime, date
@@ -258,6 +273,7 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
                 continue
 
         # Update task to completed
+        logger.debug("scrape_rightmove_properties task=%s completed: created=%d updated=%d skipped=%d failed=%d", task_uuid, created_count, updated_count, skipped_count, task.failed_items)
         task.status = 'COMPLETED'
         task.completed_at = timezone.now()
         task.metadata['created_count'] = created_count
@@ -290,8 +306,10 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
         }
 
     except (PropertyListTask.DoesNotExist, ValidationError):
+        logger.error("scrape_rightmove_properties task=%s not found or invalid", task_uuid)
         return {'status': 'failed', 'error': f'Task {task_uuid} not found'}
     except Exception as e:
+        logger.error("scrape_rightmove_properties task=%s failed: %s", task_uuid, e, exc_info=True)
         # Update task to failed
         try:
             task.status = 'FAILED'
