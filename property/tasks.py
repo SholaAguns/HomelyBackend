@@ -101,16 +101,6 @@ def bulk_calculate_ratings(property_ids):
 
 @shared_task(bind=True, max_retries=0)
 def scrape_rightmove_properties(self, task_uuid, max_properties=100):
-    """
-    Celery task to scrape properties from Rightmove based on search criteria.
-
-    Args:
-        task_uuid: UUID of the PropertyListTask tracking this operation
-        max_properties: Maximum number of properties to scrape
-
-    Returns:
-        Dict with results summary
-    """
     from property.models import PropertyListTask, Property
     from property.services import RightmoveService
     from django.db import transaction

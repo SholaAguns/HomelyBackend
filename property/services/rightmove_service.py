@@ -315,16 +315,15 @@ class RightmoveService(IPropertyCreationService):
     # ========================================================================
 
     def fetch_page(self, session, params: dict):
-        """
-        Fetch a search results page and extract JSON data.
-
-        Returns:
-            Tuple of (search_results_dict, full_data_dict)
-        """
         try:
             from bs4 import BeautifulSoup
         except ImportError:
             raise ValueError("BeautifulSoup not installed")
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("fetch_page request - URL: %s", self.PROPERTY_SEARCH_URL)
+            logger.debug("fetch_page request - Headers: %s", json.dumps(self.HEADERS, indent=2))
+            logger.debug("fetch_page request - Params: %s", json.dumps(params, indent=2))
 
         resp = session.get(self.PROPERTY_SEARCH_URL, headers=self.HEADERS, params=params, timeout=15)
         html = resp.content.decode('cp1252', errors='replace')
@@ -340,6 +339,13 @@ class RightmoveService(IPropertyCreationService):
         sr = data.get('props', {}) \
             .get('pageProps', {}) \
             .get('searchResults', {})
+
+        if logger.isEnabledFor(logging.DEBUG):
+            import os
+            debug_file = os.path.join(os.path.dirname(__file__), 'rightmove_response_debug.json')
+            with open(debug_file, 'w', encoding='utf-8') as f:
+                json.dump({'searchResults': sr, 'fullData': data}, f, indent=2, default=str)
+            logger.debug("fetch_page response written to: %s", debug_file)
 
         return sr, data
 
@@ -413,19 +419,19 @@ class RightmoveService(IPropertyCreationService):
             'locationIdentifier': location_id
         }
 
-        # Add optional params
-        if search_criteria.get('price_min'):
-            params['minPrice'] = str(search_criteria['price_min'])
-        if search_criteria.get('price_max'):
-            params['maxPrice'] = str(search_criteria['price_max'])
-        if search_criteria.get('bedrooms_min'):
-            params['minBedrooms'] = str(search_criteria['bedrooms_min'])
-        if search_criteria.get('bedrooms_max'):
-            params['maxBedrooms'] = str(search_criteria['bedrooms_max'])
-        if search_criteria.get('property_types'):
-            params['propertyTypes'] = str(search_criteria['property_types'])
-        if search_criteria.get('max_days_since_added'):
-            params['maxDaysSinceAdded'] = str(search_criteria['max_days_since_added'])
+        OPTIONAL_PARAMS = {
+            'price_min': 'minPrice',
+            'price_max': 'maxPrice',
+            'bedrooms_min': 'minBedrooms',
+            'bedrooms_max': 'maxBedrooms',
+            'property_types': 'propertyTypes',
+            'max_days_since_added': 'maxDaysSinceAdded',
+        }
+
+        for src, dest in OPTIONAL_PARAMS.items():
+            value = search_criteria.get(src)
+            if value:
+                params[dest] = str(value)
 
         # Fetch first page to get total count
         first_sr, _ = self.fetch_page(session, params)
@@ -434,20 +440,36 @@ class RightmoveService(IPropertyCreationService):
 
         pag = first_sr.get('pagination', {})
         total = pag.get('total', 0)
-        page_size = pag.get('pageSize', 0)
+
+
+        # Calculate page_size from options array (pageSize not in response)
+        options = pag.get('options', [])
+        logger.debug("scrape_properties_by_search pagination: total=%d, options_count=%d", total, len(options))
+
+        if len(options) >= 2:
+            page_size = int(options[1]['value']) - int(options[0]['value'])
+        elif len(options) == 1:
+            page_size = total if total > 0 else 24  # Default to 24 if total is 0
+        else:
+            page_size = 24  # Default page size
+
+        logger.debug("scrape_properties_by_search calculated page_size=%d", page_size)
 
         if page_size <= 0:
-            if total > 0:
-                total_pages = 1
-            else:
-                return []
-        else:
-            total_pages = (total // page_size) + (1 if total % page_size else 0)
+            logger.warning("scrape_properties_by_search invalid page_size=%d, using default 24", page_size)
+            page_size = 24
 
-        # Limit total properties
+        # Calculate pages
+        total_pages = (total // page_size) + (1 if total % page_size else 0) if total > 0 else 0
         properties_to_scrape = min(total, max_properties)
-        pages_to_scrape = min(total_pages, (properties_to_scrape // page_size) + 1)
-        logger.debug("scrape_properties_by_search total=%d page_size=%d pages_to_scrape=%d properties_to_scrape=%d", total, page_size, pages_to_scrape, properties_to_scrape)
+        pages_to_scrape = min(total_pages, (properties_to_scrape // page_size) + 1) if page_size > 0 else 0
+
+        logger.debug("scrape_properties_by_search total=%d page_size=%d total_pages=%d pages_to_scrape=%d properties_to_scrape=%d",
+                     total, page_size, total_pages, pages_to_scrape, properties_to_scrape)
+
+        if total == 0 or pages_to_scrape == 0:
+            logger.info("scrape_properties_by_search no properties to scrape")
+            return []
 
         # Scrape pages
         all_properties = []

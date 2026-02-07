@@ -69,6 +69,7 @@ class PropertyListViewSet(viewsets.ModelViewSet):
         description="Start bulk property scraping from Rightmove search criteria. Returns task details for tracking progress."
     )
     @action(detail=True, methods=['post'], url_path='create-from-search')
+    @transaction.atomic
     def create_from_search(self, request, uuid=None):
         property_list = self.get_object()
         logger.debug("create_from_search requested for property_list=%s by user=%s", uuid, request.user.id)

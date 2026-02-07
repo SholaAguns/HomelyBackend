@@ -62,3 +62,6 @@ todo
 
 poc/
 /.env.docker
+
+
+*debug.json
