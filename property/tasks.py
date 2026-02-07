@@ -245,7 +245,7 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
                                 property=property_obj,
                                 source_url=image_data.get('source_url', image_data.get('srcUrl', '')),
                                 url=image_data.get('url', ''),
-                                caption=image_data.get('caption', ''),
+                                caption=image_data.get('caption') or '',
                                 order=idx
                             )
 
@@ -377,9 +377,9 @@ def _map_rightmove_to_property(prop_data):
         if postcode_match:
             mapped['postcode'] = postcode_match.group(0)
 
-    # If still no postcode, use placeholder
+    # If still no postcode, use empty string
     if not mapped['postcode']:
-        mapped['postcode'] = 'UNKNOWN'
+        mapped['postcode'] = ''
 
     return mapped, images_data
 

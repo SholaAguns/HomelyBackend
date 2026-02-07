@@ -203,7 +203,7 @@ class PropertyImage(models.Model):
     url = models.URLField(max_length=1000, help_text="Display/medium size image URL")
 
     # Metadata
-    caption = models.CharField(max_length=255, blank=True)
+    caption = models.CharField(max_length=255, blank=True, null=True)
     order = models.IntegerField(default=0, help_text="Display order (0 = primary)")
 
     # Timestamps
