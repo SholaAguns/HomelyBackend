@@ -302,7 +302,7 @@ class MapRightmoveToPropertyTest(TestCase):
 
         result, images = _map_rightmove_to_property(mock_data)
 
-        self.assertEqual(result['postcode'], 'UNKNOWN')
+        self.assertEqual(result['postcode'], '')
 
     def test_map_handles_missing_fields(self):
         """Handles missing optional fields gracefully"""

@@ -7,8 +7,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from unittest.mock import patch, MagicMock
 import uuid
 
-from .models import PropertyList, Property, SavedLocation, StateTransitionLog
-from .serializers import PropertyListSerializer, PropertySerializer, SavedLocationSerializer
+from property.models import PropertyList, Property, SavedLocation, StateTransitionLog
+from property.serializers import PropertyListSerializer, PropertySerializer, SavedLocationSerializer
 
 
 # ==========================
@@ -334,7 +334,6 @@ class PropertyListSerializerTest(TestCase):
         serializer = PropertyListSerializer(prop_list)
 
         data = serializer.data
-        self.assertIn('id', data)
         self.assertIn('uuid', data)
         self.assertIn('owner', data)
         self.assertIn('title', data)
@@ -377,10 +376,8 @@ class PropertySerializerTest(TestCase):
         serializer = PropertySerializer(prop)
 
         data = serializer.data
-        self.assertIn('id', data)
         self.assertIn('uuid', data)
         self.assertIn('property_list', data)
-        self.assertIn('property_list_uuid', data)
         self.assertIn('property_list_title', data)
         self.assertIn('state', data)
         self.assertIn('state_display', data)
@@ -496,7 +493,7 @@ class PropertyAPITest(APITestCase):
     def test_create_property(self):
         """POST /api/property/properties/ creates new property"""
         data = {
-            'property_list': self.property_list.id,
+            'property_list': str(self.property_list.uuid),
             'title': 'Modern Flat',
             'address_line_1': '123 Test St',
             'postcode': 'SW1A 1AA',

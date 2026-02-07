@@ -347,9 +347,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
                             for idx, image_data in enumerate(images_data):
                                 PropertyImage.objects.create(
                                     property=property_obj,
-                                    source_url=image_data.get('source_url', image_data.get('srcUrl', '')),
-                                    url=image_data.get('url', ''),
-                                    caption=image_data.get('caption', ''),
+                                    source_url=image_data.get('source_url') or image_data.get('srcUrl') or '',
+                                    url=image_data.get('url') or '',
+                                    caption=image_data.get('caption') or '',
                                     order=idx
                                 )
 
@@ -428,7 +428,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 postcode = postcode_match.group(0)
 
         if not postcode:
-            postcode = 'UNKNOWN'
+            postcode = ''
 
         return {
             'property_list': property_list,

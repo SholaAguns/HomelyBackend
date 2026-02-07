@@ -2,7 +2,7 @@
 Tests for Rightmove integration API endpoints.
 Tests phase 3 & 4 implementation (bulk creation, progress tracking, enhanced create-from-input).
 """
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
 from rest_framework import status
@@ -14,10 +14,13 @@ from property.models import Property, PropertyList, SearchCriteria, PropertyList
 from property.tests.mocks.rightmove_mock import MockRightmoveService
 
 
-class CreateFromSearchEndpointTest(APITestCase):
+class CreateFromSearchEndpointTest(TransactionTestCase):
     """Test POST /api/property-lists/{uuid}/create-from-search/ endpoint"""
 
     def setUp(self):
+        from rest_framework.test import APIClient
+        self.client = APIClient()
+
         self.user = User.objects.create_user(
             username='testuser',
             email='test@test.com',
@@ -358,6 +361,8 @@ class EnhancedCreateFromInputEndpointTest(APITestCase):
         )
 
         # Check response
+        if response.status_code != status.HTTP_201_CREATED:
+            print(f"Error response: {response.data}")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(response.data['success'])
         self.assertTrue(response.data['created'])
@@ -409,6 +414,8 @@ class EnhancedCreateFromInputEndpointTest(APITestCase):
         )
 
         # Check response indicates update
+        if response.status_code != status.HTTP_200_OK:
+            print(f"Error response: {response.data}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['success'])
         self.assertFalse(response.data['created'])

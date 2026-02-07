@@ -224,15 +224,15 @@ class RightmoveService(IPropertyCreationService):
         images = []
         for img in p.get('images', []):
             images.append({
-                'source_url': img.get('srcUrl'),
-                'url': img.get('url'),
-                'caption': img.get('caption', '')
+                'source_url': img.get('srcUrl') or '',
+                'url': img.get('url') or '',
+                'caption': img.get('caption') or ''
             })
         for img in p.get('propertyImages', {}).get('images', []):
             images.append({
-                'source_url': img.get('srcUrl'),
-                'url': img.get('url'),
-                'caption': img.get('caption', '')
+                'source_url': img.get('srcUrl') or '',
+                'url': img.get('url') or '',
+                'caption': img.get('caption') or ''
             })
 
         return {

@@ -243,8 +243,8 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
                         for idx, image_data in enumerate(images_data):
                             PropertyImage.objects.create(
                                 property=property_obj,
-                                source_url=image_data.get('source_url', image_data.get('srcUrl', '')),
-                                url=image_data.get('url', ''),
+                                source_url=image_data.get('source_url') or image_data.get('srcUrl') or '',
+                                url=image_data.get('url') or '',
                                 caption=image_data.get('caption') or '',
                                 order=idx
                             )
