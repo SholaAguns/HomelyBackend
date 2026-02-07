@@ -139,9 +139,12 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
             property_list.uuid,
             'scrape_progress',
             {
-                'status': 'in_progress',
-                'created': 0,
-                'total': 0,
+                'status': 'IN_PROGRESS',
+                'completed_items': 0,
+                'total_items': 0,
+                'failed_items': 0,
+                'progress_percentage': 0,
+                'errors': [],
                 'message': 'Starting property search...'
             }
         )
@@ -173,10 +176,12 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
                 property_list.uuid,
                 'scrape_progress',
                 {
-                    'status': 'in_progress',
-                    'created': created,
-                    'total': total,
-                    'progress': int((created / total) * 100) if total > 0 else 0,
+                    'status': 'IN_PROGRESS',
+                    'completed_items': created,
+                    'total_items': total,
+                    'failed_items': task.failed_items,
+                    'progress_percentage': int((created / total) * 100) if total > 0 else 0,
+                    'errors': task.errors,
                     'message': f'Scraped {created} of {total} properties...'
                 }
             )
@@ -286,12 +291,17 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
             property_list.uuid,
             'scrape_complete',
             {
-                'status': 'completed',
-                'created': created_count,
-                'updated': updated_count,
-                'skipped': skipped_count,
-                'failed': task.failed_items,
-                'total': len(properties_data),
+                'status': 'COMPLETED',
+                'completed_items': created_count,
+                'total_items': len(properties_data),
+                'failed_items': task.failed_items,
+                'progress_percentage': 100,
+                'errors': task.errors,
+                'metadata': {
+                    'created': created_count,
+                    'updated': updated_count,
+                    'skipped': skipped_count,
+                },
                 'message': f'Scrape completed: {created_count} created, {updated_count} updated'
             }
         )
@@ -322,8 +332,12 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
                 property_list.uuid,
                 'scrape_failed',
                 {
-                    'status': 'failed',
-                    'error': str(e),
+                    'status': 'FAILED',
+                    'completed_items': 0,
+                    'total_items': 0,
+                    'failed_items': 0,
+                    'progress_percentage': 0,
+                    'errors': [str(e)],
                     'message': f'Scrape failed: {str(e)}'
                 }
             )

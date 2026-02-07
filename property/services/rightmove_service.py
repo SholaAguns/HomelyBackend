@@ -33,11 +33,21 @@ class RightmoveService(IPropertyCreationService):
     ]
 
     HEADERS = {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept': '*/*',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Accept-Language': 'en-GB,en;q=0.6',
+        'Origin': 'https://www.rightmove.co.uk',
+        'Referer': 'https://www.rightmove.co.uk',
+        'sec-ch-ua': '"Not(A:Brand";v="8", "Chromium";v="144", "Brave";v="144"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
+        'sec-gpc': '1',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                       'AppleWebKit/537.36 (KHTML, like Gecko) '
                       'Chrome/135.0.0.0 Safari/537.36',
-        'Upgrade-Insecure-Requests': '1',
     }
 
     # ========================================================================
@@ -49,19 +59,6 @@ class RightmoveService(IPropertyCreationService):
         return any(domain in input_data.lower() for domain in self.RIGHTMOVE_DOMAINS)
 
     def extract_property_data(self, input_data: str) -> Dict[str, Any]:
-        """
-        Extract property data from a Rightmove URL.
-        Uses the API approach (fetch JSON from __NEXT_DATA__) instead of HTML parsing.
-
-        Args:
-            input_data: Rightmove property URL
-
-        Returns:
-            Dict with property data
-
-        Raises:
-            ValueError: If extraction fails
-        """
         try:
             import requests
         except ImportError as e:
@@ -127,16 +124,6 @@ class RightmoveService(IPropertyCreationService):
     # ========================================================================
 
     def extract_property_id_from_url(self, url: str) -> Optional[str]:
-        """
-        Extract property ID from Rightmove URL.
-
-        Handles formats:
-        - /properties/123456789
-        - /property-to-rent/123456789.html
-
-        Returns:
-            Property ID as string, or None if not found
-        """
         # Try /properties/ID pattern
         match = re.search(r'/properties/(\d+)', url)
         if match:
@@ -150,21 +137,6 @@ class RightmoveService(IPropertyCreationService):
         return None
 
     def fetch_single_property(self, property_id: str) -> Dict[str, Any]:
-        """
-        Fetch single property data from Rightmove API.
-
-        Uses the search endpoint to fetch data for a specific property ID.
-        This is more reliable than HTML scraping.
-
-        Args:
-            property_id: Rightmove property ID
-
-        Returns:
-            Dict with property data
-
-        Raises:
-            ValueError: If fetch or parsing fails
-        """
         try:
             import requests
             from bs4 import BeautifulSoup
@@ -413,28 +385,6 @@ class RightmoveService(IPropertyCreationService):
         max_properties: int = 100,
         progress_callback=None
     ) -> List[Dict[str, Any]]:
-        """
-        Scrape properties from Rightmove search.
-
-        Args:
-            search_criteria: Dict with search parameters
-                - area (required): Location string
-                - bedrooms_min: Minimum bedrooms
-                - bedrooms_max: Maximum bedrooms
-                - price_min: Minimum price
-                - price_max: Maximum price
-                - radius: Search radius (miles)
-                - property_types: Property types (comma-separated)
-                - max_days_since_added: Max days since added
-            max_properties: Maximum number of properties to scrape
-            progress_callback: Optional callback(created, total) for progress updates
-
-        Returns:
-            List of property data dicts
-
-        Raises:
-            ValueError: If search fails
-        """
         try:
             import requests
         except ImportError:
