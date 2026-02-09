@@ -161,6 +161,7 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
             task.total_items = total
             task.completed_items = created
             task.save(update_fields=['total_items', 'completed_items', 'updated_at'])
+            logger.debug("making progess callback created=%s, total=%s", created, total)
 
             _send_list_websocket_update(
                 property_list.uuid,
