@@ -219,6 +219,15 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         return User.objects.select_related('profile').all()
 
     @extend_schema(
+        responses={200: UserSerializer}
+    )
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        """Get current authenticated user"""
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    @extend_schema(
         request=UserProfileUpdateSerializer,
         responses={200: UserProfileUpdateSerializer}
     )
