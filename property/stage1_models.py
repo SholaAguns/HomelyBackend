@@ -101,9 +101,9 @@ class Property(models.Model):
     # Basic property details
     title = models.CharField(max_length=255)
     address_line_1 = models.CharField(max_length=255)
-    address_line_2 = models.CharField(max_length=255, blank=True)
+    address_line_2 = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True)
-    postcode = models.CharField(max_length=10)
+    postcode = models.CharField(max_length=10, blank=True)
 
     # Location coordinates
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
@@ -111,8 +111,8 @@ class Property(models.Model):
 
     # Property characteristics
     price = models.DecimalField(max_digits=12, decimal_places=2)
-    bedrooms = models.IntegerField()
-    bathrooms = models.IntegerField()
+    bedrooms = models.IntegerField(blank=True, null=True)
+    bathrooms = models.IntegerField(blank=True, null=True)
     square_area = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     garden = models.BooleanField(default=False)
     parking = models.BooleanField(default=False)
