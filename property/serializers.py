@@ -137,11 +137,12 @@ class PropertyImageSerializer(serializers.ModelSerializer):
 class PropertySerializer(serializers.ModelSerializer):
     """Serializer for Property model"""
 
-    property_list = serializers.SlugRelatedField(
+    property_lists = serializers.SlugRelatedField(
         slug_field='uuid',
-        queryset=PropertyList.objects.all()
+        queryset=PropertyList.objects.all(),
+        many=True
     )
-    property_list_title = serializers.ReadOnlyField(source='property_list.title')
+    property_list_titles = serializers.SerializerMethodField()
     state_display = serializers.CharField(source='get_state_display', read_only=True)
     images = PropertyImageSerializer(many=True, read_only=True)
     primary_image = serializers.SerializerMethodField()
@@ -149,7 +150,7 @@ class PropertySerializer(serializers.ModelSerializer):
     class Meta:
         model = Property
         fields = [
-            'uuid', 'property_list', 'property_list_title',
+            'uuid', 'property_lists', 'property_list_titles',
             'state', 'state_display',
             'title', 'address_line_1', 'address_line_2', 'city', 'postcode',
             'latitude', 'longitude',
@@ -164,18 +165,24 @@ class PropertySerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'uuid', 'state', 'state_display', 'property_list_title',
+            'uuid', 'state', 'state_display', 'property_list_titles',
             'normalized_address', 'uprn',
             'overall_rating', 'rating_breakdown', 'disqualified', 'disqualification_reason',
             'images', 'primary_image',
             'created_at', 'updated_at'
         ]
 
-    def validate_property_list(self, value):
+    def get_property_list_titles(self, obj):
+        """Get titles of all lists this property belongs to"""
+        return [pl.title for pl in obj.property_lists.all()]
+
+    def validate_property_lists(self, value):
         """Ensure user can only add properties to their own lists"""
         request = self.context.get('request')
-        if request and value.owner != request.user:
-            raise serializers.ValidationError("Cannot add property to another user's list")
+        if request:
+            for prop_list in value:
+                if prop_list.owner != request.user:
+                    raise serializers.ValidationError("Cannot add property to another user's list")
         return value
 
     def get_primary_image(self, obj):

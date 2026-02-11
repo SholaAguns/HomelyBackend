@@ -153,12 +153,12 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filter to properties in user's lists"""
-        queryset = Property.objects.filter(property_list__owner=self.request.user)
+        queryset = Property.objects.filter(property_lists__owner=self.request.user).distinct()
 
         # Optional filter by property_list uuid
         property_list_uuid = self.request.query_params.get('property_list')
         if property_list_uuid:
-            queryset = queryset.filter(property_list__uuid=property_list_uuid)
+            queryset = queryset.filter(property_lists__uuid=property_list_uuid)
 
         return queryset
 
@@ -324,19 +324,23 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 # Extract images before mapping
                 images_data = property_data.pop('images', [])
 
-                property_fields = self._map_extracted_to_property(property_data, property_list)
+                property_fields = self._map_extracted_to_property(property_data)
                 property_obj = None
 
+                # Check if property exists globally by external_id
                 if property_fields.get('external_id'):
                     existing = Property.objects.filter(
-                        external_id=property_fields['external_id'],
-                        property_list=property_list
+                        external_id=property_fields['external_id']
                     ).first()
 
                     if existing:
-                        # Update existing property
+                        # Add to current list if not already there
+                        if not existing.property_lists.filter(uuid=property_list.uuid).exists():
+                            existing.property_lists.add(property_list)
+
+                        # Update property fields
                         for field, value in property_fields.items():
-                            if field not in ['uuid', 'property_list', 'created_at']:
+                            if field not in ['uuid', 'created_at']:
                                 setattr(existing, field, value)
                         existing.save()
                         property_obj = existing
@@ -359,12 +363,13 @@ class PropertyViewSet(viewsets.ModelViewSet):
                             'property': property_serializer.data,
                             'created': False,
                             'updated': True,
-                            'message': 'Property already exists in list, updated with latest data',
+                            'message': 'Property already exists, added to list and updated with latest data',
                             'source': service.__class__.__name__
                         })
 
                 # Create new property
                 property_obj = Property.objects.create(**property_fields)
+                property_obj.property_lists.add(property_list)
 
                 # Create images
                 if images_data:
@@ -412,7 +417,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    def _map_extracted_to_property(self, property_data: dict, property_list: PropertyList) -> dict:
+    def _map_extracted_to_property(self, property_data: dict) -> dict:
 
         from decimal import Decimal
 
@@ -431,7 +436,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
             postcode = ''
 
         return {
-            'property_list': property_list,
             'external_id': property_data.get('external_id', ''),
             'external_url': property_data.get('external_url', property_data.get('link', '')),
             'title': property_data.get('title', property_data.get('address', 'Untitled')),

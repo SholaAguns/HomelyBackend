@@ -95,7 +95,7 @@ class Property(models.Model):
     ]
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
-    property_list = models.ForeignKey(PropertyList, on_delete=models.CASCADE, related_name='properties')
+    property_lists = models.ManyToManyField(PropertyList, related_name='properties')
     state = FSMField(default='NEW', choices=STATE_CHOICES)
 
     # Basic property details
@@ -178,10 +178,12 @@ class Property(models.Model):
 
     def check_all_services_complete(self):
         """Check if all context services have completed or failed"""
-        if not hasattr(self.property_list, 'context_options'):
-            return False
+        # Get union of enabled services from all lists this property belongs to
+        enabled_services = set()
+        for prop_list in self.property_lists.all():
+            if hasattr(prop_list, 'context_options'):
+                enabled_services.update(prop_list.context_options.get_enabled_services())
 
-        enabled_services = self.property_list.context_options.get_enabled_services()
         if not enabled_services:
             return True
 

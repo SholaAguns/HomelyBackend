@@ -206,30 +206,28 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
                         if existing:
                             # Update existing property
                             for field, value in property_fields.items():
-                                if field not in ['uuid', 'property_list', 'created_at']:
+                                if field not in ['uuid', 'created_at']:
                                     setattr(existing, field, value)
                             existing.save()
 
                             # Add to property list if not already there
-                            if existing.property_list != property_list:
-                                # Property belongs to different list, skip
-                                logger.debug("scrape_rightmove_properties task=%s skipped external_id=%s (belongs to different list)", task_uuid, external_id)
-                                skipped_count += 1
-                                continue
+                            if not existing.property_lists.filter(uuid=property_list.uuid).exists():
+                                existing.property_lists.add(property_list)
+                                logger.debug("scrape_rightmove_properties task=%s added external_id=%s to list", task_uuid, external_id)
 
                             property_obj = existing
                             updated_count += 1
                             logger.debug("scrape_rightmove_properties task=%s updated external_id=%s", task_uuid, external_id)
                         else:
                             # Create new property
-                            property_fields['property_list'] = property_list
                             property_obj = Property.objects.create(**property_fields)
+                            property_obj.property_lists.add(property_list)
                             created_count += 1
                             logger.debug("scrape_rightmove_properties task=%s created external_id=%s", task_uuid, external_id)
                     else:
                         # No external_id, create new
-                        property_fields['property_list'] = property_list
                         property_obj = Property.objects.create(**property_fields)
+                        property_obj.property_lists.add(property_list)
                         created_count += 1
                         logger.debug("scrape_rightmove_properties task=%s created property (no external_id)", task_uuid)
 
