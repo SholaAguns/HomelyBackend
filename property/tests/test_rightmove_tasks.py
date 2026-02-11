@@ -72,7 +72,6 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         """Task updates existing properties with same external_id"""
         # Create existing property
         existing_prop = Property.objects.create(
-            property_list=self.property_list,
             external_id='prop_100',
             title='Old Title',
             address_line_1='Old Address',
@@ -81,6 +80,7 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
             bedrooms=2,
             bathrooms=1
         )
+        existing_prop.property_lists.add(self.property_list)
 
         # Setup mocks with updated data
         mock_service = MagicMock()

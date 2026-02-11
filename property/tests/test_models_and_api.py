@@ -57,8 +57,7 @@ class PropertyListModelTest(TestCase):
         """PropertyList returns correct status summary"""
         prop_list = PropertyList.objects.create(owner=self.user, title='Test List')
 
-        Property.objects.create(
-            property_list=prop_list,
+        prop1 = Property.objects.create(
             title='Property 1',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -67,8 +66,9 @@ class PropertyListModelTest(TestCase):
             bathrooms=1,
             state='NEW'
         )
-        Property.objects.create(
-            property_list=prop_list,
+        prop1.property_lists.add(prop_list)
+
+        prop2 = Property.objects.create(
             title='Property 2',
             address_line_1='456 Test Ave',
             postcode='SW1A 1AB',
@@ -77,6 +77,7 @@ class PropertyListModelTest(TestCase):
             bathrooms=2,
             state='STAGE2_COMPLETE'
         )
+        prop2.property_lists.add(prop_list)
 
         summary = prop_list.get_status_summary()
         self.assertEqual(summary['total'], 2)
@@ -99,7 +100,6 @@ class PropertyModelTest(TestCase):
     def test_property_creation(self):
         """Property created with correct fields"""
         prop = Property.objects.create(
-            property_list=self.property_list,
             title='Modern Flat',
             address_line_1='123 Test St',
             address_line_2='Apt 4B',
@@ -111,6 +111,7 @@ class PropertyModelTest(TestCase):
             garden=True,
             parking=False
         )
+        prop.property_lists.add(self.property_list)
 
         self.assertEqual(prop.title, 'Modern Flat')
         self.assertEqual(prop.state, 'NEW')
@@ -122,7 +123,6 @@ class PropertyModelTest(TestCase):
     def test_property_uuid_unique(self):
         """Property UUIDs are unique"""
         prop1 = Property.objects.create(
-            property_list=self.property_list,
             title='Property 1',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -130,8 +130,9 @@ class PropertyModelTest(TestCase):
             bedrooms=2,
             bathrooms=1
         )
+        prop1.property_lists.add(self.property_list)
+
         prop2 = Property.objects.create(
-            property_list=self.property_list,
             title='Property 2',
             address_line_1='456 Test Ave',
             postcode='SW1A 1AB',
@@ -139,12 +140,12 @@ class PropertyModelTest(TestCase):
             bedrooms=3,
             bathrooms=2
         )
+        prop2.property_lists.add(self.property_list)
         self.assertNotEqual(prop1.uuid, prop2.uuid)
 
     def test_property_str(self):
         """Property string representation"""
         prop = Property.objects.create(
-            property_list=self.property_list,
             title='Test Property',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -152,6 +153,7 @@ class PropertyModelTest(TestCase):
             bedrooms=2,
             bathrooms=1
         )
+        prop.property_lists.add(self.property_list)
         self.assertEqual(str(prop), 'Test Property - SW1A 1AA')
 
 
@@ -201,7 +203,6 @@ class PropertyStateMachineTest(TestCase):
             title='Test List'
         )
         self.property = Property.objects.create(
-            property_list=self.property_list,
             title='Test Property',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -209,6 +210,7 @@ class PropertyStateMachineTest(TestCase):
             bedrooms=2,
             bathrooms=1
         )
+        self.property.property_lists.add(self.property_list)
 
     def test_property_initial_state(self):
         """Property starts in NEW state"""
@@ -365,7 +367,6 @@ class PropertySerializerTest(TestCase):
     def test_property_serializer_fields(self):
         """PropertySerializer includes correct fields"""
         prop = Property.objects.create(
-            property_list=self.property_list,
             title='Test Property',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -373,12 +374,19 @@ class PropertySerializerTest(TestCase):
             bedrooms=2,
             bathrooms=1
         )
-        serializer = PropertySerializer(prop)
+        prop.property_lists.add(self.property_list)
+
+        from rest_framework.request import Request
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = factory.get('/')
+        request.user = self.user
+
+        serializer = PropertySerializer(prop, context={'request': request})
 
         data = serializer.data
         self.assertIn('uuid', data)
-        self.assertIn('property_list', data)
-        self.assertIn('property_list_title', data)
+        self.assertIn('property_lists', data)
         self.assertIn('state', data)
         self.assertIn('state_display', data)
         self.assertIn('title', data)
@@ -493,7 +501,7 @@ class PropertyAPITest(APITestCase):
     def test_create_property(self):
         """POST /api/property/properties/ creates new property"""
         data = {
-            'property_list': str(self.property_list.uuid),
+            'property_lists_input': [str(self.property_list.uuid)],
             'title': 'Modern Flat',
             'address_line_1': '123 Test St',
             'postcode': 'SW1A 1AA',
@@ -502,7 +510,7 @@ class PropertyAPITest(APITestCase):
             'bathrooms': 1,
             'garden': True
         }
-        response = self.client.post('/api/property/properties/', data)
+        response = self.client.post('/api/property/properties/', data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['title'], 'Modern Flat')
@@ -511,8 +519,7 @@ class PropertyAPITest(APITestCase):
 
     def test_list_properties(self):
         """GET /api/property/properties/ returns user's properties"""
-        Property.objects.create(
-            property_list=self.property_list,
+        prop1 = Property.objects.create(
             title='Property 1',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -520,8 +527,9 @@ class PropertyAPITest(APITestCase):
             bedrooms=2,
             bathrooms=1
         )
-        Property.objects.create(
-            property_list=self.property_list,
+        prop1.property_lists.add(self.property_list)
+
+        prop2 = Property.objects.create(
             title='Property 2',
             address_line_1='456 Test Ave',
             postcode='SW1A 1AB',
@@ -529,6 +537,7 @@ class PropertyAPITest(APITestCase):
             bedrooms=3,
             bathrooms=2
         )
+        prop2.property_lists.add(self.property_list)
 
         response = self.client.get('/api/property/properties/')
 
@@ -539,8 +548,7 @@ class PropertyAPITest(APITestCase):
         """GET /api/property/properties/?property_list={uuid} filters"""
         list2 = PropertyList.objects.create(owner=self.user, title='List 2')
 
-        Property.objects.create(
-            property_list=self.property_list,
+        prop1 = Property.objects.create(
             title='Property in List 1',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -548,8 +556,9 @@ class PropertyAPITest(APITestCase):
             bedrooms=2,
             bathrooms=1
         )
-        Property.objects.create(
-            property_list=list2,
+        prop1.property_lists.add(self.property_list)
+
+        prop2 = Property.objects.create(
             title='Property in List 2',
             address_line_1='456 Test Ave',
             postcode='SW1A 1AB',
@@ -557,6 +566,7 @@ class PropertyAPITest(APITestCase):
             bedrooms=3,
             bathrooms=2
         )
+        prop2.property_lists.add(list2)
 
         response = self.client.get(f'/api/property/properties/?property_list={self.property_list.uuid}')
 
@@ -567,7 +577,6 @@ class PropertyAPITest(APITestCase):
     def test_retrieve_property_by_uuid(self):
         """GET /api/property/properties/{uuid}/ returns property"""
         prop = Property.objects.create(
-            property_list=self.property_list,
             title='Test Property',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -575,6 +584,7 @@ class PropertyAPITest(APITestCase):
             bedrooms=2,
             bathrooms=1
         )
+        prop.property_lists.add(self.property_list)
 
         response = self.client.get(f'/api/property/properties/{prop.uuid}/')
 
@@ -587,7 +597,6 @@ class PropertyAPITest(APITestCase):
     def test_run_stage2(self, mock_task):
         """POST /api/property/properties/{uuid}/run_stage2/ triggers Stage 2"""
         prop = Property.objects.create(
-            property_list=self.property_list,
             title='Test Property',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -595,6 +604,7 @@ class PropertyAPITest(APITestCase):
             bedrooms=2,
             bathrooms=1
         )
+        prop.property_lists.add(self.property_list)
 
         response = self.client.post(f'/api/property/properties/{prop.uuid}/run_stage2/')
 
@@ -611,7 +621,6 @@ class PropertyAPITest(APITestCase):
     def test_run_stage3(self, mock_task):
         """POST /api/property/properties/{uuid}/run_stage3/ triggers Stage 3"""
         prop = Property.objects.create(
-            property_list=self.property_list,
             title='Test Property',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -619,6 +628,7 @@ class PropertyAPITest(APITestCase):
             bedrooms=2,
             bathrooms=1
         )
+        prop.property_lists.add(self.property_list)
         # Advance to STAGE2_COMPLETE
         prop.run_stage2()
         prop.save()
@@ -637,7 +647,6 @@ class PropertyAPITest(APITestCase):
     def test_rerun_services(self, mock_task):
         """POST /api/property/properties/{uuid}/rerun_services/ reruns Stage 2"""
         prop = Property.objects.create(
-            property_list=self.property_list,
             title='Test Property',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -645,6 +654,7 @@ class PropertyAPITest(APITestCase):
             bedrooms=2,
             bathrooms=1
         )
+        prop.property_lists.add(self.property_list)
         # Advance to STAGE2_COMPLETE
         prop.run_stage2()
         prop.save()
@@ -662,7 +672,6 @@ class PropertyAPITest(APITestCase):
     def test_cannot_run_stage3_from_new(self):
         """Cannot skip Stage 2 via API"""
         prop = Property.objects.create(
-            property_list=self.property_list,
             title='Test Property',
             address_line_1='123 Test St',
             postcode='SW1A 1AA',
@@ -670,6 +679,7 @@ class PropertyAPITest(APITestCase):
             bedrooms=2,
             bathrooms=1
         )
+        prop.property_lists.add(self.property_list)
 
         response = self.client.post(f'/api/property/properties/{prop.uuid}/run_stage3/')
 

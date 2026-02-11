@@ -382,7 +382,6 @@ class EnhancedCreateFromInputEndpointTest(APITestCase):
         """Endpoint updates existing property with same external_id"""
         # Create existing property
         existing = Property.objects.create(
-            property_list=self.property_list,
             external_id='123456',
             title='Old Title',
             address_line_1='Old Address',
@@ -391,6 +390,7 @@ class EnhancedCreateFromInputEndpointTest(APITestCase):
             bedrooms=2,
             bathrooms=1
         )
+        existing.property_lists.add(self.property_list)
 
         # Setup mock with updated data
         mock_html = MockRightmoveService.get_mock_next_data_html('123456')
