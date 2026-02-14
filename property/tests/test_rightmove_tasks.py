@@ -54,7 +54,7 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         self.assertEqual(result['created'], 5)
         self.assertEqual(result['total'], 5)
 
-        properties = Property.objects.filter(property_list=self.property_list)
+        properties = Property.objects.filter(property_lists=self.property_list)
         self.assertEqual(properties.count(), 5)
 
         self.task.refresh_from_db()
@@ -102,7 +102,7 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         self.assertEqual(existing_prop.price, Decimal('1500'))
 
         # Total properties should be 2
-        properties = Property.objects.filter(property_list=self.property_list)
+        properties = Property.objects.filter(property_lists=self.property_list)
         self.assertEqual(properties.count(), 2)
 
     @patch('property.services.RightmoveService')

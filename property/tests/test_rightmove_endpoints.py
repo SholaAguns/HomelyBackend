@@ -374,7 +374,7 @@ class EnhancedCreateFromInputEndpointTest(APITestCase):
         self.assertEqual(Property.objects.count(), 1)
         prop = Property.objects.first()
         self.assertEqual(prop.external_id, '123456')
-        self.assertEqual(prop.property_list, self.property_list)
+        self.assertIn(self.property_list, prop.property_lists.all())
         self.assertIn('Manchester', prop.title)
 
     @patch('requests.get')

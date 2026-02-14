@@ -1,3 +1,6 @@
 claude --model claude-sonnet-4-5-20250929 --add-dir ../HomelyFrontend
 
 uvicorn homely_core.asgi:application --reload
+
+
+I'm having
