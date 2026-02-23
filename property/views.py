@@ -315,84 +315,32 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
         # Extract property data
         try:
-            property_data = service.extract_property_data(input_data)
-
-            # If property_list provided, create Property model
+            # If property_list provided, create Property model using service
             if property_list:
-                from property.models import PropertyImage
-
-                # Extract images before mapping
-                images_data = property_data.pop('images', [])
-
-                property_fields = self._map_extracted_to_property(property_data)
-                property_obj = None
-
-                # Check if property exists globally by external_id
-                if property_fields.get('external_id'):
-                    existing = Property.objects.filter(
-                        external_id=property_fields['external_id']
-                    ).first()
-
-                    if existing:
-                        # Add to current list if not already there
-                        if not existing.property_lists.filter(uuid=property_list.uuid).exists():
-                            existing.property_lists.add(property_list)
-
-                        # Update property fields
-                        for field, value in property_fields.items():
-                            if field not in ['uuid', 'created_at']:
-                                setattr(existing, field, value)
-                        existing.save()
-                        property_obj = existing
-
-                        # Update images
-                        if images_data:
-                            property_obj.images.all().delete()
-                            for idx, image_data in enumerate(images_data):
-                                PropertyImage.objects.create(
-                                    property=property_obj,
-                                    source_url=image_data.get('source_url') or image_data.get('srcUrl') or '',
-                                    url=image_data.get('url') or '',
-                                    caption=image_data.get('caption') or '',
-                                    order=idx
-                                )
-
-                        property_serializer = PropertySerializer(existing, context={'request': request})
-                        return Response({
-                            'success': True,
-                            'property': property_serializer.data,
-                            'created': False,
-                            'updated': True,
-                            'message': 'Property already exists, added to list and updated with latest data',
-                            'source': service.__class__.__name__
-                        })
-
-                # Create new property
-                property_obj = Property.objects.create(**property_fields)
-                property_obj.property_lists.add(property_list)
-
-                # Create images
-                if images_data:
-                    for idx, image_data in enumerate(images_data):
-                        PropertyImage.objects.create(
-                            property=property_obj,
-                            source_url=image_data.get('source_url', image_data.get('srcUrl', '')),
-                            url=image_data.get('url', ''),
-                            caption=image_data.get('caption', ''),
-                            order=idx
-                        )
+                property_obj, created = service.create_property(input_data, input_type, property_list)
 
                 property_serializer = PropertySerializer(property_obj, context={'request': request})
 
-                return Response({
-                    'success': True,
-                    'property': property_serializer.data,
-                    'created': True,
-                    'message': 'Property created successfully',
-                    'source': service.__class__.__name__
-                }, status=status.HTTP_201_CREATED)
+                if created:
+                    return Response({
+                        'success': True,
+                        'property': property_serializer.data,
+                        'created': True,
+                        'message': 'Property created successfully',
+                        'source': service.__class__.__name__
+                    }, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({
+                        'success': True,
+                        'property': property_serializer.data,
+                        'created': False,
+                        'updated': True,
+                        'message': 'Property already exists, added to list and updated with latest data',
+                        'source': service.__class__.__name__
+                    })
 
-            # No property_list_uuid, just return data
+            # No property_list_uuid, just extract and return data
+            property_data = service.extract_property_data(input_data, input_type)
             return Response({
                 'success': True,
                 'property_data': property_data,
@@ -417,42 +365,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    def _map_extracted_to_property(self, property_data: dict) -> dict:
-
-        from decimal import Decimal
-
-        # Handle postcode extraction from address if not present
-        postcode = property_data.get('postcode', '')
-        if not postcode and property_data.get('address'):
-            import re
-            postcode_match = re.search(
-                r'[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}',
-                property_data['address']
-            )
-            if postcode_match:
-                postcode = postcode_match.group(0)
-
-        if not postcode:
-            postcode = ''
-
-        return {
-            'external_id': property_data.get('external_id', ''),
-            'external_url': property_data.get('external_url', property_data.get('link', '')),
-            'title': property_data.get('title', property_data.get('address', 'Untitled')),
-            'address_line_1': property_data.get('address', property_data.get('address_line_1', '')),
-            'address_line_2': property_data.get('address_line_2', ''),
-            'city': property_data.get('city', ''),
-            'postcode': postcode,
-            'latitude': property_data.get('latitude'),
-            'longitude': property_data.get('longitude'),
-            'price': Decimal(str(property_data.get('price', 0))),
-            'bedrooms': property_data.get('bedrooms', 0),
-            'bathrooms': property_data.get('bathrooms', 0),
-            'garden': property_data.get('garden', False),
-            'parking': property_data.get('parking', False),
-            'furnished_status': property_data.get('furnished_status', ''),
-            'square_area': property_data.get('square_area'),
-        }
 
 
 class SavedLocationViewSet(viewsets.ModelViewSet):
