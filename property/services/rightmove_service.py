@@ -58,7 +58,7 @@ class RightmoveService(IPropertyCreationService):
         """Check if this service can handle the input URL"""
         return any(domain in input_data.lower() for domain in self.RIGHTMOVE_DOMAINS)
 
-    def extract_property_data(self, input_data: str) -> Dict[str, Any]:
+    def extract_property_data(self, input_data: str, input_type: str) -> Dict[str, Any]:
         try:
             import requests
         except ImportError as e:

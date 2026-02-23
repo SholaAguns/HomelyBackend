@@ -29,7 +29,7 @@ class IPropertyCreationService(ABC):
         pass
 
     @abstractmethod
-    def extract_property_data(self, input_data: str) -> Dict[str, Any]:
+    def extract_property_data(self, input_data: str, input_type: str) -> Dict[str, Any]:
         """
         Extract property data from the input source.
 
