@@ -41,7 +41,7 @@ class ZooplaService(IPropertyCreationService):
         """Check if this service can handle the input URL"""
         return any(domain in input_data.lower() for domain in self.ZOOPLA_DOMAINS)
 
-    def extract_property_data(self, input_data: str, input_type: str) -> Dict[str, Any]:
+    def extract_property_data(self, input_data: str, input_type: str = 'url') -> Dict[str, Any]:
         try:
             import requests
         except ImportError as e:
@@ -87,8 +87,14 @@ class ZooplaService(IPropertyCreationService):
             raise ValueError(f"Required packages not installed: {e}")
 
         try:
+            # Keep raw HTML for regex extraction
+            if isinstance(html_response, bytes):
+                raw_html = html_response.decode('utf-8', errors='replace')
+            else:
+                raw_html = html_response
+
             # Parse HTML
-            soup = BeautifulSoup(html_response, 'html.parser')
+            soup = BeautifulSoup(raw_html, 'html.parser')
 
             # Extract JSON-LD structured data
             json_ld_data = self._extract_json_ld(soup)
@@ -96,11 +102,16 @@ class ZooplaService(IPropertyCreationService):
             # Parse property data from JSON-LD
             property_data = self._parse_json_ld(json_ld_data, listing_id)
 
-            # Extract additional data from HTML
-            html_data = self._extract_from_html(soup, listing_id)
+            # Extract additional data from HTML (pass raw HTML for better regex matching)
+            html_data = self._extract_from_html(soup, raw_html, listing_id)
 
-            # Merge data (JSON-LD takes precedence)
-            property_data.update({k: v for k, v in html_data.items() if k not in property_data or not property_data[k]})
+            # Merge data (JSON-LD takes precedence, except for images where HTML has more)
+            for k, v in html_data.items():
+                if k not in property_data or not property_data[k]:
+                    property_data[k] = v
+                elif k == 'images' and len(v) > len(property_data.get('images', [])):
+                    # Prefer HTML images if more comprehensive
+                    property_data[k] = v
 
             return property_data
 
@@ -198,32 +209,41 @@ class ZooplaService(IPropertyCreationService):
             'images': images,
         }
 
-    def _extract_from_html(self, soup, listing_id: str) -> Dict[str, Any]:
-        """Extract additional property data from HTML"""
+    def _extract_from_html(self, soup, raw_html: str, listing_id: str) -> Dict[str, Any]:
+        """Extract additional property data from HTML including embedded JSON"""
         property_data = {}
 
-        # Extract postcode from HTML content
-        html_text = soup.get_text()
-        postcode_match = re.search(r'\b([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})\b', html_text)
+        # Use raw HTML for regex searches to avoid BeautifulSoup escaping issues
+        # Extract coordinates (simple pattern that works with escaped/unescaped JSON)
+        lat_match = re.search(r'latitude.*?:\s*(-?\d+\.?\d*)', raw_html)
+        lng_match = re.search(r'longitude.*?:\s*(-?\d+\.?\d*)', raw_html)
+        if lat_match and lng_match:
+            try:
+                property_data['latitude'] = float(lat_match.group(1))
+                property_data['longitude'] = float(lng_match.group(1))
+            except ValueError:
+                pass
+
+        # Extract postcode from embedded JSON (more accurate than text search)
+        postcode_match = re.search(r'postalCode.*?:\s*\\"([^\\"]+)\\"', raw_html)
         if postcode_match:
             property_data['postcode'] = postcode_match.group(1)
+        else:
+            # Fallback to text search
+            html_text = soup.get_text()
+            postcode_match = re.search(r'\b([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})\b', html_text)
+            if postcode_match:
+                property_data['postcode'] = postcode_match.group(1)
 
-        # Extract property type from inline JSON/scripts
-        # Search for propertyType in script content
-        for script in soup.find_all('script'):
-            if script.string and 'propertyType' in script.string:
-                # Try to extract property type
-                type_match = re.search(r'"propertyType"\s*:\s*"([^"]+)"', script.string)
-                if type_match:
-                    property_data['property_type'] = type_match.group(1)
-                    break
-
-        # Extract property type from title/description as fallback
-        if 'property_type' not in property_data:
+        # Extract property type from embedded JSON
+        type_match = re.search(r'propertyType.*?:\s*[\\"]([a-z\-]+)[\\"]', raw_html)
+        if type_match:
+            property_data['property_type'] = type_match.group(1)
+        else:
+            # Fallback to title parsing
             title_tag = soup.find('title')
             if title_tag:
                 title_text = title_tag.get_text()
-                # Look for common property types in title
                 type_patterns = [
                     r'(\d+\s+bed)\s+(terraced|detached|semi-detached|flat|apartment|house|bungalow)',
                     r'(terraced|detached|semi-detached|flat|apartment|house|bungalow)\s+house',
@@ -233,5 +253,18 @@ class ZooplaService(IPropertyCreationService):
                     if match:
                         property_data['property_type'] = match.group(2) if len(match.groups()) > 1 else match.group(1)
                         break
+
+        # Extract all property images from lid.zoocdn.com
+        image_hashes = set(re.findall(r'https?://lid\.zoocdn\.com/u/\d+/\d+/([a-f0-9]+)\.jpg', raw_html))
+        if image_hashes:
+            images = []
+            for i, img_hash in enumerate(sorted(image_hashes), 1):
+                # Use higher resolution (1024x768)
+                images.append({
+                    'source_url': f'https://lid.zoocdn.com/u/1024/768/{img_hash}.jpg',
+                    'url': f'https://lid.zoocdn.com/u/1024/768/{img_hash}.jpg',
+                    'caption': f'Image {i}'
+                })
+            property_data['images'] = images
 
         return property_data
