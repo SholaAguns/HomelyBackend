@@ -186,85 +186,25 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
         )
         logger.debug("scrape_rightmove_properties task=%s scrape returned %d properties", task_uuid, len(properties_data))
 
-        # Create Property objects
-        created_count = 0
-        updated_count = 0
+        # Create Property objects using service batch method
+        def batch_progress_callback(created, updated, failed):
+            """Callback for batch creation progress"""
+            task.failed_items = failed
+            task.save(update_fields=['failed_items', 'updated_at'])
+
+        result = service.batch_create_properties(
+            properties_data,
+            property_list,
+            progress_callback=batch_progress_callback
+        )
+
+        created_count = result['created']
+        updated_count = result['updated']
         skipped_count = 0
 
-        for prop_data in properties_data:
-            try:
-                with transaction.atomic():
-                    # Map service data to Property model fields
-                    property_fields, images_data = _map_rightmove_to_property(prop_data)
-
-                    # Check for existing property by external_id
-                    external_id = property_fields.get('external_id')
-                    property_obj = None
-
-                    if external_id:
-                        existing = Property.objects.filter(external_id=external_id).first()
-                        if existing:
-                            # Update existing property
-                            for field, value in property_fields.items():
-                                if field not in ['uuid', 'created_at']:
-                                    setattr(existing, field, value)
-                            existing.save()
-
-                            # Add to property list if not already there
-                            if not existing.property_lists.filter(uuid=property_list.uuid).exists():
-                                existing.property_lists.add(property_list)
-                                logger.debug("scrape_rightmove_properties task=%s added external_id=%s to list", task_uuid, external_id)
-
-                            property_obj = existing
-                            updated_count += 1
-                            logger.debug("scrape_rightmove_properties task=%s updated external_id=%s", task_uuid, external_id)
-                        else:
-                            # Create new property
-                            property_obj = Property.objects.create(**property_fields)
-                            property_obj.property_lists.add(property_list)
-                            created_count += 1
-                            logger.debug("scrape_rightmove_properties task=%s created external_id=%s", task_uuid, external_id)
-                    else:
-                        # No external_id, create new
-                        property_obj = Property.objects.create(**property_fields)
-                        property_obj.property_lists.add(property_list)
-                        created_count += 1
-                        logger.debug("scrape_rightmove_properties task=%s created property (no external_id)", task_uuid)
-
-                    # Create/update images
-                    if property_obj and images_data:
-                        from property.models import PropertyImage
-
-                        # Clear existing images
-                        property_obj.images.all().delete()
-
-                        # Create new images
-                        for idx, image_data in enumerate(images_data):
-                            PropertyImage.objects.create(
-                                property=property_obj,
-                                source_url=image_data.get('source_url') or image_data.get('srcUrl') or '',
-                                url=image_data.get('url') or '',
-                                caption=image_data.get('caption') or '',
-                                order=idx
-                            )
-
-            except Exception as e:
-                logger.error("scrape_rightmove_properties task=%s failed to create property: %s", task_uuid, e, exc_info=True)
-                task.failed_items += 1
-                # Convert non-JSON-serializable types for error logging
-                from datetime import datetime, date
-                serializable_data = {}
-                for k, v in prop_data.items():
-                    if isinstance(v, Decimal):
-                        serializable_data[k] = str(v)
-                    elif isinstance(v, (datetime, date)):
-                        serializable_data[k] = v.isoformat()
-                    elif isinstance(v, list):
-                        serializable_data[k] = str(v)  # Lists might contain complex objects
-                    else:
-                        serializable_data[k] = v
-                task.add_error(f"Failed to create property: {str(e)}", {'property_data': serializable_data})
-                continue
+        # Add errors to task
+        for error in result['errors']:
+            task.add_error(f"Failed to create property: {error['error']}", error)
 
         # Update task to completed
         logger.debug("scrape_rightmove_properties task=%s completed: created=%d updated=%d skipped=%d failed=%d", task_uuid, created_count, updated_count, skipped_count, task.failed_items)
@@ -336,51 +276,6 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
         raise
 
 
-def _map_rightmove_to_property(prop_data):
-    """
-    Map Rightmove property data to Property model fields.
-
-    Args:
-        prop_data: Dict from RightmoveService
-
-    Returns:
-        Tuple of (property_fields dict, images_data list)
-    """
-    # Extract images
-    images_data = prop_data.pop('images', [])
-
-    # Map fields
-    mapped = {
-        'external_id': prop_data.get('external_id', ''),
-        'external_url': prop_data.get('link', ''),
-        'title': prop_data.get('title', prop_data.get('address', 'Untitled')),
-        'address_line_1': prop_data.get('address', ''),
-        'address_line_2': '',
-        'city': '',
-        'postcode': '',  # Will need to extract from address
-        'latitude': prop_data.get('latitude'),
-        'longitude': prop_data.get('longitude'),
-        'price': prop_data.get('price', Decimal('0')),
-        'bedrooms': prop_data.get('bedrooms', 0),
-        'bathrooms': prop_data.get('bathrooms', 0),
-        'garden': False,  # Not in current data
-        'parking': False,  # Not in current data
-        'furnished_status': '',
-        'square_area': None,
-    }
-
-    # Try to extract postcode from address
-    if prop_data.get('address'):
-        import re
-        postcode_match = re.search(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}', prop_data['address'])
-        if postcode_match:
-            mapped['postcode'] = postcode_match.group(0)
-
-    # If still no postcode, use empty string
-    if not mapped['postcode']:
-        mapped['postcode'] = ''
-
-    return mapped, images_data
 
 
 def _send_websocket_update(property_id, message_type, data):

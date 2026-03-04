@@ -506,3 +506,165 @@ class RightmoveService(IPropertyCreationService):
                 time.sleep(5)
 
         return all_properties
+
+    # ========================================================================
+    # Property Creation Methods
+    # ========================================================================
+
+    def _map_extracted_to_property(self, property_data: dict) -> dict:
+        """
+        Map Rightmove property data to Property model fields.
+        Override of interface method with Rightmove-specific logic.
+
+        Args:
+            property_data: Raw extracted data from Rightmove
+
+        Returns:
+            Dict with Property model field names and values
+        """
+        from decimal import Decimal
+        import re
+
+        # Map fields (tested logic from task)
+        mapped = {
+            'external_id': property_data.get('external_id', ''),
+            'external_url': property_data.get('link', property_data.get('external_url', '')),
+            'title': property_data.get('title', property_data.get('address', 'Untitled')),
+            'address_line_1': property_data.get('address', ''),
+            'address_line_2': '',
+            'city': '',
+            'postcode': '',
+            'latitude': property_data.get('latitude'),
+            'longitude': property_data.get('longitude'),
+            'price': property_data.get('price', Decimal('0')) if isinstance(property_data.get('price'), Decimal) else Decimal(str(property_data.get('price', 0))),
+            'bedrooms': property_data.get('bedrooms', 0),
+            'bathrooms': property_data.get('bathrooms', 0),
+            'garden': False,
+            'parking': False,
+            'furnished_status': '',
+            'square_area': None,
+        }
+
+        # Try to extract postcode from address
+        if property_data.get('address'):
+            postcode_match = re.search(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}', property_data['address'])
+            if postcode_match:
+                mapped['postcode'] = postcode_match.group(0)
+
+        # If still no postcode, use empty string
+        if not mapped['postcode']:
+            mapped['postcode'] = ''
+
+        return mapped
+
+    def batch_create_properties(self, properties_data: list, property_list, progress_callback=None) -> dict:
+        """
+        Create multiple properties in batch with progress tracking.
+
+        Args:
+            properties_data: List of property data dicts from scrape
+            property_list: PropertyList to add properties to
+            progress_callback: Optional callback(created, updated, failed) for progress
+
+        Returns:
+            Dict with counts: {created, updated, failed, errors}
+        """
+        from property.models import Property, PropertyImage
+        from django.db import transaction
+        from decimal import Decimal
+        from datetime import datetime, date
+
+        created_count = 0
+        updated_count = 0
+        failed_count = 0
+        errors = []
+
+        for idx, prop_data in enumerate(properties_data):
+            try:
+                with transaction.atomic():
+                    # Extract images before mapping
+                    images_data = prop_data.pop('images', [])
+
+                    # Map service data to Property model fields
+                    property_fields = self._map_extracted_to_property(prop_data)
+
+                    # Check for existing property by external_id
+                    external_id = property_fields.get('external_id')
+                    property_obj = None
+
+                    if external_id:
+                        existing = Property.objects.filter(external_id=external_id).first()
+                        if existing:
+                            # Update existing property
+                            for field, value in property_fields.items():
+                                if field not in ['uuid', 'created_at']:
+                                    setattr(existing, field, value)
+                            existing.save()
+
+                            # Add to property list if not already there
+                            if not existing.property_lists.filter(uuid=property_list.uuid).exists():
+                                existing.property_lists.add(property_list)
+
+                            property_obj = existing
+                            updated_count += 1
+                            logger.debug("batch_create_properties updated external_id=%s", external_id)
+                        else:
+                            # Create new property
+                            property_obj = Property.objects.create(**property_fields)
+                            property_obj.property_lists.add(property_list)
+                            created_count += 1
+                            logger.debug("batch_create_properties created external_id=%s", external_id)
+                    else:
+                        # No external_id, create new
+                        property_obj = Property.objects.create(**property_fields)
+                        property_obj.property_lists.add(property_list)
+                        created_count += 1
+                        logger.debug("batch_create_properties created property (no external_id)")
+
+                    # Create/update images
+                    if property_obj and images_data:
+                        # Clear existing images
+                        property_obj.images.all().delete()
+
+                        # Create new images
+                        for img_idx, image_data in enumerate(images_data):
+                            PropertyImage.objects.create(
+                                property=property_obj,
+                                source_url=image_data.get('source_url') or image_data.get('srcUrl') or '',
+                                url=image_data.get('url') or '',
+                                caption=image_data.get('caption') or '',
+                                order=img_idx
+                            )
+
+                    # Progress callback
+                    if progress_callback:
+                        progress_callback(created_count, updated_count, failed_count)
+
+            except Exception as e:
+                logger.error("batch_create_properties failed for property: %s", e, exc_info=True)
+                failed_count += 1
+
+                # Convert non-JSON-serializable types for error logging
+                serializable_data = {}
+                for k, v in prop_data.items():
+                    if isinstance(v, Decimal):
+                        serializable_data[k] = str(v)
+                    elif isinstance(v, (datetime, date)):
+                        serializable_data[k] = v.isoformat()
+                    elif isinstance(v, list):
+                        serializable_data[k] = str(v)
+                    else:
+                        serializable_data[k] = v
+
+                errors.append({
+                    'error': str(e),
+                    'property_data': serializable_data
+                })
+                continue
+
+        return {
+            'created': created_count,
+            'updated': updated_count,
+            'failed': failed_count,
+            'errors': errors
+        }
