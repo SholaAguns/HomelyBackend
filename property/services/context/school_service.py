@@ -11,13 +11,13 @@ logger = logging.getLogger(__name__)
 
 class SchoolRatingService(IContextService):
     """
-    Retrieves nearby schools from local GIAS database.
+    Retrieves nearby schools from local GIAS database with Ofsted ratings.
 
-    Data source: Schools table (imported from GIAS CSV)
-    Cache: 90 days (school data very stable)
+    Data source: Schools table (imported from GIAS CSV) + Ofsted website scraping
+    Cache: 90 days (school data) + 30 days (Ofsted ratings)
     Query: Distance-based radius search
 
-    Note: Ofsted ratings NOT included in Stage 2 (retrieved on-demand for Stage 3)
+    Includes Ofsted ratings for each school in Stage 2 response.
     """
 
     CACHE_TTL = 86400 * 90  # 90 days
@@ -46,13 +46,14 @@ class SchoolRatingService(IContextService):
 
     def fetch_data(self, property_obj) -> Dict[str, Any]:
         """
-        Fetch nearby schools from database.
+        Fetch nearby schools from database with Ofsted ratings.
 
         Returns schools within radius, separated by phase (primary/secondary).
-        Does NOT include Ofsted ratings (Stage 3 feature).
+        Includes Ofsted ratings for each school (cached 30 days).
         """
         from property.models import School
         from property.services.location_service import LocationService
+        from property.services.ofsted_service import OfstedService
 
         self.validate_property_data(property_obj)
 
@@ -105,6 +106,27 @@ class SchoolRatingService(IContextService):
             school = item['school']
             phase = school.phase.lower() if school.phase else ''
 
+            # Fetch Ofsted data for this school
+            ofsted_data = OfstedService.get_ofsted_report(school.urn)
+
+            # Extract Ofsted info (handle errors gracefully)
+            ofsted_info = None
+            if 'error' not in ofsted_data:
+                ofsted_info = {
+                    'overall_rating': ofsted_data.get('overall_rating'),
+                    'inspection_date': ofsted_data.get('inspection_date'),
+                    'sub_judgements': ofsted_data.get('sub_judgements', {}),
+                    'cached': ofsted_data.get('cached', False)
+                }
+            else:
+                # Log error but don't fail
+                logger.warning(f"Could not fetch Ofsted for school {school.urn}: {ofsted_data.get('error')}")
+                ofsted_info = {
+                    'error': ofsted_data.get('error'),
+                    'overall_rating': None,
+                    'inspection_date': None
+                }
+
             school_data = {
                 'urn': school.urn,
                 'name': school.name,
@@ -123,7 +145,8 @@ class SchoolRatingService(IContextService):
                 'age_range': f"{school.statutory_low_age}-{school.statutory_high_age}" if school.statutory_low_age and school.statutory_high_age else None,
                 'website': school.website,
                 'phone': school.phone,
-                'ofsted_url': school.ofsted_url
+                'ofsted_url': school.ofsted_url,
+                'ofsted': ofsted_info
             }
 
             if 'primary' in phase:
@@ -171,5 +194,5 @@ class SchoolRatingService(IContextService):
                 'average_distance_km': avg_distance_km,
                 'average_distance_miles': round(avg_distance_km * 0.621371, 2) if avg_distance_km else None
             },
-            'note': 'Ofsted ratings available on-demand via /api/schools/{urn}/ofsted/'
+            'note': 'Ofsted ratings included for each school (cached 30 days). Full details via /api/schools/ofsted/{urn}/'
         }
