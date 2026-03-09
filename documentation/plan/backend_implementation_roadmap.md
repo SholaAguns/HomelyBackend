@@ -62,7 +62,7 @@ Based on all documentation, here's a suggested implementation sequence:
 1. Implement IContextService interface and factory - done
 2. Build concrete service implementations:
    - CrimeService (UK Police API) - done
-   - SchoolRatingService (DfE API)
+   - SchoolRatingService (GIAS CSV + Ofsted data) - in progress
    - BroadbandService (Ofcom)
    - MobileCoverageService (Ofcom)
    - PlacesOfInterestService (Google Maps API)

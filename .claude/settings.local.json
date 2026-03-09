@@ -9,7 +9,8 @@
       "Bash(source .venv/Scripts/activate)",
       "Bash(findstr:*)",
       "Bash(python:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "WebSearch"
     ]
   }
 }
