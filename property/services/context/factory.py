@@ -1,0 +1,35 @@
+"""
+Factory for creating context service instances
+"""
+from typing import Optional
+from .interface import IContextService
+from .crime_service import CrimeService
+
+
+def context_service_factory(service_name: str) -> Optional[IContextService]:
+    """
+    Create context service instance by name.
+
+    Args:
+        service_name: Service identifier ('crime', 'schools', 'broadband', etc.)
+
+    Returns:
+        IContextService instance
+
+    Raises:
+        ValueError: If service name is unknown
+    """
+    services = {
+        'crime': CrimeService,
+        # Future services:
+        # 'schools': SchoolRatingService,
+        # 'broadband': BroadbandService,
+        # 'mobile': MobileCoverageService,
+        # 'poi': PlacesOfInterestService,
+    }
+
+    service_class = services.get(service_name)
+    if not service_class:
+        raise ValueError(f"Unknown context service: {service_name}")
+
+    return service_class()

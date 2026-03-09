@@ -60,6 +60,32 @@ class PropertyListViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    @action(detail=True, methods=['post'], url_path='run-stage2-bulk')
+    def run_stage2_bulk(self, request, uuid=None):
+        """Trigger Stage 2 for all properties in NEW state"""
+        from property.tasks import bulk_retrieve_context_data
+
+        property_list = self.get_object()
+
+        # Get all properties in NEW state
+        new_properties = property_list.properties.filter(state='NEW')
+
+        if not new_properties.exists():
+            return Response({
+                'error': 'No properties in NEW state',
+                'message': 'All properties have already started or completed Stage 2'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Queue bulk task
+        property_ids = list(new_properties.values_list('id', flat=True))
+        bulk_retrieve_context_data.delay(property_ids)
+
+        return Response({
+            'status': 'bulk_stage2_queued',
+            'property_count': len(property_ids),
+            'message': f'Stage 2 queued for {len(property_ids)} properties'
+        })
+
     @extend_schema(
         request=BulkPropertyCreationSerializer,
         responses={
@@ -235,6 +261,102 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=True, methods=['get'], url_path='context-data')
+    def context_data(self, request, uuid=None):
+        """Get all context data for a property"""
+        from property.models import ContextData
+
+        property_obj = self.get_object()
+        context_data = ContextData.objects.filter(property=property_obj)
+
+        data = []
+        for cd in context_data:
+            data.append({
+                'service_name': cd.service_name,
+                'status': cd.status,
+                'data': cd.data,
+                'error_message': cd.error_message,
+                'error_type': cd.error_type,
+                'retry_count': cd.retry_count,
+                'completed_at': cd.completed_at,
+                'last_attempt_at': cd.last_attempt_at
+            })
+
+        return Response({
+            'property_id': str(property_obj.uuid),
+            'property_state': property_obj.state,
+            'context_data': data
+        })
+
+    @action(detail=True, methods=['get'], url_path='context-data/(?P<service_name>[^/.]+)')
+    def context_data_detail(self, request, uuid=None, service_name=None):
+        """Get specific service context data for a property"""
+        from property.models import ContextData
+
+        property_obj = self.get_object()
+
+        try:
+            context_data = ContextData.objects.get(
+                property=property_obj,
+                service_name=service_name
+            )
+
+            return Response({
+                'service_name': context_data.service_name,
+                'status': context_data.status,
+                'data': context_data.data,
+                'error_message': context_data.error_message,
+                'error_type': context_data.error_type,
+                'retry_count': context_data.retry_count,
+                'completed_at': context_data.completed_at,
+                'last_attempt_at': context_data.last_attempt_at
+            })
+        except ContextData.DoesNotExist:
+            return Response(
+                {'error': f'No context data found for service {service_name}'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=True, methods=['post'], url_path='retry-service/(?P<service_name>[^/.]+)')
+    def retry_service(self, request, uuid=None, service_name=None):
+        """Retry a failed context service"""
+        from property.models import ContextData
+        from property.tasks import run_service_task
+
+        property_obj = self.get_object()
+
+        try:
+            context_data = ContextData.objects.get(
+                property=property_obj,
+                service_name=service_name
+            )
+
+            if context_data.status not in ['FAILED', 'COMPLETE']:
+                return Response(
+                    {'error': f'Service {service_name} is currently {context_data.status}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Reset to PENDING and queue task
+            context_data.status = 'PENDING'
+            context_data.error_message = ''
+            context_data.error_type = ''
+            context_data.save()
+
+            run_service_task.delay(property_obj.id, service_name)
+
+            return Response({
+                'status': 'service_retry_queued',
+                'service_name': service_name,
+                'message': f'Service {service_name} queued for retry'
+            })
+
+        except ContextData.DoesNotExist:
+            return Response(
+                {'error': f'No context data found for service {service_name}'},
+                status=status.HTTP_404_NOT_FOUND
             )
 
     @extend_schema(

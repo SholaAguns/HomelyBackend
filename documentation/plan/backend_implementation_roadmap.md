@@ -2,6 +2,8 @@
 
 Based on all documentation, here's a suggested implementation sequence:
 
+* Important change to initial plan made, property and property list no longer a fk relationship, now a ManyToManyField as one property can be in multiple lists
+
 ### Phase 1: Accounts & Authentication (Weeks 1-2)
 **Priority:** Critical foundation
 
@@ -57,19 +59,19 @@ Based on all documentation, here's a suggested implementation sequence:
 **Priority:** High value feature
 
 **Tasks:**
-1. Implement IContextService interface and factory
+1. Implement IContextService interface and factory - done
 2. Build concrete service implementations:
-   - CrimeService (UK Police API)
+   - CrimeService (UK Police API) - done
    - SchoolRatingService (DfE API)
    - BroadbandService (Ofcom)
    - MobileCoverageService (Ofcom)
    - PlacesOfInterestService (Google Maps API)
-3. Implement service orchestration (Celery tasks)
-4. Implement completion aggregation (post_save signals + WebSocket)
+3. Implement service orchestration (Celery tasks) - done
+4. Implement completion aggregation (post_save signals + WebSocket) - done
 5. Build progress indicators on frontend
-6. Implement smart caching (Redis)
-7. Add manual trigger buttons (individual + bulk)
-8. Implement error handling and retry mechanism
+6. Implement smart caching (Redis) - done
+7. Add manual trigger buttons (individual + bulk) - done (backend API endpoints)
+8. Implement error handling and retry mechanism - done
 
 **Deliverable:** Users can retrieve context data for properties.
 
