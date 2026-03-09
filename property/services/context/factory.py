@@ -4,6 +4,7 @@ Factory for creating context service instances
 from typing import Optional
 from .interface import IContextService
 from .crime_service import CrimeService
+from .school_service import SchoolRatingService
 
 
 def context_service_factory(service_name: str) -> Optional[IContextService]:
@@ -21,8 +22,8 @@ def context_service_factory(service_name: str) -> Optional[IContextService]:
     """
     services = {
         'crime': CrimeService,
+        'schools': SchoolRatingService,
         # Future services:
-        # 'schools': SchoolRatingService,
         # 'broadband': BroadbandService,
         # 'mobile': MobileCoverageService,
         # 'poi': PlacesOfInterestService,
