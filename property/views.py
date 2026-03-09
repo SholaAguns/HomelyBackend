@@ -503,3 +503,42 @@ class SavedLocationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter to user's own saved locations"""
         return SavedLocation.objects.filter(user=self.request.user)
+
+
+class SchoolViewSet(viewsets.ViewSet):
+    """
+    ViewSet for school-related operations.
+
+    Provides endpoints for retrieving Ofsted reports.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'], url_path='ofsted/(?P<urn>[^/.]+)')
+    def ofsted_report(self, request, urn=None):
+        """
+        Get Ofsted report for a school by URN.
+
+        Returns cached data if available (30 days TTL).
+
+        Example:
+            GET /api/schools/ofsted/100000/
+        """
+        from property.services.ofsted_service import OfstedService
+
+        if not urn:
+            return Response(
+                {'error': 'URN is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Fetch Ofsted data
+        data = OfstedService.get_ofsted_report(urn)
+
+        # Check if error
+        if 'error' in data:
+            if data['error'] == 'School not found':
+                return Response(data, status=status.HTTP_404_NOT_FOUND)
+            else:
+                return Response(data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(data, status=status.HTTP_200_OK)
