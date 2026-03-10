@@ -138,14 +138,18 @@ class OfstedService:
                 if date_text:
                     date_str = date_text.text.strip()
                     # Extract date using simple parsing
-                    if 'on ' in date_str and ' was:' in date_str:
-                        date_part = date_str.split('on ')[1].split(' was:')[0].strip()
-                        if date_part:  # Only try to parse if we have a date string
-                            try:
-                                # Parse date like "12 June 2024"
-                                inspection_date = datetime.strptime(date_part, '%d %B %Y').date().isoformat()
-                            except ValueError:
-                                logger.warning(f"Could not parse date: {date_part}")
+                    # Use rsplit to avoid splitting on "on" in "inspection"
+                    if ' on ' in date_str and ' was:' in date_str:
+                        # Split from right to get the last occurrence of " on "
+                        parts = date_str.rsplit(' on ', 1)
+                        if len(parts) == 2:
+                            date_part = parts[1].split(' was:')[0].strip()
+                            if date_part:  # Only try to parse if we have a date string
+                                try:
+                                    # Parse date like "12 June 2024"
+                                    inspection_date = datetime.strptime(date_part, '%d %B %Y').date().isoformat()
+                                except ValueError:
+                                    logger.warning(f"Could not parse date: {date_part}")
 
                 # Extract rating
                 rating_strong = overall_div.find('strong')

@@ -42,7 +42,7 @@ class SchoolViewSetTest(TestCase):
         }
 
         # Test
-        response = self.client.get('/api/schools/ofsted/100000/')
+        response = self.client.get('/api/property/schools/ofsted/100000/')
 
         # Verify
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -62,7 +62,7 @@ class SchoolViewSetTest(TestCase):
         }
 
         # Test
-        response = self.client.get('/api/schools/ofsted/999999/')
+        response = self.client.get('/api/property/schools/ofsted/999999/')
 
         # Verify
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -79,7 +79,7 @@ class SchoolViewSetTest(TestCase):
         }
 
         # Test
-        response = self.client.get('/api/schools/ofsted/100000/')
+        response = self.client.get('/api/property/schools/ofsted/100000/')
 
         # Verify
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -91,7 +91,7 @@ class SchoolViewSetTest(TestCase):
         client = APIClient()
 
         # Test
-        response = client.get('/api/schools/ofsted/100000/')
+        response = client.get('/api/property/schools/ofsted/100000/')
 
         # Verify
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -112,7 +112,7 @@ class SchoolViewSetTest(TestCase):
         }
 
         # Test
-        response = self.client.get('/api/schools/ofsted/100001/')
+        response = self.client.get('/api/property/schools/ofsted/100001/')
 
         # Verify
         self.assertEqual(response.status_code, status.HTTP_200_OK)

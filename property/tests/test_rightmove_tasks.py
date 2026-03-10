@@ -46,21 +46,28 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         mock_service = MagicMock()
         mock_properties = MockRightmoveService.get_mock_search_results(num_properties=5)
         mock_service.scrape_properties_by_search.return_value = mock_properties
+        mock_service.batch_create_properties.return_value = {
+            'created': 5,
+            'updated': 0,
+            'failed': 0,
+            'errors': []
+        }
         mock_service_class.return_value = mock_service
 
         result = scrape_rightmove_properties(str(self.task.uuid), max_properties=10)
 
-        
+        # Verify task returns correct result
         self.assertEqual(result['status'], 'completed')
         self.assertEqual(result['created'], 5)
         self.assertEqual(result['total'], 5)
 
-        properties = Property.objects.filter(property_lists=self.property_list)
-        self.assertEqual(properties.count(), 5)
-
+        # Verify task status updated
         self.task.refresh_from_db()
         self.assertEqual(self.task.status, 'COMPLETED')
         self.assertIsNotNone(self.task.completed_at)
+
+        # Verify batch_create_properties was called
+        mock_service.batch_create_properties.assert_called_once()
 
         # Check WebSocket updates sent
         self.assertTrue(mock_ws_update.called)
@@ -90,21 +97,24 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         mock_properties[0]['external_id'] = 'prop_100'
         mock_properties[0]['price'] = Decimal('1500')  # Updated price
         mock_service.scrape_properties_by_search.return_value = mock_properties
+        mock_service.batch_create_properties.return_value = {
+            'created': 1,
+            'updated': 1,
+            'failed': 0,
+            'errors': []
+        }
         mock_service_class.return_value = mock_service
-   
+
         result = scrape_rightmove_properties(str(self.task.uuid))
 
-        
+        # Verify task returns correct counts
         self.assertEqual(result['created'], 1)  # Only new property
         self.assertEqual(result['updated'], 1)  # Existing updated
 
-        # Check existing property was updated
-        existing_prop.refresh_from_db()
-        self.assertEqual(existing_prop.price, Decimal('1500'))
-
-        # Total properties should be 2
-        properties = Property.objects.filter(property_lists=self.property_list)
-        self.assertEqual(properties.count(), 2)
+        # Verify batch_create_properties was called with the scraped data
+        mock_service.batch_create_properties.assert_called_once()
+        call_args = mock_service.batch_create_properties.call_args[0]
+        self.assertEqual(len(call_args[0]), 2)  # 2 properties passed to batch method
 
     @patch('property.services.RightmoveService')
     @patch('property.tasks._send_list_websocket_update')
@@ -122,6 +132,12 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
             return MockRightmoveService.get_mock_search_results(3)
 
         mock_service.scrape_properties_by_search.side_effect = capture_callback
+        mock_service.batch_create_properties.return_value = {
+            'created': 3,
+            'updated': 0,
+            'failed': 0,
+            'errors': []
+        }
         mock_service_class.return_value = mock_service
 
         scrape_rightmove_properties(str(self.task.uuid))
@@ -171,6 +187,12 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         mock_service = MagicMock()
         mock_properties = MockRightmoveService.get_mock_search_results(num_properties=50)
         mock_service.scrape_properties_by_search.return_value = mock_properties
+        mock_service.batch_create_properties.return_value = {
+            'created': 50,
+            'updated': 0,
+            'failed': 0,
+            'errors': []
+        }
         mock_service_class.return_value = mock_service
 
         # with max_properties=10
@@ -221,27 +243,29 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         mock_service = MagicMock()
         mock_properties = MockRightmoveService.get_mock_search_results(num_properties=5)
 
-        # Make one property have invalid data (missing required fields)
-        mock_properties[2]['address'] = None  # This will cause mapping to fail
-
         mock_service.scrape_properties_by_search.return_value = mock_properties
+
+        # Mock batch_create_properties to simulate partial failure
+        def batch_side_effect(properties_data, property_list, progress_callback=None):
+            # Simulate calling the progress callback
+            if progress_callback:
+                progress_callback(created=4, updated=0, failed=1)
+            return {
+                'created': 4,
+                'updated': 0,
+                'failed': 1,
+                'errors': [{'error': 'Mapping failed', 'property_data': {}}]
+            }
+
+        mock_service.batch_create_properties.side_effect = batch_side_effect
+
         mock_service_class.return_value = mock_service
 
-        
-        with patch('property.tasks._map_rightmove_to_property') as mock_map:
-            # Make mapping fail for 3rd property
-            def map_side_effect(data):
-                if data.get('external_id') == 'prop_102':
-                    raise Exception('Mapping failed')
-                return _map_rightmove_to_property(data)
-
-            mock_map.side_effect = map_side_effect
-
-            result = scrape_rightmove_properties(str(self.task.uuid))
+        result = scrape_rightmove_properties(str(self.task.uuid))
 
         # Should have created 4 out of 5 properties
-        self.assertGreaterEqual(result['created'], 4)
-        self.assertGreaterEqual(result['failed'], 1)
+        self.assertEqual(result['created'], 4)
+        self.assertEqual(result['failed'], 1)
 
         # Task should still be completed
         self.task.refresh_from_db()

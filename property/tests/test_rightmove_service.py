@@ -102,7 +102,7 @@ class RightmoveServiceTest(TestCase):
 
         # Test
         url = 'https://www.rightmove.co.uk/properties/123456'
-        property_data = self.service.extract_property_data(url)
+        property_data = self.service.extract_property_data(url, 'url')
 
         
         self.assertEqual(property_data['external_id'], '123456')
@@ -243,7 +243,7 @@ class RightmoveServiceTest(TestCase):
         url = 'https://www.rightmove.co.uk/properties/123456'
 
         with self.assertRaises(ValueError) as context:
-            self.service.extract_property_data(url)
+            self.service.extract_property_data(url, 'url')
 
         self.assertIn('Failed to parse', str(context.exception))
 

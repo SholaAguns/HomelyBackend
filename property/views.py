@@ -605,7 +605,6 @@ class SchoolViewSet(viewsets.ViewSet):
     """
     permission_classes = [IsAuthenticated]
 
-    @action(detail=False, methods=['get'], url_path='ofsted/(?P<urn>[^/.]+)')
     def ofsted_report(self, request, urn=None):
         """
         Get Ofsted report for a school by URN.
