@@ -8,7 +8,10 @@
       "Bash(timeout /t 3)",
       "Bash(source .venv/Scripts/activate)",
       "Bash(findstr:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(dir:*)",
+      "WebSearch",
+      "WebFetch(domain:community.fabric.microsoft.com)"
     ]
   }
 }

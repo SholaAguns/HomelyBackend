@@ -87,3 +87,25 @@ class PropertyUpdateConsumer(AsyncJsonWebsocketConsumer):
             'type': 'progress_update',
             'data': event['data']
         })
+
+    # Property list scrape handlers
+    async def scrape_progress(self, event):
+        """Send scrape progress update to WebSocket."""
+        await self.send_json({
+            'type': 'scrape_progress',
+            'data': event['data']
+        })
+
+    async def scrape_complete(self, event):
+        """Send scrape completion notification to WebSocket."""
+        await self.send_json({
+            'type': 'scrape_complete',
+            'data': event['data']
+        })
+
+    async def scrape_failed(self, event):
+        """Send scrape failure notification to WebSocket."""
+        await self.send_json({
+            'type': 'scrape_failed',
+            'data': event['data']
+        })

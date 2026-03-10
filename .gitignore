@@ -2,8 +2,11 @@
 .env
 settings_old.py
 *.sqlite3
+*.pyc
 
 drafts/
+
+__pycache__/
 
 # Distribution / packaging
 .Python
@@ -61,3 +64,8 @@ todo
 .obsidian/
 
 poc/
+/.env.docker
+
+
+*debug.json
+/property/services/rightmove_response_debug_just_5.json

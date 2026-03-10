@@ -23,4 +23,4 @@ COPY . .
 EXPOSE 8000
 
 # Run server
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["uvicorn", "homely_core.asgi:application", "--host", "0.0.0.0", "--port", "8000"]

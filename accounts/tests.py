@@ -86,7 +86,7 @@ class RegisterViewTest(APITestCase):
         response = self.client.post('/api/accounts/register/', data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('password', response.data)
+        self.assertIn('password', response.data.get('details', response.data))
 
     def test_register_duplicate_email(self):
         """Registration fails with duplicate email"""
@@ -104,7 +104,7 @@ class RegisterViewTest(APITestCase):
         response = self.client.post('/api/accounts/register/', data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('email', response.data)
+        self.assertIn('email', response.data.get('details', response.data))
 
 
 class LoginViewTest(APITestCase):

@@ -1,6 +1,8 @@
 from .stage1_models import *
 from .stage2_models import *
 from .stage3_models import *
+from .models_school import School
+from .models_connectivity import BroadbandCoverage, MobileCoverage
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 

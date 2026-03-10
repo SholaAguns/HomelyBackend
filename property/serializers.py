@@ -4,7 +4,50 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
-from property.models import Property, PropertyList, SavedLocation
+from property.models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage
+
+
+class SearchCriteriaSerializer(serializers.ModelSerializer):
+    """Serializer for SearchCriteria model"""
+
+    class Meta:
+        model = SearchCriteria
+        fields = [
+            'id', 'area', 'bedrooms_min', 'bedrooms_max',
+            'bathrooms_min', 'bathrooms_max', 'price_min', 'price_max',
+            'radius', 'property_types', 'max_days_since_added',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_area(self, value):
+        """Validate area is not empty"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Area cannot be empty")
+        return value.strip()
+
+    def validate(self, data):
+        """Cross-field validation"""
+        # Validate min/max ranges
+        if data.get('bedrooms_min') and data.get('bedrooms_max'):
+            if data['bedrooms_min'] > data['bedrooms_max']:
+                raise serializers.ValidationError({
+                    'bedrooms_min': 'Minimum bedrooms cannot be greater than maximum'
+                })
+
+        if data.get('bathrooms_min') and data.get('bathrooms_max'):
+            if data['bathrooms_min'] > data['bathrooms_max']:
+                raise serializers.ValidationError({
+                    'bathrooms_min': 'Minimum bathrooms cannot be greater than maximum'
+                })
+
+        if data.get('price_min') and data.get('price_max'):
+            if data['price_min'] > data['price_max']:
+                raise serializers.ValidationError({
+                    'price_min': 'Minimum price cannot be greater than maximum'
+                })
+
+        return data
 
 
 class CreateFromInputSerializer(serializers.Serializer):
@@ -28,12 +71,25 @@ class CreateFromInputSerializer(serializers.Serializer):
         return value.strip()
 
 
+class BulkPropertyCreationSerializer(serializers.Serializer):
+    """Serializer for bulk property creation from search"""
+
+    search_criteria = SearchCriteriaSerializer(required=True)
+    max_properties = serializers.IntegerField(
+        default=100,
+        min_value=1,
+        max_value=100,
+        help_text="Maximum number of properties to scrape (1-100)"
+    )
+
+
 class PropertyListSerializer(serializers.ModelSerializer):
     """Serializer for PropertyList model"""
 
     owner = serializers.ReadOnlyField(source='owner.username')
     properties_count = serializers.SerializerMethodField()
     status_summary = serializers.SerializerMethodField()
+    search_criteria = SearchCriteriaSerializer(read_only=True)
     viewers = serializers.SlugRelatedField(
         slug_field='email',
         queryset=User.objects.all(),
@@ -51,7 +107,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
         model = PropertyList
         fields = [
             'uuid', 'owner', 'title', 'state',
-            'viewers', 'contributors',
+            'search_criteria', 'viewers', 'contributors',
             'properties_count', 'status_summary',
             'created_at', 'updated_at'
         ]
@@ -69,20 +125,35 @@ class PropertyListSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class PropertyImageSerializer(serializers.ModelSerializer):
+    """Serializer for PropertyImage model"""
+
+    class Meta:
+        model = PropertyImage
+        fields = ['id', 'source_url', 'url', 'caption', 'order', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
 class PropertySerializer(serializers.ModelSerializer):
     """Serializer for Property model"""
 
-    property_list = serializers.SlugRelatedField(
+    property_lists = serializers.SerializerMethodField()
+    property_lists_input = serializers.SlugRelatedField(
         slug_field='uuid',
-        queryset=PropertyList.objects.all()
+        queryset=PropertyList.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+        source='property_lists'
     )
-    property_list_title = serializers.ReadOnlyField(source='property_list.title')
     state_display = serializers.CharField(source='get_state_display', read_only=True)
+    images = PropertyImageSerializer(many=True, read_only=True)
+    primary_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Property
         fields = [
-            'uuid', 'property_list', 'property_list_title',
+            'uuid', 'property_lists', 'property_lists_input',
             'state', 'state_display',
             'title', 'address_line_1', 'address_line_2', 'city', 'postcode',
             'latitude', 'longitude',
@@ -93,21 +164,40 @@ class PropertySerializer(serializers.ModelSerializer):
             'external_id', 'external_url',
             'normalized_address', 'uprn',
             'overall_rating', 'rating_breakdown', 'disqualified', 'disqualification_reason',
+            'images', 'primary_image',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'uuid', 'state', 'state_display', 'property_list_title',
+            'uuid', 'state', 'state_display', 'property_lists',
             'normalized_address', 'uprn',
             'overall_rating', 'rating_breakdown', 'disqualified', 'disqualification_reason',
+            'images', 'primary_image',
             'created_at', 'updated_at'
         ]
 
-    def validate_property_list(self, value):
+    def get_property_lists(self, obj):
+        """Get dict of {uuid: title} for lists this property belongs to (filtered by owner access)"""
+        request = self.context.get('request')
+        if not request:
+            return {}
+
+        # Filter to lists owned by current user (TODO: add contributor access)
+        user_lists = obj.property_lists.filter(owner=request.user)
+        return {str(pl.uuid): pl.title for pl in user_lists}
+
+    def validate_property_lists_input(self, value):
         """Ensure user can only add properties to their own lists"""
         request = self.context.get('request')
-        if request and value.owner != request.user:
-            raise serializers.ValidationError("Cannot add property to another user's list")
+        if request:
+            for prop_list in value:
+                if prop_list.owner != request.user:
+                    raise serializers.ValidationError("Cannot add property to another user's list")
         return value
+
+    def get_primary_image(self, obj):
+        """Get the primary (first) image for the property"""
+        first_image = obj.images.first()
+        return PropertyImageSerializer(first_image).data if first_image else None
 
     def validate_postcode(self, value):
         """Validate UK postcode format"""
@@ -227,3 +317,40 @@ class PropertyListDetailSerializer(PropertyListSerializer):
 
     class Meta(PropertyListSerializer.Meta):
         fields = PropertyListSerializer.Meta.fields + ['properties']
+
+
+class PropertyListTaskSerializer(serializers.ModelSerializer):
+    """Serializer for PropertyListTask model"""
+
+    property_list_uuid = serializers.ReadOnlyField(source='property_list.uuid')
+    property_list_title = serializers.ReadOnlyField(source='property_list.title')
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    task_type_display = serializers.CharField(source='get_task_type_display', read_only=True)
+    progress_percentage = serializers.IntegerField(read_only=True)
+    websocket_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PropertyListTask
+        fields = [
+            'uuid', 'property_list_uuid', 'property_list_title',
+            'task_type', 'task_type_display', 'status', 'status_display',
+            'celery_task_id', 'total_items', 'completed_items', 'failed_items',
+            'progress_percentage', 'errors', 'error_message', 'metadata',
+            'websocket_url', 'created_at', 'updated_at', 'completed_at'
+        ]
+        read_only_fields = [
+            'uuid', 'property_list_uuid', 'property_list_title',
+            'status', 'status_display', 'task_type_display',
+            'celery_task_id', 'total_items', 'completed_items', 'failed_items',
+            'progress_percentage', 'errors', 'error_message', 'metadata',
+            'websocket_url', 'created_at', 'updated_at', 'completed_at'
+        ]
+
+    def get_websocket_url(self, obj):
+        """Return websocket URL for progress updates"""
+        request = self.context.get('request')
+        if request:
+            ws_scheme = 'wss' if request.is_secure() else 'ws'
+            host = request.get_host()
+            return f"{ws_scheme}://{host}/ws/property-list/{obj.property_list.uuid}/"
+        return None
