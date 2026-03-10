@@ -15,7 +15,7 @@ from property.serializers import (
     PropertyListSerializer, PropertyListDetailSerializer,
     SavedLocationSerializer, CreateFromInputSerializer,
     BulkPropertyCreationSerializer, PropertyListTaskSerializer,
-    SearchCriteriaSerializer
+    SearchCriteriaSerializer, PlaceOfInterestSerializer
 )
 from property.tasks import retrieve_context_data, calculate_property_rating, scrape_rightmove_properties
 from property.services import property_creation_service_factory
@@ -76,9 +76,9 @@ class PropertyListViewSet(viewsets.ModelViewSet):
                 'message': 'All properties have already started or completed Stage 2'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Queue bulk task
+        # Queue bulk task with property_list_id
         property_ids = list(new_properties.values_list('id', flat=True))
-        bulk_retrieve_context_data.delay(property_ids)
+        bulk_retrieve_context_data.delay(property_ids, property_list.id)
 
         return Response({
             'status': 'bulk_stage2_queued',
@@ -450,6 +450,32 @@ class PropertyViewSet(viewsets.ModelViewSet):
                     {'error': f'Failed to fetch mobile data: {str(e)}'},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
+
+    @action(detail=True, methods=['get'], url_path='places-of-interest')
+    def places_of_interest(self, request, uuid=None):
+        """
+        Get Places of Interest for property.
+
+        Optional query param:
+        - place_type: Filter by specific type (e.g., 'school', 'hospital')
+        """
+        from property.models import PlaceOfInterest
+
+        property_obj = self.get_object()
+        place_type = request.query_params.get('place_type')
+
+        # Query POIs for this property
+        pois = PlaceOfInterest.objects.filter(property=property_obj)
+
+        # Filter by type if specified
+        if place_type:
+            pois = pois.filter(place_type=place_type)
+
+        # Order by distance
+        pois = pois.order_by('place_type', 'straight_distance_km')
+
+        serializer = PlaceOfInterestSerializer(pois, many=True)
+        return Response(serializer.data)
 
     @extend_schema(
         request=CreateFromInputSerializer,

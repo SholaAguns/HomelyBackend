@@ -4,7 +4,7 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
-from property.models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage
+from property.models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, PlaceOfInterest
 
 
 class SearchCriteriaSerializer(serializers.ModelSerializer):
@@ -132,6 +132,22 @@ class PropertyImageSerializer(serializers.ModelSerializer):
         model = PropertyImage
         fields = ['id', 'source_url', 'url', 'caption', 'order', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class PlaceOfInterestSerializer(serializers.ModelSerializer):
+    """Serializer for PlaceOfInterest model"""
+
+    class Meta:
+        model = PlaceOfInterest
+        fields = [
+            'uuid', 'place_id', 'place_type', 'name', 'address',
+            'latitude', 'longitude', 'website_url', 'phone_number',
+            'google_maps_url', 'straight_distance_km',
+            'driving_distance_km', 'driving_time_min',
+            'walking_distance_km', 'walking_time_min',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['uuid', 'created_at', 'updated_at']
 
 
 class PropertySerializer(serializers.ModelSerializer):

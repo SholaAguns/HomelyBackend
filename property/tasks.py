@@ -10,24 +10,38 @@ logger = logging.getLogger('property.tasks')
 
 
 @shared_task(bind=True, max_retries=3)
-def retrieve_context_data(self, property_id):
+def retrieve_context_data(self, property_id, property_list_id=None):
     """
     Orchestrates Stage 2 context data retrieval.
 
     Creates ContextData records for enabled services and launches
     individual service tasks. Property must be in 'New' or 'Stage2Complete' state.
+
+    Args:
+        property_id: Property ID
+        property_list_id: Optional PropertyList ID (if running from specific list)
+                         If None, compiles services from all property lists
     """
-    from property.models import Property, ContextData
+    from property.models import Property, ContextData, PropertyList
 
     try:
-        property_obj = Property.objects.select_related('property_list__context_options').get(id=property_id)
+        property_obj = Property.objects.prefetch_related(
+            'property_lists__context_options'
+        ).get(id=property_id)
 
-        # Check if context options configured
-        if not hasattr(property_obj.property_list, 'context_options'):
-            raise ValueError('Context options not configured for this property list')
-
-        context_options = property_obj.property_list.context_options
-        enabled_services = context_options.get_enabled_services()
+        # Determine which services to run
+        if property_list_id:
+            # Running from specific list - use that list's context options
+            try:
+                property_list = PropertyList.objects.select_related('context_options').get(id=property_list_id)
+                if not hasattr(property_list, 'context_options'):
+                    raise ValueError(f'Context options not configured for property list {property_list.title}')
+                enabled_services = property_list.context_options.get_enabled_services()
+            except PropertyList.DoesNotExist:
+                raise ValueError(f'Property list {property_list_id} not found')
+        else:
+            # Running from individual property - compile from all lists
+            enabled_services = _get_enabled_services_from_all_lists(property_obj)
 
         if not enabled_services:
             raise ValueError('No context services enabled')
@@ -207,13 +221,17 @@ def calculate_property_rating(self, property_id):
 
 
 @shared_task
-def bulk_retrieve_context_data(property_ids):
+def bulk_retrieve_context_data(property_ids, property_list_id=None):
     """
     Bulk task to retrieve context data for multiple properties.
     Queues individual tasks for each property.
+
+    Args:
+        property_ids: List of property IDs
+        property_list_id: Optional PropertyList ID (when running from specific list)
     """
     for property_id in property_ids:
-        retrieve_context_data.delay(property_id)
+        retrieve_context_data.delay(property_id, property_list_id)
 
     return f'Queued context retrieval for {len(property_ids)} properties'
 
@@ -533,6 +551,26 @@ def _send_service_update(property_obj, service_name, status, data=None, error=No
     }
 
     _send_websocket_update(property_obj.id, 'service_update', message_data)
+
+
+def _get_enabled_services_from_all_lists(property_obj):
+    """
+    Compile unique set of enabled services from all property lists.
+
+    Args:
+        property_obj: Property instance
+
+    Returns:
+        List of unique service names enabled across all lists
+    """
+    enabled_services = set()
+
+    for property_list in property_obj.property_lists.all():
+        context_options = getattr(property_list, 'context_options', None)
+        if context_options:
+            enabled_services.update(context_options.get_enabled_services())
+
+    return list(enabled_services)
 
 
 def _get_service_params(property_obj, service_name):
