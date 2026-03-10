@@ -4,6 +4,9 @@ from .crime_service import CrimeService
 from .school_service import SchoolRatingService
 from .broadband_dataset_service import BroadbandDatasetService
 from .mobile_dataset_service import MobileDatasetService
+from .poi_service import POIService
+from .googlemaps_service import GoogleMapsService
+from .igeoservice import IGeoService
 
 __all__ = [
     'IContextService',
@@ -12,4 +15,7 @@ __all__ = [
     'SchoolRatingService',
     'BroadbandDatasetService',
     'MobileDatasetService',
+    'POIService',
+    'GoogleMapsService',
+    'IGeoService',
 ]

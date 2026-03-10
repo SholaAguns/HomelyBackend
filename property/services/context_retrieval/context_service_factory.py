@@ -7,6 +7,7 @@ from .crime_service import CrimeService
 from .school_service import SchoolRatingService
 from .broadband_dataset_service import BroadbandDatasetService
 from .mobile_dataset_service import MobileDatasetService
+from .poi_service import POIService
 
 
 def context_service_factory(service_name: str) -> Optional[IContextService]:
@@ -27,8 +28,7 @@ def context_service_factory(service_name: str) -> Optional[IContextService]:
         'schools': SchoolRatingService,
         'broadband': BroadbandDatasetService,
         'mobile': MobileDatasetService,
-        # Future services:
-        # 'poi': PlacesOfInterestService,
+        'poi': POIService,
     }
 
     service_class = services.get(service_name)
