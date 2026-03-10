@@ -1,8 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from property.views import PropertyListViewSet, PropertyViewSet, SavedLocationViewSet, SchoolViewSet
-from property.connectivity_admin_views import upload_broadband_data, upload_mobile_data
-from property.admin_views import SchoolAdminViewSet
+from property.admin_views import SchoolAdminViewSet, upload_broadband_data, upload_mobile_data
 
 router = DefaultRouter()
 router.register(r'property-lists', PropertyListViewSet, basename='propertylist')

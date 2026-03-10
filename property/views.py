@@ -359,6 +359,98 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @action(detail=True, methods=['get'], url_path='broadband')
+    def broadband(self, request, uuid=None):
+        """Get broadband coverage data for property"""
+        from property.models import ContextData
+        from property.services.context.broadband_dataset_service import BroadbandDatasetService
+
+        property_obj = self.get_object()
+
+        # Try to get from context data first
+        try:
+            context_data = ContextData.objects.get(
+                property=property_obj,
+                service_name='broadband'
+            )
+
+            if context_data.status == 'COMPLETE':
+                return Response(context_data.data)
+            elif context_data.status == 'FAILED':
+                return Response(
+                    {
+                        'error': 'Failed to fetch broadband data',
+                        'message': context_data.error_message
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            else:
+                return Response(
+                    {
+                        'status': context_data.status,
+                        'message': 'Broadband data is being fetched'
+                    },
+                    status=status.HTTP_202_ACCEPTED
+                )
+
+        except ContextData.DoesNotExist:
+            # Fetch on-demand if not in context data
+            try:
+                service = BroadbandDatasetService()
+                data = service.fetch_data(property_obj)
+                return Response(data)
+            except Exception as e:
+                return Response(
+                    {'error': f'Failed to fetch broadband data: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+    @action(detail=True, methods=['get'], url_path='mobile')
+    def mobile(self, request, uuid=None):
+        """Get mobile coverage data for property"""
+        from property.models import ContextData
+        from property.services.context.mobile_dataset_service import MobileDatasetService
+
+        property_obj = self.get_object()
+
+        # Try to get from context data first
+        try:
+            context_data = ContextData.objects.get(
+                property=property_obj,
+                service_name='mobile'
+            )
+
+            if context_data.status == 'COMPLETE':
+                return Response(context_data.data)
+            elif context_data.status == 'FAILED':
+                return Response(
+                    {
+                        'error': 'Failed to fetch mobile data',
+                        'message': context_data.error_message
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            else:
+                return Response(
+                    {
+                        'status': context_data.status,
+                        'message': 'Mobile data is being fetched'
+                    },
+                    status=status.HTTP_202_ACCEPTED
+                )
+
+        except ContextData.DoesNotExist:
+            # Fetch on-demand if not in context data
+            try:
+                service = MobileDatasetService()
+                data = service.fetch_data(property_obj)
+                return Response(data)
+            except Exception as e:
+                return Response(
+                    {'error': f'Failed to fetch mobile data: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
     @extend_schema(
         request=CreateFromInputSerializer,
         responses={

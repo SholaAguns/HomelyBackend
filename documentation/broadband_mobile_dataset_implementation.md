@@ -104,24 +104,24 @@ Implement static dataset import & querying for broadband/mobile coverage while a
   - Services already registered in ContextOptions (enable_broadband, enable_mobile)
 - [ ] Test end-to-end flow: Property → postcode → OA/LAUA → dataset lookup → ContextData storage
 
-### Phase 5: API Endpoints
-- [ ] Create GET `/api/properties/{id}/broadband/` endpoint
+### Phase 5: API Endpoints - done
+- [x] Create GET `/api/properties/{id}/broadband/` endpoint
   - Return broadband data from ContextData or fetch+store
-  - Response: `{download_mbps, upload_mbps, full_fibre_pct, data_source: "Ofcom Dataset 2024-07"}`
-- [ ] Create GET `/api/properties/{id}/mobile/` endpoint
+  - Response: `{max_download_mbps, max_upload_mbps, download_speeds, upload_speeds, full_fibre, data_source, granularity}`
+- [x] Create GET `/api/properties/{id}/mobile/` endpoint
   - Return mobile coverage from ContextData
-  - Response: `{4g_pct, 5g_pct, indoor_coverage, outdoor_coverage, data_source: "Ofcom Dataset 2024-09"}`
-- [ ] Add to property detail serializer (optional nested fields)
+  - Response: `{scores, 4g_coverage, 5g_coverage_*, voice_coverage, data_coverage, data_source, granularity}`
+- [ ] Add to property detail serializer (optional nested fields) - not needed, use separate endpoints
 
-### Phase 6: Testing
-- [ ] Unit tests for import commands
-  - Mock CSV parsing
-  - Test duplicate handling
-  - Test error cases
-- [ ] Unit tests for lookup services
+### Phase 6: Testing - done
+- [x] Unit tests for services (test_connectivity_services.py - 15 tests)
   - Test postcode → OA/LAUA mapping
   - Test DB queries
-  - Test cache behavior
+  - Test error cases (no postcode, no OA, no coverage data)
+  - Test model methods (get_max_download_speed, get_4g_coverage_score, etc.)
+- [x] Model method tests
+  - BroadbandCoverage: max speed calculations
+  - MobileCoverage: coverage score calculations
 - [ ] Integration tests
   - Test full property → context data flow
   - Test API endpoints
