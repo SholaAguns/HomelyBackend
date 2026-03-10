@@ -44,7 +44,7 @@ class CrimeService(IContextService):
     def get_cache_ttl(self) -> int:
         return self.CACHE_TTL
 
-    def fetch_data(self, property_obj) -> Dict[str, Any]:
+    def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
         """
         Fetch crime data from UK Police API.
 

@@ -14,12 +14,13 @@ class IContextService(ABC):
     """
 
     @abstractmethod
-    def fetch_data(self, property_obj) -> Dict[str, Any]:
+    def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
         """
         Fetch context data for a property from external API.
 
         Args:
             property_obj: Property model instance
+            **kwargs: Service-specific parameters (e.g., poi_types for POI service)
 
         Returns:
             Dict containing service-specific data

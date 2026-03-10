@@ -93,6 +93,9 @@ def run_service_task(self, property_id, service_name):
         # Get service instance
         service = context_service_factory(service_name)
 
+        # Prepare service-specific parameters
+        service_params = _get_service_params(property_obj, service_name)
+
         # Check cache first
         cache_key = service.get_cache_key(property_obj)
         cached_data = cache.get(cache_key)
@@ -103,7 +106,7 @@ def run_service_task(self, property_id, service_name):
         else:
             logger.info(f'Cache miss for {service_name} - {cache_key}, fetching from API')
             # Fetch from external API
-            data = service.fetch_data(property_obj)
+            data = service.fetch_data(property_obj, **service_params)
 
             # Cache with service-specific TTL
             cache.set(cache_key, data, service.get_cache_ttl())
@@ -530,6 +533,44 @@ def _send_service_update(property_obj, service_name, status, data=None, error=No
     }
 
     _send_websocket_update(property_obj.id, 'service_update', message_data)
+
+
+def _get_service_params(property_obj, service_name):
+    """
+    Get service-specific parameters for fetch_data call.
+
+    For POI service: Compiles poi_types from all property lists
+    For other services: Returns empty dict
+
+    Args:
+        property_obj: Property instance
+        service_name: Name of the service
+
+    Returns:
+        Dict of parameters to pass to service.fetch_data()
+    """
+    if service_name == 'poi':
+        # Compile POI types from all property lists
+        poi_types_set = set()
+        radius = 1600  # Default
+
+        for property_list in property_obj.property_lists.all():
+            context_options = getattr(property_list, 'context_options', None)
+            if context_options and context_options.enable_poi:
+                # Add poi_types from this list
+                if context_options.poi_types:
+                    poi_types_set.update(context_options.poi_types)
+                # Use the largest radius from all lists
+                if context_options.poi_search_radius_meters:
+                    radius = max(radius, context_options.poi_search_radius_meters)
+
+        return {
+            'poi_types': list(poi_types_set),
+            'radius': radius
+        }
+
+    # No special params for other services
+    return {}
 
 
 def _check_stage2_completion(property_obj):

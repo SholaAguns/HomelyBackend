@@ -61,26 +61,33 @@ class POIService(IContextService):
     def get_cache_ttl(self) -> int:
         return self.CACHE_TTL
 
-    def fetch_data(self, property_obj) -> Dict[str, Any]:
+    def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
         """
         Fetch POI data for a property.
 
+        Args:
+            property_obj: Property instance
+            **kwargs:
+                poi_types: List of POI types to search (e.g., ['school', 'hospital'])
+                          If None/empty, returns empty result
+                radius: Search radius in meters (default: 1600)
+
         Process:
-        1. Get enabled poi_types from property's context options
-        2. For each type:
+        1. For each poi_type:
            - Check cache (grid-based key)
            - If not cached, search Google Maps API
            - Store top 3 in PlaceOfInterest model
            - Cache results
-        3. Return formatted data
+        2. Return formatted data
 
         Returns:
             Dict with POI data grouped by type
         """
         self.validate_property_data(property_obj)
 
-        # Get enabled POI types from context options
-        poi_types, radius = self._get_enabled_poi_types(property_obj)
+        # Extract parameters from kwargs
+        poi_types = kwargs.get('poi_types', [])
+        radius = kwargs.get('radius', 1600)
 
         if not poi_types:
             logger.info(f"No POI types enabled for property {property_obj.uuid}")
@@ -122,26 +129,6 @@ class POIService(IContextService):
             all_pois, poi_types, radius
         )
 
-    def _get_enabled_poi_types(self, property_obj) -> tuple[List[str], int]:
-        """
-        Get enabled POI types from property's context options.
-
-        Returns:
-            Tuple of (poi_types_list, search_radius_meters)
-        """
-        # Get first property list (property can be in multiple lists)
-        property_list = property_obj.property_lists.first()
-        if not property_list:
-            return [], 1600
-
-        context_options = getattr(property_list, 'context_options', None)
-        if not context_options:
-            return [], 1600
-
-        poi_types = context_options.poi_types or []
-        radius = context_options.poi_search_radius_meters or 1600
-
-        return poi_types, radius
 
     def _search_poi_type(
         self,
