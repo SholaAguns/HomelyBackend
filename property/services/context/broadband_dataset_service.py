@@ -80,9 +80,9 @@ class BroadbandDatasetService(IContextService):
             'laua_code': coverage.laua_code,
             'laua_name': coverage.laua_name,
 
-            # Calculated averages
-            'avg_download_mbps': float(coverage.get_weighted_download_speed() or 0),
-            'avg_upload_mbps': float(coverage.get_weighted_upload_speed() or 0),
+            # Maximum available speeds
+            'max_download_mbps': float(coverage.get_max_download_speed() or 0),
+            'max_upload_mbps': float(coverage.get_max_upload_speed() or 0),
 
             # Speed tiers (download)
             'download_speeds': {

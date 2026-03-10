@@ -54,31 +54,35 @@ class BroadbandCoverage(models.Model):
     def __str__(self):
         return f"Broadband {self.oa_code} ({self.data_date})"
 
-    def get_weighted_download_speed(self):
-        """Calculate weighted average download speed across all tiers"""
+    def get_max_download_speed(self):
+        """Get maximum available download speed from highest non-zero tier"""
         speeds = [
-            (self.avg_download_under_10 or 0, 5),      # midpoint 5
-            (self.avg_download_10_to_30 or 0, 20),     # midpoint 20
-            (self.avg_download_30_to_100 or 0, 65),    # midpoint 65
-            (self.avg_download_100_to_300 or 0, 200),  # midpoint 200
-            (self.avg_download_300_to_900 or 0, 600),  # midpoint 600
-            (self.avg_download_over_900 or 0, 1000),   # assume 1000
+            (self.avg_download_over_900, 900),
+            (self.avg_download_300_to_900, 600),
+            (self.avg_download_100_to_300, 200),
+            (self.avg_download_30_to_100, 65),
+            (self.avg_download_10_to_30, 20),
+            (self.avg_download_under_10, 5),
         ]
-        total = sum(actual or midpoint for actual, midpoint in speeds)
-        return total / len(speeds) if total > 0 else None
+        for speed_value, _ in speeds:
+            if speed_value and speed_value > 0:
+                return float(speed_value)
+        return None
 
-    def get_weighted_upload_speed(self):
-        """Calculate weighted average upload speed across all tiers"""
+    def get_max_upload_speed(self):
+        """Get maximum available upload speed from highest non-zero tier"""
         speeds = [
-            (self.avg_upload_under_10 or 0, 5),
-            (self.avg_upload_10_to_30 or 0, 20),
-            (self.avg_upload_30_to_100 or 0, 65),
-            (self.avg_upload_100_to_300 or 0, 200),
-            (self.avg_upload_300_to_900 or 0, 600),
-            (self.avg_upload_over_900 or 0, 1000),
+            (self.avg_upload_over_900, 900),
+            (self.avg_upload_300_to_900, 600),
+            (self.avg_upload_100_to_300, 200),
+            (self.avg_upload_30_to_100, 65),
+            (self.avg_upload_10_to_30, 20),
+            (self.avg_upload_under_10, 5),
         ]
-        total = sum(actual or midpoint for actual, midpoint in speeds)
-        return total / len(speeds) if total > 0 else None
+        for speed_value, _ in speeds:
+            if speed_value and speed_value > 0:
+                return float(speed_value)
+        return None
 
 
 class MobileCoverage(models.Model):

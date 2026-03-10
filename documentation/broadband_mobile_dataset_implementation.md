@@ -4,6 +4,12 @@
 **Status**: Primary implementation (Option 1 API reserved as backup)
 **Source**: Ofcom Connected Nations static datasets
 
+**Last Updated**: 2026-03-10
+**Recent Changes**:
+- Fixed speed calculation methods (now returns max available speed, not incorrect weighted average)
+- Consolidated geocoding utilities (deleted geocoding_service.py, moved all to geocoding.py)
+- Added admin CSV upload endpoints for broadband and mobile data
+
 ---
 
 ## Overview
@@ -55,7 +61,7 @@ Implement static dataset import & querying for broadband/mobile coverage while a
 ### Phase 2: Data Import Commands - done
 - [x] Create `management/commands/import_broadband_data.py`
   - Parse OA-level CSV (most granular)
-  - Calculate weighted averages for speed ranges
+  - ~~Calculate weighted averages for speed ranges~~ Get max available speed
   - Bulk create records with transaction
   - Add progress indicators
   - Handle duplicates (upsert logic)
@@ -65,6 +71,7 @@ Implement static dataset import & querying for broadband/mobile coverage while a
   - Calculate composite scores
   - Bulk create with transaction
 - [x] Test import commands locally (OA import running in background)
+- [x] Admin CSV upload endpoints created (POST /api/admin/broadband/upload/, POST /api/admin/mobile/upload/)
 - [ ] Document import process in README
 
 ### Phase 3: Lookup Services - done
@@ -82,7 +89,11 @@ Implement static dataset import & querying for broadband/mobile coverage while a
   - Method: `postcode_to_oa(postcode)` → Postcodes.io API
   - Method: `postcode_to_laua(postcode)` → Postcodes.io API
   - Method: `postcode_to_geo_info(postcode)` → full info
+  - Method: `geocode_postcode(postcode)` → lat/lng
+  - Method: `bulk_geocode_postcodes(postcodes)` → bulk lat/lng
+  - Method: `validate_postcode(postcode)` → validation
   - Cache mapping (indefinite TTL)
+  - **Note**: Consolidated from geocoding_service.py (deleted)
 
 ### Phase 4: Integration with Context System - done
 - [x] Register services in context service factory

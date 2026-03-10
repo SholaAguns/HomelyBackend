@@ -1,17 +1,17 @@
 """
-Tests for PostcodesIOService
+Tests for geocoding utilities
 """
 from unittest.mock import Mock, patch
 from decimal import Decimal
 from django.test import TestCase
 
-from property.services.geocoding_service import PostcodesIOService
+from property.utils.geocoding import geocode_postcode, bulk_geocode_postcodes, validate_postcode
 
 
-class PostcodesIOServiceTest(TestCase):
-    """Test PostcodesIOService geocoding"""
+class GeocodingTest(TestCase):
+    """Test geocoding utilities"""
 
-    @patch('property.services.geocoding_service.requests.get')
+    @patch('property.utils.geocoding.requests.get')
     def test_geocode_postcode_success(self, mock_get):
         """Test successful postcode geocoding"""
         # Mock API response
@@ -28,14 +28,14 @@ class PostcodesIOServiceTest(TestCase):
         mock_get.return_value = mock_response
 
         # Test
-        lat, lng = PostcodesIOService.geocode_postcode('SW1A 1AA')
+        lat, lng = geocode_postcode('SW1A 1AA')
 
         # Verify
         self.assertEqual(lat, Decimal('51.5010096'))
         self.assertEqual(lng, Decimal('-0.1415870'))
         mock_get.assert_called_once()
 
-    @patch('property.services.geocoding_service.requests.get')
+    @patch('property.utils.geocoding.requests.get')
     def test_geocode_postcode_not_found(self, mock_get):
         """Test postcode not found"""
         # Mock 404 response
@@ -44,20 +44,20 @@ class PostcodesIOServiceTest(TestCase):
         mock_get.return_value = mock_response
 
         # Test
-        lat, lng = PostcodesIOService.geocode_postcode('INVALID')
+        lat, lng = geocode_postcode('INVALID')
 
         # Verify
         self.assertIsNone(lat)
         self.assertIsNone(lng)
 
-    @patch('property.services.geocoding_service.requests.get')
+    @patch('property.utils.geocoding.requests.get')
     def test_geocode_postcode_network_error(self, mock_get):
         """Test network error handling"""
         # Mock network error
         mock_get.side_effect = Exception('Network error')
 
         # Test
-        lat, lng = PostcodesIOService.geocode_postcode('SW1A 1AA')
+        lat, lng = geocode_postcode('SW1A 1AA')
 
         # Verify
         self.assertIsNone(lat)
@@ -65,12 +65,12 @@ class PostcodesIOServiceTest(TestCase):
 
     def test_geocode_postcode_empty_input(self):
         """Test empty postcode returns None"""
-        lat, lng = PostcodesIOService.geocode_postcode('')
+        lat, lng = geocode_postcode('')
 
         self.assertIsNone(lat)
         self.assertIsNone(lng)
 
-    @patch('property.services.geocoding_service.requests.post')
+    @patch('property.utils.geocoding.requests.post')
     def test_bulk_geocode_postcodes_success(self, mock_post):
         """Test bulk geocoding success"""
         # Mock bulk API response
@@ -101,7 +101,7 @@ class PostcodesIOServiceTest(TestCase):
 
         # Test
         postcodes = ['SW1A 1AA', 'EC1A 1BB']
-        results = PostcodesIOService.bulk_geocode_postcodes(postcodes)
+        results = bulk_geocode_postcodes(postcodes)
 
         # Verify
         self.assertEqual(len(results), 2)
@@ -112,7 +112,7 @@ class PostcodesIOServiceTest(TestCase):
         self.assertEqual(sw1a_lat, Decimal('51.5010096'))
         self.assertEqual(sw1a_lng, Decimal('-0.1415870'))
 
-    @patch('property.services.geocoding_service.requests.post')
+    @patch('property.utils.geocoding.requests.post')
     def test_bulk_geocode_postcodes_partial_success(self, mock_post):
         """Test bulk geocoding with some failures"""
         # Mock bulk API response with one success, one failure
@@ -139,7 +139,7 @@ class PostcodesIOServiceTest(TestCase):
 
         # Test
         postcodes = ['SW1A 1AA', 'INVALID']
-        results = PostcodesIOService.bulk_geocode_postcodes(postcodes)
+        results = bulk_geocode_postcodes(postcodes)
 
         # Verify
         self.assertEqual(len(results), 2)
@@ -158,11 +158,11 @@ class PostcodesIOServiceTest(TestCase):
 
     def test_bulk_geocode_empty_list(self):
         """Test bulk geocode with empty list"""
-        results = PostcodesIOService.bulk_geocode_postcodes([])
+        results = bulk_geocode_postcodes([])
 
         self.assertEqual(results, {})
 
-    @patch('property.services.geocoding_service.requests.post')
+    @patch('property.utils.geocoding.requests.post')
     def test_bulk_geocode_respects_limit(self, mock_post):
         """Test bulk geocode limits to 100 postcodes"""
         # Create 150 postcodes
@@ -175,14 +175,14 @@ class PostcodesIOServiceTest(TestCase):
         mock_post.return_value = mock_response
 
         # Test
-        PostcodesIOService.bulk_geocode_postcodes(postcodes)
+        bulk_geocode_postcodes(postcodes)
 
         # Verify only 100 were sent
         call_args = mock_post.call_args
         sent_postcodes = call_args[1]['json']['postcodes']
         self.assertEqual(len(sent_postcodes), 100)
 
-    @patch('property.services.geocoding_service.requests.get')
+    @patch('property.utils.geocoding.requests.get')
     def test_validate_postcode_valid(self, mock_get):
         """Test postcode validation for valid postcode"""
         # Mock response
@@ -192,12 +192,12 @@ class PostcodesIOServiceTest(TestCase):
         mock_get.return_value = mock_response
 
         # Test
-        is_valid = PostcodesIOService.validate_postcode('SW1A 1AA')
+        is_valid = validate_postcode('SW1A 1AA')
 
         # Verify
         self.assertTrue(is_valid)
 
-    @patch('property.services.geocoding_service.requests.get')
+    @patch('property.utils.geocoding.requests.get')
     def test_validate_postcode_invalid(self, mock_get):
         """Test postcode validation for invalid postcode"""
         # Mock response
@@ -207,13 +207,13 @@ class PostcodesIOServiceTest(TestCase):
         mock_get.return_value = mock_response
 
         # Test
-        is_valid = PostcodesIOService.validate_postcode('INVALID')
+        is_valid = validate_postcode('INVALID')
 
         # Verify
         self.assertFalse(is_valid)
 
     def test_validate_postcode_empty(self):
         """Test validation of empty postcode"""
-        is_valid = PostcodesIOService.validate_postcode('')
+        is_valid = validate_postcode('')
 
         self.assertFalse(is_valid)
