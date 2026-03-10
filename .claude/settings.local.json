@@ -10,7 +10,8 @@
       "Bash(findstr:*)",
       "Bash(python:*)",
       "Bash(dir:*)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:community.fabric.microsoft.com)"
     ]
   }
 }

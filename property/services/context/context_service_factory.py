@@ -5,6 +5,8 @@ from typing import Optional
 from .interface import IContextService
 from .crime_service import CrimeService
 from .school_service import SchoolRatingService
+from .broadband_dataset_service import BroadbandDatasetService
+from .mobile_dataset_service import MobileDatasetService
 
 
 def context_service_factory(service_name: str) -> Optional[IContextService]:
@@ -12,7 +14,7 @@ def context_service_factory(service_name: str) -> Optional[IContextService]:
     Create context service instance by name.
 
     Args:
-        service_name: Service identifier ('crime', 'schools', 'broadband', etc.)
+        service_name: Service identifier ('crime', 'schools', 'broadband', etc.')
 
     Returns:
         IContextService instance
@@ -23,9 +25,9 @@ def context_service_factory(service_name: str) -> Optional[IContextService]:
     services = {
         'crime': CrimeService,
         'schools': SchoolRatingService,
+        'broadband': BroadbandDatasetService,
+        'mobile': MobileDatasetService,
         # Future services:
-        # 'broadband': BroadbandService,
-        # 'mobile': MobileCoverageService,
         # 'poi': PlacesOfInterestService,
     }
 

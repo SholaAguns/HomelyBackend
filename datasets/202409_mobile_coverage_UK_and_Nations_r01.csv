@@ -1,0 +1,736 @@
+Location,Technology,Coverage type,Rurality,MNO,Coverage percentage,Coverage volume,Date
+UK,5G high confidence,Geographic,Rural,TF,24.02,5179206,Sep-24
+UK,5G high confidence,Geographic,Rural,At least one,55.25,11913048,Sep-24
+UK,5G high confidence,Geographic,Rural,VO,10.69,2304338,Sep-24
+UK,5G high confidence,Geographic,Rural,EE,37.19,8019344,Sep-24
+UK,5G high confidence,Geographic,Rural,None,44.75,9649164,Sep-24
+UK,5G high confidence,Geographic,Rural,All,1.56,335469,Sep-24
+UK,5G high confidence,Geographic,Rural,H3,17.53,3779366,Sep-24
+Northern Ireland,5G high confidence,Geographic,Urban,TF,91.46,105654,Sep-24
+Northern Ireland,5G high confidence,Geographic,Urban,EE,32.54,37589,Sep-24
+Northern Ireland,5G high confidence,Geographic,Urban,At least one,93.54,108064,Sep-24
+Northern Ireland,5G high confidence,Geographic,Urban,None,6.46,7458,Sep-24
+Northern Ireland,5G high confidence,Geographic,Urban,All,13.75,15889,Sep-24
+Northern Ireland,5G high confidence,Geographic,Urban,H3,35.43,40924,Sep-24
+Northern Ireland,5G high confidence,Geographic,Urban,VO,26.58,30701,Sep-24
+Wales,5G very high confidence,Geographic,Urban,None,23.28,50296,Sep-24
+Wales,5G very high confidence,Geographic,Urban,All,3.47,7494,Sep-24
+Wales,5G very high confidence,Geographic,Urban,TF,7.30,15767,Sep-24
+Wales,5G very high confidence,Geographic,Urban,At least one,76.72,165784,Sep-24
+Wales,5G very high confidence,Geographic,Urban,H3,24.81,53612,Sep-24
+Wales,5G very high confidence,Geographic,Urban,VO,13.73,29665,Sep-24
+Wales,5G very high confidence,Geographic,Urban,EE,71.79,155131,Sep-24
+Wales,5G very high confidence,Geographic,Rural,H3,6.09,113306,Sep-24
+Wales,5G very high confidence,Geographic,Rural,VO,1.48,27593,Sep-24
+Wales,5G very high confidence,Geographic,Rural,TF,0.58,10766,Sep-24
+Wales,5G very high confidence,Geographic,Rural,EE,35.34,658034,Sep-24
+Wales,5G very high confidence,Geographic,Rural,All,0.07,1330,Sep-24
+Wales,5G very high confidence,Geographic,Rural,None,62.48,1163290,Sep-24
+Wales,5G very high confidence,Geographic,Rural,At least one,37.52,698513,Sep-24
+Wales,5G high confidence,Geographic,Urban,VO,20.37,44017,Sep-24
+Wales,5G high confidence,Geographic,Urban,None,14.28,30856,Sep-24
+Wales,5G high confidence,Geographic,Urban,All,6.66,14383,Sep-24
+Wales,5G high confidence,Geographic,Urban,EE,78.78,170222,Sep-24
+Wales,5G high confidence,Geographic,Urban,TF,8.86,19145,Sep-24
+Wales,5G high confidence,Geographic,Urban,H3,50.08,108206,Sep-24
+Wales,5G high confidence,Geographic,Urban,At least one,85.72,185224,Sep-24
+Scotland,4G,Geographic,Urban,VO,99.12,171611,Sep-24
+Scotland,4G,Geographic,Urban,EE,99.05,171494,Sep-24
+Scotland,4G,Geographic,Urban,All,97.91,169524,Sep-24
+Scotland,4G,Geographic,Urban,At least one,99.70,172625,Sep-24
+Scotland,4G,Geographic,Urban,TF,98.69,170867,Sep-24
+Scotland,4G,Geographic,Urban,None,0.30,511,Sep-24
+Scotland,4G,Geographic,Urban,H3,99.21,171764,Sep-24
+England,5G very high confidence,Geographic,Rural,H3,8.47,912488,Sep-24
+England,5G very high confidence,Geographic,Rural,VO,6.59,710492,Sep-24
+England,5G very high confidence,Geographic,Rural,TF,21.45,2311206,Sep-24
+England,5G very high confidence,Geographic,Rural,EE,43.06,4639691,Sep-24
+England,5G very high confidence,Geographic,Rural,At least one,56.26,6062932,Sep-24
+England,5G very high confidence,Geographic,Rural,None,43.74,4713185,Sep-24
+England,5G very high confidence,Geographic,Rural,All,0.47,51043,Sep-24
+Wales,5G high confidence,Geographic,Rural,None,51.80,964365,Sep-24
+Wales,5G high confidence,Geographic,Rural,TF,0.97,18003,Sep-24
+Wales,5G high confidence,Geographic,Rural,All,0.34,6276,Sep-24
+Wales,5G high confidence,Geographic,Rural,At least one,48.20,897438,Sep-24
+Wales,5G high confidence,Geographic,Rural,EE,43.23,804884,Sep-24
+Wales,5G high confidence,Geographic,Rural,H3,15.23,283484,Sep-24
+Wales,5G high confidence,Geographic,Rural,VO,3.32,61786,Sep-24
+England,5G high confidence,Geographic,Urban,TF,64.48,1462596,Sep-24
+England,5G high confidence,Geographic,Urban,VO,54.67,1240186,Sep-24
+England,5G high confidence,Geographic,Urban,At least one,96.10,2179839,Sep-24
+England,5G high confidence,Geographic,Urban,H3,64.76,1468867,Sep-24
+England,5G high confidence,Geographic,Urban,All,28.06,636594,Sep-24
+England,5G high confidence,Geographic,Urban,EE,77.16,1750137,Sep-24
+England,5G high confidence,Geographic,Urban,None,3.90,88464,Sep-24
+UK,4G,Geographic,Urban,VO,99.53,2760387,Sep-24
+UK,4G,Geographic,Urban,All,98.05,2719447,Sep-24
+UK,4G,Geographic,Urban,H3,99.41,2757250,Sep-24
+UK,4G,Geographic,Urban,EE,99.12,2749192,Sep-24
+UK,4G,Geographic,Urban,TF,99.14,2749601,Sep-24
+UK,4G,Geographic,Urban,None,0.09,2485,Sep-24
+UK,4G,Geographic,Urban,At least one,99.91,2771042,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Urban,H3,15.50,17902,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Urban,EE,30.08,34746,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Urban,All,4.41,5096,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Urban,None,13.46,15545,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Urban,VO,15.47,17871,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Urban,TF,81.76,94450,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Urban,At least one,86.54,99977,Sep-24
+Wales,4G,Geographic,Rural,H3,87.05,1620792,Sep-24
+Wales,4G,Geographic,Rural,EE,87.58,1630639,Sep-24
+Wales,4G,Geographic,Rural,At least one,94.93,1767367,Sep-24
+Wales,4G,Geographic,Rural,TF,81.85,1523906,Sep-24
+Wales,4G,Geographic,Rural,All,72.34,1346797,Sep-24
+Wales,4G,Geographic,Rural,VO,82.13,1529131,Sep-24
+Wales,4G,Geographic,Rural,None,5.07,94436,Sep-24
+Scotland,4G,Geographic,Rural,None,11.16,857070,Sep-24
+Scotland,4G,Geographic,Rural,H3,76.16,5848353,Sep-24
+Scotland,4G,Geographic,Rural,At least one,88.84,6822053,Sep-24
+Scotland,4G,Geographic,Rural,All,63.91,4907635,Sep-24
+Scotland,4G,Geographic,Rural,TF,78.26,6009470,Sep-24
+Scotland,4G,Geographic,Rural,EE,78.34,6015985,Sep-24
+Scotland,4G,Geographic,Rural,VO,79.54,6107863,Sep-24
+England,4G,Geographic,Rural,All,87.75,9456139,Sep-24
+England,4G,Geographic,Rural,None,1.61,173498,Sep-24
+England,4G,Geographic,Rural,TF,93.31,10054998,Sep-24
+England,4G,Geographic,Rural,VO,93.92,10120462,Sep-24
+England,4G,Geographic,Rural,H3,94.88,10224044,Sep-24
+England,4G,Geographic,Rural,At least one,98.39,10602619,Sep-24
+England,4G,Geographic,Rural,EE,94.46,10178939,Sep-24
+England,5G high confidence,Geographic,Rural,At least one,71.99,7758075,Sep-24
+England,5G high confidence,Geographic,Rural,EE,52.80,5690028,Sep-24
+England,5G high confidence,Geographic,Rural,None,28.01,3018042,Sep-24
+England,5G high confidence,Geographic,Rural,All,2.47,266264,Sep-24
+England,5G high confidence,Geographic,Rural,H3,23.77,2561293,Sep-24
+England,5G high confidence,Geographic,Rural,TF,31.87,3434701,Sep-24
+England,5G high confidence,Geographic,Rural,VO,16.74,1804349,Sep-24
+Scotland,5G high confidence,Geographic,Rural,All,0.75,57378,Sep-24
+Scotland,5G high confidence,Geographic,Rural,H3,10.78,827435,Sep-24
+Scotland,5G high confidence,Geographic,Rural,At least one,31.23,2397965,Sep-24
+Scotland,5G high confidence,Geographic,Rural,EE,17.67,1356638,Sep-24
+Scotland,5G high confidence,Geographic,Rural,VO,5.28,405252,Sep-24
+Scotland,5G high confidence,Geographic,Rural,TF,11.77,903530,Sep-24
+Scotland,5G high confidence,Geographic,Rural,None,68.77,5281158,Sep-24
+England,5G very high confidence,Geographic,Urban,H3,33.48,759321,Sep-24
+England,5G very high confidence,Geographic,Urban,None,10.04,227820,Sep-24
+England,5G very high confidence,Geographic,Urban,At least one,89.96,2040483,Sep-24
+England,5G very high confidence,Geographic,Urban,TF,55.59,1260945,Sep-24
+England,5G very high confidence,Geographic,Urban,VO,38.63,876186,Sep-24
+England,5G very high confidence,Geographic,Urban,All,12.27,278378,Sep-24
+England,5G very high confidence,Geographic,Urban,EE,72.38,1641871,Sep-24
+UK,5G high confidence,Geographic,Urban,None,4.92,136580,Sep-24
+UK,5G high confidence,Geographic,Urban,VO,50.71,1406416,Sep-24
+UK,5G high confidence,Geographic,Urban,H3,62.53,1734278,Sep-24
+UK,5G high confidence,Geographic,Urban,At least one,95.08,2636947,Sep-24
+UK,5G high confidence,Geographic,Urban,TF,61.13,1695416,Sep-24
+UK,5G high confidence,Geographic,Urban,All,26.03,722015,Sep-24
+UK,5G high confidence,Geographic,Urban,EE,75.46,2092821,Sep-24
+Northern Ireland,4G,Geographic,Urban,EE,97.39,112508,Sep-24
+Northern Ireland,4G,Geographic,Urban,All,95.99,110890,Sep-24
+Northern Ireland,4G,Geographic,Urban,TF,98.51,113800,Sep-24
+Northern Ireland,4G,Geographic,Urban,H3,98.27,113523,Sep-24
+Northern Ireland,4G,Geographic,Urban,At least one,99.59,115054,Sep-24
+Northern Ireland,4G,Geographic,Urban,VO,98.94,114300,Sep-24
+Northern Ireland,4G,Geographic,Urban,None,0.41,468,Sep-24
+UK,5G very high confidence,Geographic,Urban,VO,35.53,985447,Sep-24
+UK,5G very high confidence,Geographic,Urban,None,11.35,314838,Sep-24
+UK,5G very high confidence,Geographic,Urban,All,11.41,316408,Sep-24
+UK,5G very high confidence,Geographic,Urban,TF,52.87,1466245,Sep-24
+UK,5G very high confidence,Geographic,Urban,At least one,88.65,2458689,Sep-24
+UK,5G very high confidence,Geographic,Urban,EE,70.53,1956164,Sep-24
+UK,5G very high confidence,Geographic,Urban,H3,32.24,894267,Sep-24
+UK,4G,Geographic,Rural,All,77.70,16753236,Sep-24
+UK,4G,Geographic,Rural,H3,87.54,18875559,Sep-24
+UK,4G,Geographic,Rural,VO,87.78,18927014,Sep-24
+UK,4G,Geographic,Rural,At least one,94.68,20415234,Sep-24
+UK,4G,Geographic,Rural,EE,87.78,18927780,Sep-24
+UK,4G,Geographic,Rural,TF,86.92,18742762,Sep-24
+UK,4G,Geographic,Rural,None,5.32,1146978,Sep-24
+UK,5G very high confidence,Geographic,Rural,All,0.29,62822,Sep-24
+UK,5G very high confidence,Geographic,Rural,EE,30.36,6546445,Sep-24
+UK,5G very high confidence,Geographic,Rural,At least one,42.65,9195446,Sep-24
+UK,5G very high confidence,Geographic,Rural,None,57.35,12366766,Sep-24
+UK,5G very high confidence,Geographic,Rural,VO,4.16,897855,Sep-24
+UK,5G very high confidence,Geographic,Rural,H3,6.54,1409759,Sep-24
+UK,5G very high confidence,Geographic,Rural,TF,16.62,3583447,Sep-24
+Scotland,5G very high confidence,Geographic,Rural,VO,1.97,151334,Sep-24
+Scotland,5G very high confidence,Geographic,Rural,At least one,22.59,1734581,Sep-24
+Scotland,5G very high confidence,Geographic,Rural,None,77.41,5944542,Sep-24
+Scotland,5G very high confidence,Geographic,Rural,EE,14.38,1104375,Sep-24
+Scotland,5G very high confidence,Geographic,Rural,H3,4.54,349000,Sep-24
+Scotland,5G very high confidence,Geographic,Rural,TF,7.95,610758,Sep-24
+Scotland,5G very high confidence,Geographic,Rural,All,0.13,9988,Sep-24
+Northern Ireland,4G,Geographic,Rural,All,83.74,1042016,Sep-24
+Northern Ireland,4G,Geographic,Rural,None,1.77,21965,Sep-24
+Northern Ireland,4G,Geographic,Rural,H3,94.96,1181639,Sep-24
+Northern Ireland,4G,Geographic,Rural,VO,93.93,1168812,Sep-24
+Northern Ireland,4G,Geographic,Rural,TF,92.71,1153679,Sep-24
+Northern Ireland,4G,Geographic,Rural,At least one,98.23,1222413,Sep-24
+Northern Ireland,4G,Geographic,Rural,EE,88.52,1101471,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Rural,At least one,56.18,699049,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Rural,None,43.82,545329,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Rural,All,0.04,448,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Rural,EE,11.59,144195,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Rural,TF,52.27,650445,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Rural,H3,2.81,34916,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Rural,VO,0.67,8395,Sep-24
+England,4G,Geographic,Urban,EE,99.33,2253124,Sep-24
+England,4G,Geographic,Urban,None,0.02,527,Sep-24
+England,4G,Geographic,Urban,TF,99.42,2255257,Sep-24
+England,4G,Geographic,Urban,All,98.53,2235047,Sep-24
+England,4G,Geographic,Urban,H3,99.64,2260093,Sep-24
+England,4G,Geographic,Urban,At least one,99.98,2267776,Sep-24
+England,4G,Geographic,Urban,VO,99.75,2262703,Sep-24
+Northern Ireland,5G high confidence,Geographic,Rural,TF,66.11,822596,Sep-24
+Northern Ireland,5G high confidence,Geographic,Rural,VO,2.64,32887,Sep-24
+Northern Ireland,5G high confidence,Geographic,Rural,At least one,69.04,859093,Sep-24
+Northern Ireland,5G high confidence,Geographic,Rural,H3,8.60,107045,Sep-24
+Northern Ireland,5G high confidence,Geographic,Rural,EE,13.47,167624,Sep-24
+Northern Ireland,5G high confidence,Geographic,Rural,None,30.96,385285,Sep-24
+Northern Ireland,5G high confidence,Geographic,Rural,All,0.44,5528,Sep-24
+Wales,4G,Geographic,Urban,TF,96.81,209194,Sep-24
+Wales,4G,Geographic,Urban,All,94.18,203508,Sep-24
+Wales,4G,Geographic,Urban,VO,97.78,211287,Sep-24
+Wales,4G,Geographic,Urban,None,0.45,979,Sep-24
+Wales,4G,Geographic,Urban,EE,97.92,211585,Sep-24
+Wales,4G,Geographic,Urban,H3,97.83,211384,Sep-24
+Wales,4G,Geographic,Urban,At least one,99.55,215101,Sep-24
+Scotland,5G high confidence,Geographic,Urban,EE,77.70,134522,Sep-24
+Scotland,5G high confidence,Geographic,Urban,TF,62.17,107644,Sep-24
+Scotland,5G high confidence,Geographic,Urban,H3,66.99,115978,Sep-24
+Scotland,5G high confidence,Geographic,Urban,None,5.65,9777,Sep-24
+Scotland,5G high confidence,Geographic,Urban,VO,52.68,91210,Sep-24
+Scotland,5G high confidence,Geographic,Urban,All,31.74,54947,Sep-24
+Scotland,5G high confidence,Geographic,Urban,At least one,94.35,163359,Sep-24
+Scotland,5G very high confidence,Geographic,Urban,TF,54.72,94742,Sep-24
+Scotland,5G very high confidence,Geographic,Urban,None,12.20,21130,Sep-24
+Scotland,5G very high confidence,Geographic,Urban,All,14.63,25333,Sep-24
+Scotland,5G very high confidence,Geographic,Urban,At least one,87.80,152006,Sep-24
+Scotland,5G very high confidence,Geographic,Urban,VO,35.51,61475,Sep-24
+Scotland,5G very high confidence,Geographic,Urban,H3,36.54,63257,Sep-24
+Scotland,5G very high confidence,Geographic,Urban,EE,71.67,124093,Sep-24
+UK,5G high confidence,Premises (Outdoor),Rural,TF,37.72,1777086,Sep-24
+UK,5G high confidence,Premises (Outdoor),Rural,At least one,78.93,3718267,Sep-24
+UK,5G high confidence,Premises (Outdoor),Rural,VO,23.43,1103765,Sep-24
+UK,5G high confidence,Premises (Outdoor),Rural,EE,55.11,2595992,Sep-24
+UK,5G high confidence,Premises (Outdoor),Rural,None,21.07,992642,Sep-24
+UK,5G high confidence,Premises (Outdoor),Rural,All,4.85,228441,Sep-24
+UK,5G high confidence,Premises (Outdoor),Rural,H3,29.92,1409393,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Urban,TF,95.82,595383,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Urban,EE,46.44,288549,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Urban,At least one,98.09,609472,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Urban,None,1.91,11883,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Urban,All,28.58,177603,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Urban,H3,50.92,316372,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Urban,VO,49.19,305666,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Urban,None,14.45,173895,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Urban,All,10.24,123292,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Urban,TF,18.34,220731,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Urban,At least one,85.55,1029915,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Urban,H3,33.51,403450,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Urban,VO,29.30,352687,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Urban,EE,80.25,966111,Sep-24
+UK,4G,Premises (Indoor),Urban,VO,98.66,27115178,Sep-24
+UK,4G,Premises (Indoor),Urban,EE,98.35,27030619,Sep-24
+UK,4G,Premises (Indoor),Urban,At least one,99.98,27478094,Sep-24
+UK,4G,Premises (Indoor),Urban,None,0.02,6135,Sep-24
+UK,4G,Premises (Indoor),Urban,H3,96.75,26591566,Sep-24
+UK,4G,Premises (Indoor),Urban,TF,97.62,26829066,Sep-24
+UK,4G,Premises (Indoor),Urban,All,92.79,25503911,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Rural,H3,11.37,41025,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Rural,VO,5.45,19685,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Rural,TF,2.45,8828,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Rural,EE,53.69,193780,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Rural,All,0.66,2384,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Rural,None,43.42,156724,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Rural,At least one,56.58,204218,Sep-24
+England,4G,Premises (Indoor),Urban,None,0.02,4762,Sep-24
+England,4G,Premises (Indoor),Urban,TF,97.60,22776356,Sep-24
+England,4G,Premises (Indoor),Urban,At least one,99.98,23332458,Sep-24
+England,4G,Premises (Indoor),Urban,VO,98.64,23020075,Sep-24
+England,4G,Premises (Indoor),Urban,H3,96.99,22635154,Sep-24
+England,4G,Premises (Indoor),Urban,All,93.06,21717437,Sep-24
+England,4G,Premises (Indoor),Urban,EE,98.46,22977680,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Urban,VO,36.08,434356,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Urban,None,9.03,108721,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Urban,All,17.08,205659,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Urban,EE,84.73,1019974,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Urban,TF,20.31,244541,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Urban,H3,59.79,719728,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Urban,At least one,90.97,1095089,Sep-24
+Scotland,4G,Premises (Outdoor),Urban,VO,99.97,2313119,Sep-24
+Scotland,4G,Premises (Outdoor),Urban,EE,99.99,2313438,Sep-24
+Scotland,4G,Premises (Outdoor),Urban,All,99.79,2309004,Sep-24
+Scotland,4G,Premises (Outdoor),Urban,At least one,100.00,2313765,Sep-24
+Scotland,4G,Premises (Outdoor),Urban,TF,99.95,2312631,Sep-24
+Scotland,4G,Premises (Outdoor),Urban,None,0.00,,Sep-24
+Scotland,4G,Premises (Outdoor),Urban,H3,99.86,2310418,Sep-24
+England,5G very high confidence,Premises (Outdoor),Rural,H3,12.19,427119,Sep-24
+England,5G very high confidence,Premises (Outdoor),Rural,VO,12.63,442665,Sep-24
+England,5G very high confidence,Premises (Outdoor),Rural,TF,28.81,1009669,Sep-24
+England,5G very high confidence,Premises (Outdoor),Rural,EE,49.13,1721804,Sep-24
+England,5G very high confidence,Premises (Outdoor),Rural,At least one,66.97,2347064,Sep-24
+England,5G very high confidence,Premises (Outdoor),Rural,None,33.03,1157399,Sep-24
+England,5G very high confidence,Premises (Outdoor),Rural,All,1.21,42461,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Rural,None,31.91,115187,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Rural,TF,3.09,11142,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Rural,All,1.61,5824,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Rural,At least one,68.09,245755,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Rural,EE,62.36,225077,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Rural,H3,24.92,89953,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Rural,VO,9.01,32511,Sep-24
+England,5G high confidence,Premises (Outdoor),Urban,TF,72.28,16868540,Sep-24
+England,5G high confidence,Premises (Outdoor),Urban,VO,70.24,16392240,Sep-24
+England,5G high confidence,Premises (Outdoor),Urban,At least one,98.34,22950101,Sep-24
+England,5G high confidence,Premises (Outdoor),Urban,H3,78.23,18256692,Sep-24
+England,5G high confidence,Premises (Outdoor),Urban,All,45.20,10547870,Sep-24
+England,5G high confidence,Premises (Outdoor),Urban,EE,84.55,19732275,Sep-24
+England,5G high confidence,Premises (Outdoor),Urban,None,1.66,387119,Sep-24
+England,4G,Premises (Indoor),Rural,None,2.53,88618,Sep-24
+England,4G,Premises (Indoor),Rural,At least one,97.47,3415845,Sep-24
+England,4G,Premises (Indoor),Rural,EE,85.00,2978816,Sep-24
+England,4G,Premises (Indoor),Rural,H3,76.14,2668327,Sep-24
+England,4G,Premises (Indoor),Rural,All,55.62,1949340,Sep-24
+England,4G,Premises (Indoor),Rural,TF,81.07,2841033,Sep-24
+England,4G,Premises (Indoor),Rural,VO,81.84,2867991,Sep-24
+UK,4G,Premises (Outdoor),Urban,VO,99.97,27476367,Sep-24
+UK,4G,Premises (Outdoor),Urban,All,99.75,27415073,Sep-24
+UK,4G,Premises (Outdoor),Urban,H3,99.85,27442701,Sep-24
+UK,4G,Premises (Outdoor),Urban,EE,99.97,27475763,Sep-24
+UK,4G,Premises (Outdoor),Urban,TF,99.94,27468920,Sep-24
+UK,4G,Premises (Outdoor),Urban,None,0.00,39,Sep-24
+UK,4G,Premises (Outdoor),Urban,At least one,100.00,27484190,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Urban,H3,26.11,162230,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Urban,EE,42.50,264097,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Urban,All,12.01,74628,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Urban,None,5.08,31537,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Urban,VO,35.59,221151,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Urban,TF,88.37,549077,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Urban,At least one,94.92,589818,Sep-24
+Scotland,4G,Premises (Indoor),Rural,H3,84.60,492180,Sep-24
+Scotland,4G,Premises (Indoor),Rural,VO,88.11,512599,Sep-24
+Scotland,4G,Premises (Indoor),Rural,All,66.71,388081,Sep-24
+Scotland,4G,Premises (Indoor),Rural,None,1.77,10317,Sep-24
+Scotland,4G,Premises (Indoor),Rural,TF,86.23,501628,Sep-24
+Scotland,4G,Premises (Indoor),Rural,At least one,98.23,571434,Sep-24
+Scotland,4G,Premises (Indoor),Rural,EE,86.62,503928,Sep-24
+Wales,4G,Premises (Outdoor),Rural,H3,95.38,344259,Sep-24
+Wales,4G,Premises (Outdoor),Rural,EE,96.79,349353,Sep-24
+Wales,4G,Premises (Outdoor),Rural,At least one,99.32,358505,Sep-24
+Wales,4G,Premises (Outdoor),Rural,TF,94.25,340171,Sep-24
+Wales,4G,Premises (Outdoor),Rural,All,88.65,319981,Sep-24
+Wales,4G,Premises (Outdoor),Rural,VO,94.13,339750,Sep-24
+Wales,4G,Premises (Outdoor),Rural,None,0.68,2437,Sep-24
+Scotland,4G,Premises (Outdoor),Rural,None,0.28,1626,Sep-24
+Scotland,4G,Premises (Outdoor),Rural,H3,96.15,559340,Sep-24
+Scotland,4G,Premises (Outdoor),Rural,At least one,99.72,580125,Sep-24
+Scotland,4G,Premises (Outdoor),Rural,All,92.74,539494,Sep-24
+Scotland,4G,Premises (Outdoor),Rural,TF,97.27,565875,Sep-24
+Scotland,4G,Premises (Outdoor),Rural,EE,98.13,570896,Sep-24
+Scotland,4G,Premises (Outdoor),Rural,VO,97.82,569096,Sep-24
+England,4G,Premises (Outdoor),Rural,All,93.83,3288372,Sep-24
+England,4G,Premises (Outdoor),Rural,None,0.15,5104,Sep-24
+England,4G,Premises (Outdoor),Rural,TF,97.80,3427472,Sep-24
+England,4G,Premises (Outdoor),Rural,VO,97.99,3433859,Sep-24
+England,4G,Premises (Outdoor),Rural,H3,97.13,3403928,Sep-24
+England,4G,Premises (Outdoor),Rural,At least one,99.85,3499359,Sep-24
+England,4G,Premises (Outdoor),Rural,EE,98.57,3454379,Sep-24
+Scotland,4G,Premises (Indoor),Urban,TF,98.40,2276790,Sep-24
+Scotland,4G,Premises (Indoor),Urban,H3,97.68,2259974,Sep-24
+Scotland,4G,Premises (Indoor),Urban,VO,99.32,2298076,Sep-24
+Scotland,4G,Premises (Indoor),Urban,None,0.01,249,Sep-24
+Scotland,4G,Premises (Indoor),Urban,EE,98.55,2280244,Sep-24
+Scotland,4G,Premises (Indoor),Urban,At least one,99.99,2313516,Sep-24
+Scotland,4G,Premises (Indoor),Urban,All,94.78,2192906,Sep-24
+England,5G high confidence,Premises (Outdoor),Rural,At least one,82.08,2876594,Sep-24
+England,5G high confidence,Premises (Outdoor),Rural,EE,58.47,2049170,Sep-24
+England,5G high confidence,Premises (Outdoor),Rural,None,17.92,627869,Sep-24
+England,5G high confidence,Premises (Outdoor),Rural,All,5.32,186561,Sep-24
+England,5G high confidence,Premises (Outdoor),Rural,H3,32.06,1123549,Sep-24
+England,5G high confidence,Premises (Outdoor),Rural,TF,39.67,1390096,Sep-24
+England,5G high confidence,Premises (Outdoor),Rural,VO,26.45,926899,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Rural,All,5.74,33401,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Rural,H3,28.72,167088,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Rural,At least one,67.11,390420,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Rural,EE,48.56,282519,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Rural,VO,22.04,128235,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Rural,TF,30.80,179204,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Rural,None,32.89,191331,Sep-24
+Wales,4G,Premises (Indoor),Rural,H3,77.83,280905,Sep-24
+Wales,4G,Premises (Indoor),Rural,EE,83.43,301149,Sep-24
+Wales,4G,Premises (Indoor),Rural,At least one,95.82,345844,Sep-24
+Wales,4G,Premises (Indoor),Rural,All,55.25,199411,Sep-24
+Wales,4G,Premises (Indoor),Rural,VO,76.92,277625,Sep-24
+Wales,4G,Premises (Indoor),Rural,None,4.18,15098,Sep-24
+Wales,4G,Premises (Indoor),Rural,TF,79.22,285923,Sep-24
+England,5G very high confidence,Premises (Outdoor),Urban,H3,43.61,10177947,Sep-24
+England,5G very high confidence,Premises (Outdoor),Urban,None,4.57,1067120,Sep-24
+England,5G very high confidence,Premises (Outdoor),Urban,At least one,95.43,22270100,Sep-24
+England,5G very high confidence,Premises (Outdoor),Urban,TF,65.13,15198532,Sep-24
+England,5G very high confidence,Premises (Outdoor),Urban,VO,56.14,13101289,Sep-24
+England,5G very high confidence,Premises (Outdoor),Urban,All,22.69,5295894,Sep-24
+England,5G very high confidence,Premises (Outdoor),Urban,EE,82.24,19192097,Sep-24
+UK,5G high confidence,Premises (Outdoor),Urban,None,2.10,575822,Sep-24
+UK,5G high confidence,Premises (Outdoor),Urban,VO,67.60,18580444,Sep-24
+UK,5G high confidence,Premises (Outdoor),Urban,H3,76.36,20987584,Sep-24
+UK,5G high confidence,Premises (Outdoor),Urban,At least one,97.90,26908407,Sep-24
+UK,5G high confidence,Premises (Outdoor),Urban,TF,70.26,19309126,Sep-24
+UK,5G high confidence,Premises (Outdoor),Urban,All,43.26,11890169,Sep-24
+UK,5G high confidence,Premises (Outdoor),Urban,EE,83.53,22957654,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Urban,EE,99.79,620057,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Urban,All,99.53,618430,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Urban,TF,99.92,620871,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Urban,H3,99.80,620131,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Urban,At least one,100.00,621333,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Urban,VO,99.97,621176,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Urban,None,0.00,22,Sep-24
+UK,4G,Premises (Indoor),Rural,H3,77.54,3652699,Sep-24
+UK,4G,Premises (Indoor),Rural,All,56.61,2666926,Sep-24
+UK,4G,Premises (Indoor),Rural,VO,82.08,3866631,Sep-24
+UK,4G,Premises (Indoor),Rural,At least one,97.35,4586292,Sep-24
+UK,4G,Premises (Indoor),Rural,EE,84.21,3966875,Sep-24
+UK,4G,Premises (Indoor),Rural,TF,81.48,3838300,Sep-24
+UK,4G,Premises (Indoor),Rural,None,2.65,124617,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Urban,VO,53.56,14721644,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Urban,None,5.27,1447541,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Urban,All,21.63,5943558,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Urban,TF,63.35,17412606,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Urban,At least one,94.73,26036688,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Urban,EE,80.89,22233340,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Urban,H3,42.47,11672521,Sep-24
+UK,4G,Premises (Outdoor),Rural,All,93.11,4386190,Sep-24
+UK,4G,Premises (Outdoor),Rural,H3,96.93,4566240,Sep-24
+UK,4G,Premises (Outdoor),Rural,VO,97.65,4599985,Sep-24
+UK,4G,Premises (Outdoor),Rural,At least one,99.78,4700711,Sep-24
+UK,4G,Premises (Outdoor),Rural,EE,98.10,4621498,Sep-24
+UK,4G,Premises (Outdoor),Rural,TF,97.42,4589214,Sep-24
+UK,4G,Premises (Outdoor),Rural,None,0.22,10198,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Rural,All,1.14,53539,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Rural,EE,46.51,2190914,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Rural,At least one,64.63,3044882,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Rural,None,35.37,1666027,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Rural,VO,11.22,528522,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Rural,H3,11.81,556478,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Rural,TF,27.80,1309434,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Rural,VO,10.47,60896,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Rural,At least one,55.91,325269,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Rural,None,44.09,256482,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Rural,EE,41.58,241881,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Rural,H3,13.60,79094,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Rural,TF,22.95,133540,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Rural,All,1.45,8434,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Rural,All,90.38,237440,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Rural,None,0.39,1026,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Rural,H3,98.11,257762,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Rural,VO,97.55,256279,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Rural,TF,96.95,254716,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Rural,At least one,99.61,261700,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Rural,EE,93.59,245873,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Rural,At least one,63.84,167727,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Rural,None,36.16,94999,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Rural,All,0.07,194,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Rural,EE,12.60,33095,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Rural,TF,59.71,156863,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Rural,H3,3.47,9128,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Rural,VO,1.95,5118,Sep-24
+Wales,4G,Premises (Indoor),Urban,VO,97.63,1175279,Sep-24
+Wales,4G,Premises (Indoor),Urban,H3,93.20,1121983,Sep-24
+Wales,4G,Premises (Indoor),Urban,EE,98.03,1180152,Sep-24
+Wales,4G,Premises (Indoor),Urban,At least one,99.93,1202985,Sep-24
+Wales,4G,Premises (Indoor),Urban,TF,96.34,1159761,Sep-24
+Wales,4G,Premises (Indoor),Urban,All,87.91,1058328,Sep-24
+Wales,4G,Premises (Indoor),Urban,None,0.07,825,Sep-24
+England,4G,Premises (Outdoor),Urban,EE,99.98,23331407,Sep-24
+England,4G,Premises (Outdoor),Urban,None,0.00,11,Sep-24
+England,4G,Premises (Outdoor),Urban,TF,99.95,23325729,Sep-24
+England,4G,Premises (Outdoor),Urban,All,99.79,23288691,Sep-24
+England,4G,Premises (Outdoor),Urban,H3,99.88,23310102,Sep-24
+England,4G,Premises (Outdoor),Urban,At least one,100.00,23337209,Sep-24
+England,4G,Premises (Outdoor),Urban,VO,99.97,23330709,Sep-24
+Northern Ireland,4G,Premises (Indoor),Urban,None,0.05,280,Sep-24
+Northern Ireland,4G,Premises (Indoor),Urban,At least one,99.95,621075,Sep-24
+Northern Ireland,4G,Premises (Indoor),Urban,VO,98.77,613710,Sep-24
+Northern Ireland,4G,Premises (Indoor),Urban,H3,91.18,566523,Sep-24
+Northern Ireland,4G,Premises (Indoor),Urban,EE,94.07,584502,Sep-24
+Northern Ireland,4G,Premises (Indoor),Urban,All,84.87,527347,Sep-24
+Northern Ireland,4G,Premises (Indoor),Urban,TF,97.88,608155,Sep-24
+Northern Ireland,4G,Premises (Indoor),Rural,None,4.02,10554,Sep-24
+Northern Ireland,4G,Premises (Indoor),Rural,All,49.30,129513,Sep-24
+Northern Ireland,4G,Premises (Indoor),Rural,H3,80.12,210484,Sep-24
+Northern Ireland,4G,Premises (Indoor),Rural,VO,78.99,207526,Sep-24
+Northern Ireland,4G,Premises (Indoor),Rural,TF,79.52,208920,Sep-24
+Northern Ireland,4G,Premises (Indoor),Rural,At least one,95.98,252172,Sep-24
+Northern Ireland,4G,Premises (Indoor),Rural,EE,69.31,182106,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Rural,TF,74.61,196017,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Rural,VO,6.07,15948,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Rural,At least one,77.94,204779,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Rural,H3,10.85,28512,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Rural,EE,14.79,38854,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Rural,None,22.06,57947,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Rural,All,0.96,2535,Sep-24
+Wales,4G,Premises (Outdoor),Urban,TF,99.82,1201615,Sep-24
+Wales,4G,Premises (Outdoor),Urban,All,98.93,1190877,Sep-24
+Wales,4G,Premises (Outdoor),Urban,VO,99.96,1203284,Sep-24
+Wales,4G,Premises (Outdoor),Urban,None,0.00,6,Sep-24
+Wales,4G,Premises (Outdoor),Urban,EE,99.91,1202785,Sep-24
+Wales,4G,Premises (Outdoor),Urban,H3,99.18,1193971,Sep-24
+Wales,4G,Premises (Outdoor),Urban,At least one,100.00,1203804,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Urban,EE,82.53,1909464,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Urban,TF,68.87,1593455,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Urban,H3,72.93,1687494,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Urban,None,2.94,67984,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Urban,VO,62.29,1441155,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Urban,All,41.17,952661,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Urban,At least one,97.06,2245781,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Urban,TF,62.12,1437221,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Urban,None,7.56,174808,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Urban,All,19.26,445608,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Urban,At least one,92.44,2138957,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Urban,VO,44.94,1039895,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Urban,H3,39.94,924045,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Urban,EE,77.96,1803808,Sep-24
+UK,5G high confidence,Geographic,Total,TF,28.25,6874622,Sep-24
+UK,5G high confidence,Geographic,Total,VO,15.25,3710754,Sep-24
+UK,5G high confidence,Geographic,Total,H3,22.66,5513644,Sep-24
+UK,5G high confidence,Geographic,Total,At least one,59.79,14549995,Sep-24
+UK,5G high confidence,Geographic,Total,EE,41.55,10112165,Sep-24
+UK,5G high confidence,Geographic,Total,All,4.35,1057484,Sep-24
+UK,5G high confidence,Geographic,Total,None,40.21,9785744,Sep-24
+England,4G,Geographic,Total,None,1.33,174025,Sep-24
+England,4G,Geographic,Total,TF,94.37,12310255,Sep-24
+England,4G,Geographic,Total,All,89.63,11691186,Sep-24
+England,4G,Geographic,Total,H3,95.70,12484137,Sep-24
+England,4G,Geographic,Total,VO,94.93,12383165,Sep-24
+England,4G,Geographic,Total,At least one,98.67,12870395,Sep-24
+England,4G,Geographic,Total,EE,95.31,12432063,Sep-24
+Northern Ireland,5G high confidence,Geographic,Total,All,1.57,21417,Sep-24
+Northern Ireland,5G high confidence,Geographic,Total,TF,68.26,928250,Sep-24
+Northern Ireland,5G high confidence,Geographic,Total,EE,15.09,205213,Sep-24
+Northern Ireland,5G high confidence,Geographic,Total,None,28.88,392743,Sep-24
+Northern Ireland,5G high confidence,Geographic,Total,VO,4.68,63588,Sep-24
+Northern Ireland,5G high confidence,Geographic,Total,H3,10.88,147969,Sep-24
+Northern Ireland,5G high confidence,Geographic,Total,At least one,71.12,967157,Sep-24
+England,5G high confidence,Geographic,Total,All,6.92,902858,Sep-24
+England,5G high confidence,Geographic,Total,EE,57.04,7440165,Sep-24
+England,5G high confidence,Geographic,Total,At least one,76.19,9937914,Sep-24
+England,5G high confidence,Geographic,Total,None,23.81,3106506,Sep-24
+England,5G high confidence,Geographic,Total,H3,30.90,4030160,Sep-24
+England,5G high confidence,Geographic,Total,VO,23.34,3044535,Sep-24
+England,5G high confidence,Geographic,Total,TF,37.54,4897297,Sep-24
+England,5G very high confidence,Geographic,Total,VO,12.16,1586678,Sep-24
+England,5G very high confidence,Geographic,Total,At least one,62.12,8103415,Sep-24
+England,5G very high confidence,Geographic,Total,TF,27.38,3572151,Sep-24
+England,5G very high confidence,Geographic,Total,EE,48.16,6281562,Sep-24
+England,5G very high confidence,Geographic,Total,None,37.88,4941005,Sep-24
+England,5G very high confidence,Geographic,Total,All,2.53,329421,Sep-24
+England,5G very high confidence,Geographic,Total,H3,12.82,1671809,Sep-24
+Wales,5G high confidence,Geographic,Total,At least one,52.10,1082662,Sep-24
+Wales,5G high confidence,Geographic,Total,H3,18.85,391690,Sep-24
+Wales,5G high confidence,Geographic,Total,All,0.99,20659,Sep-24
+Wales,5G high confidence,Geographic,Total,VO,5.09,105803,Sep-24
+Wales,5G high confidence,Geographic,Total,None,47.90,995221,Sep-24
+Wales,5G high confidence,Geographic,Total,EE,46.93,975106,Sep-24
+Wales,5G high confidence,Geographic,Total,TF,1.79,37148,Sep-24
+Scotland,5G very high confidence,Geographic,Total,TF,8.98,705500,Sep-24
+Scotland,5G very high confidence,Geographic,Total,All,0.45,35321,Sep-24
+Scotland,5G very high confidence,Geographic,Total,H3,5.25,412257,Sep-24
+Scotland,5G very high confidence,Geographic,Total,At least one,24.03,1886587,Sep-24
+Scotland,5G very high confidence,Geographic,Total,VO,2.71,212809,Sep-24
+Scotland,5G very high confidence,Geographic,Total,EE,15.64,1228468,Sep-24
+Scotland,5G very high confidence,Geographic,Total,None,75.97,5965672,Sep-24
+Scotland,5G high confidence,Geographic,Total,All,1.43,112325,Sep-24
+Scotland,5G high confidence,Geographic,Total,TF,12.88,1011174,Sep-24
+Scotland,5G high confidence,Geographic,Total,H3,12.01,943413,Sep-24
+Scotland,5G high confidence,Geographic,Total,At least one,32.62,2561324,Sep-24
+Scotland,5G high confidence,Geographic,Total,EE,18.99,1491160,Sep-24
+Scotland,5G high confidence,Geographic,Total,VO,6.32,496462,Sep-24
+Scotland,5G high confidence,Geographic,Total,None,67.38,5290935,Sep-24
+UK,4G,Geographic,Total,H3,88.89,21632809,Sep-24
+UK,4G,Geographic,Total,EE,89.07,21676972,Sep-24
+UK,4G,Geographic,Total,At least one,95.28,23186276,Sep-24
+UK,4G,Geographic,Total,All,80.02,19472683,Sep-24
+UK,4G,Geographic,Total,None,4.72,1149463,Sep-24
+UK,4G,Geographic,Total,TF,88.32,21492363,Sep-24
+UK,4G,Geographic,Total,VO,89.12,21687401,Sep-24
+UK,5G very high confidence,Geographic,Total,H3,9.47,2304026,Sep-24
+UK,5G very high confidence,Geographic,Total,All,1.56,379230,Sep-24
+UK,5G very high confidence,Geographic,Total,EE,34.94,8502609,Sep-24
+UK,5G very high confidence,Geographic,Total,At least one,47.89,11654135,Sep-24
+UK,5G very high confidence,Geographic,Total,None,52.11,12681604,Sep-24
+UK,5G very high confidence,Geographic,Total,TF,20.75,5049692,Sep-24
+UK,5G very high confidence,Geographic,Total,VO,7.74,1883302,Sep-24
+Wales,4G,Geographic,Total,At least one,95.41,1982468,Sep-24
+Wales,4G,Geographic,Total,VO,83.76,1740418,Sep-24
+Wales,4G,Geographic,Total,EE,88.66,1842224,Sep-24
+Wales,4G,Geographic,Total,All,74.61,1550305,Sep-24
+Wales,4G,Geographic,Total,None,4.59,95415,Sep-24
+Wales,4G,Geographic,Total,H3,88.18,1832176,Sep-24
+Wales,4G,Geographic,Total,TF,83.41,1733100,Sep-24
+Wales,5G very high confidence,Geographic,Total,H3,8.03,166918,Sep-24
+Wales,5G very high confidence,Geographic,Total,At least one,41.60,864297,Sep-24
+Wales,5G very high confidence,Geographic,Total,TF,1.28,26533,Sep-24
+Wales,5G very high confidence,Geographic,Total,All,0.42,8824,Sep-24
+Wales,5G very high confidence,Geographic,Total,VO,2.76,57258,Sep-24
+Wales,5G very high confidence,Geographic,Total,None,58.40,1213586,Sep-24
+Wales,5G very high confidence,Geographic,Total,EE,39.13,813165,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Total,H3,3.88,52818,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Total,TF,54.78,744895,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Total,None,41.24,560874,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Total,VO,1.93,26266,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Total,All,0.41,5544,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Total,EE,13.16,178941,Sep-24
+Northern Ireland,5G very high confidence,Geographic,Total,At least one,58.76,799026,Sep-24
+Northern Ireland,4G,Geographic,Total,All,84.78,1152906,Sep-24
+Northern Ireland,4G,Geographic,Total,EE,89.27,1213979,Sep-24
+Northern Ireland,4G,Geographic,Total,H3,95.24,1295162,Sep-24
+Northern Ireland,4G,Geographic,Total,None,1.65,22433,Sep-24
+Northern Ireland,4G,Geographic,Total,At least one,98.35,1337467,Sep-24
+Northern Ireland,4G,Geographic,Total,TF,93.20,1267479,Sep-24
+Northern Ireland,4G,Geographic,Total,VO,94.35,1283112,Sep-24
+Scotland,4G,Geographic,Total,H3,76.67,6020117,Sep-24
+Scotland,4G,Geographic,Total,All,64.66,5077159,Sep-24
+Scotland,4G,Geographic,Total,EE,78.80,6187479,Sep-24
+Scotland,4G,Geographic,Total,VO,79.97,6279474,Sep-24
+Scotland,4G,Geographic,Total,TF,78.71,6180337,Sep-24
+Scotland,4G,Geographic,Total,At least one,89.08,6994678,Sep-24
+Scotland,4G,Geographic,Total,None,10.92,857581,Sep-24
+Scotland,4G,Premises (Indoor),Total,TF,95.96,2778418,Sep-24
+Scotland,4G,Premises (Indoor),Total,None,0.36,10566,Sep-24
+Scotland,4G,Premises (Indoor),Total,All,89.14,2580987,Sep-24
+Scotland,4G,Premises (Indoor),Total,EE,96.15,2784172,Sep-24
+Scotland,4G,Premises (Indoor),Total,At least one,99.64,2884950,Sep-24
+Scotland,4G,Premises (Indoor),Total,H3,95.05,2752154,Sep-24
+Scotland,4G,Premises (Indoor),Total,VO,97.07,2810675,Sep-24
+UK,5G high confidence,Premises (Outdoor),Total,TF,65.50,21086212,Sep-24
+UK,5G high confidence,Premises (Outdoor),Total,VO,61.14,19684209,Sep-24
+UK,5G high confidence,Premises (Outdoor),Total,H3,69.57,22396977,Sep-24
+UK,5G high confidence,Premises (Outdoor),Total,At least one,95.13,30626674,Sep-24
+UK,5G high confidence,Premises (Outdoor),Total,EE,79.37,25553646,Sep-24
+UK,5G high confidence,Premises (Outdoor),Total,All,37.64,12118610,Sep-24
+UK,5G high confidence,Premises (Outdoor),Total,None,4.87,1568464,Sep-24
+England,4G,Premises (Indoor),Total,H3,94.27,25303481,Sep-24
+England,4G,Premises (Indoor),Total,VO,96.45,25888066,Sep-24
+England,4G,Premises (Indoor),Total,EE,96.70,25956496,Sep-24
+England,4G,Premises (Indoor),Total,At least one,99.65,26748303,Sep-24
+England,4G,Premises (Indoor),Total,All,88.17,23666777,Sep-24
+England,4G,Premises (Indoor),Total,None,0.35,93380,Sep-24
+England,4G,Premises (Indoor),Total,TF,95.44,25617389,Sep-24
+UK,4G,Premises (Indoor),Total,All,87.50,28170837,Sep-24
+UK,4G,Premises (Indoor),Total,At least one,99.59,32064386,Sep-24
+UK,4G,Premises (Indoor),Total,TF,95.25,30667366,Sep-24
+UK,4G,Premises (Indoor),Total,EE,96.28,30997494,Sep-24
+UK,4G,Premises (Indoor),Total,H3,93.94,30244265,Sep-24
+UK,4G,Premises (Indoor),Total,VO,96.23,30981809,Sep-24
+UK,4G,Premises (Indoor),Total,None,0.41,130752,Sep-24
+England,4G,Premises (Outdoor),Total,None,0.02,5115,Sep-24
+England,4G,Premises (Outdoor),Total,TF,99.67,26753201,Sep-24
+England,4G,Premises (Outdoor),Total,All,99.01,26577063,Sep-24
+England,4G,Premises (Outdoor),Total,H3,99.52,26714030,Sep-24
+England,4G,Premises (Outdoor),Total,VO,99.71,26764568,Sep-24
+England,4G,Premises (Outdoor),Total,At least one,99.98,26836568,Sep-24
+England,4G,Premises (Outdoor),Total,EE,99.79,26785786,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Total,All,20.38,180138,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Total,TF,89.52,791400,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Total,EE,37.03,327403,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Total,None,7.90,69830,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Total,VO,36.38,321614,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Total,H3,39.01,344884,Sep-24
+Northern Ireland,5G high confidence,Premises (Outdoor),Total,At least one,92.10,814251,Sep-24
+England,5G high confidence,Premises (Outdoor),Total,All,39.99,10734431,Sep-24
+England,5G high confidence,Premises (Outdoor),Total,EE,81.15,21781445,Sep-24
+England,5G high confidence,Premises (Outdoor),Total,At least one,96.22,25826695,Sep-24
+England,5G high confidence,Premises (Outdoor),Total,None,3.78,1014988,Sep-24
+England,5G high confidence,Premises (Outdoor),Total,H3,72.20,19380241,Sep-24
+England,5G high confidence,Premises (Outdoor),Total,VO,64.52,17319139,Sep-24
+England,5G high confidence,Premises (Outdoor),Total,TF,68.02,18258636,Sep-24
+England,5G very high confidence,Premises (Outdoor),Total,VO,50.46,13543954,Sep-24
+England,5G very high confidence,Premises (Outdoor),Total,At least one,91.71,24617164,Sep-24
+England,5G very high confidence,Premises (Outdoor),Total,TF,60.38,16208201,Sep-24
+England,5G very high confidence,Premises (Outdoor),Total,EE,77.92,20913901,Sep-24
+England,5G very high confidence,Premises (Outdoor),Total,None,8.29,2224519,Sep-24
+England,5G very high confidence,Premises (Outdoor),Total,All,19.89,5338355,Sep-24
+England,5G very high confidence,Premises (Outdoor),Total,H3,39.51,10605066,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Total,At least one,85.69,1340844,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Total,H3,51.75,809681,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Total,All,13.52,211483,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Total,VO,29.84,466867,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Total,None,14.31,223908,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Total,EE,79.57,1245051,Sep-24
+Wales,5G high confidence,Premises (Outdoor),Total,TF,16.34,255683,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Total,TF,54.25,1570761,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Total,All,15.68,454042,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Total,H3,34.64,1003139,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Total,At least one,85.10,2464226,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Total,VO,38.02,1100791,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Total,EE,70.65,2045689,Sep-24
+Scotland,5G very high confidence,Premises (Outdoor),Total,None,14.90,431290,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Total,All,34.05,986062,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Total,TF,61.22,1772659,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Total,H3,64.05,1854582,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Total,At least one,91.04,2636201,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Total,EE,75.70,2191983,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Total,VO,54.20,1569390,Sep-24
+Scotland,5G high confidence,Premises (Outdoor),Total,None,8.96,259315,Sep-24
+UK,4G,Premises (Outdoor),Total,H3,99.42,32008941,Sep-24
+UK,4G,Premises (Outdoor),Total,EE,99.70,32097261,Sep-24
+UK,4G,Premises (Outdoor),Total,At least one,99.97,32184901,Sep-24
+UK,4G,Premises (Outdoor),Total,All,98.78,31801263,Sep-24
+UK,4G,Premises (Outdoor),Total,None,0.03,10237,Sep-24
+UK,4G,Premises (Outdoor),Total,TF,99.57,32058134,Sep-24
+UK,4G,Premises (Outdoor),Total,VO,99.63,32076352,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Total,H3,37.98,12228999,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Total,All,18.63,5997097,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Total,EE,75.86,24424254,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Total,At least one,90.33,29081570,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Total,None,9.67,3113568,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Total,TF,58.15,18722040,Sep-24
+UK,5G very high confidence,Premises (Outdoor),Total,VO,47.37,15250166,Sep-24
+Wales,4G,Premises (Outdoor),Total,At least one,99.84,1562309,Sep-24
+Wales,4G,Premises (Outdoor),Total,VO,98.61,1543034,Sep-24
+Wales,4G,Premises (Outdoor),Total,EE,99.19,1552138,Sep-24
+Wales,4G,Premises (Outdoor),Total,All,96.56,1510858,Sep-24
+Wales,4G,Premises (Outdoor),Total,None,0.16,2443,Sep-24
+Wales,4G,Premises (Outdoor),Total,H3,98.31,1538230,Sep-24
+Wales,4G,Premises (Outdoor),Total,TF,98.53,1541786,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Total,H3,28.41,444475,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Total,At least one,78.87,1234133,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Total,TF,14.67,229559,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Total,All,8.03,125676,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Total,VO,23.80,372372,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Total,None,21.13,330619,Sep-24
+Wales,5G very high confidence,Premises (Outdoor),Total,EE,74.13,1159891,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Total,H3,19.38,171358,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Total,TF,79.85,705940,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Total,None,14.31,126536,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Total,VO,25.59,226269,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Total,All,8.46,74822,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Total,EE,33.62,297192,Sep-24
+Northern Ireland,5G very high confidence,Premises (Outdoor),Total,At least one,85.69,757545,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Total,All,96.81,855870,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Total,EE,97.95,865930,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Total,H3,99.30,877893,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Total,None,0.12,1048,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Total,At least one,99.88,883033,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Total,TF,99.04,875587,Sep-24
+Northern Ireland,4G,Premises (Outdoor),Total,VO,99.25,877455,Sep-24
+Scotland,4G,Premises (Outdoor),Total,H3,99.11,2869758,Sep-24
+Scotland,4G,Premises (Outdoor),Total,All,98.38,2848498,Sep-24
+Scotland,4G,Premises (Outdoor),Total,EE,99.61,2884334,Sep-24
+Scotland,4G,Premises (Outdoor),Total,VO,99.54,2882215,Sep-24
+Scotland,4G,Premises (Outdoor),Total,TF,99.41,2878506,Sep-24
+Scotland,4G,Premises (Outdoor),Total,At least one,99.94,2893890,Sep-24
+Scotland,4G,Premises (Outdoor),Total,None,0.06,1626,Sep-24
+Northern Ireland,4G,Premises (Indoor),Total,None,1.23,10834,Sep-24
+Northern Ireland,4G,Premises (Indoor),Total,EE,86.71,766608,Sep-24
+Northern Ireland,4G,Premises (Indoor),Total,All,74.30,656860,Sep-24
+Northern Ireland,4G,Premises (Indoor),Total,TF,92.42,817075,Sep-24
+Northern Ireland,4G,Premises (Indoor),Total,At least one,98.77,873247,Sep-24
+Northern Ireland,4G,Premises (Indoor),Total,VO,92.89,821236,Sep-24
+Northern Ireland,4G,Premises (Indoor),Total,H3,87.89,777007,Sep-24
+Wales,4G,Premises (Indoor),Total,VO,92.85,1452904,Sep-24
+Wales,4G,Premises (Indoor),Total,TF,92.39,1445684,Sep-24
+Wales,4G,Premises (Indoor),Total,All,80.38,1257739,Sep-24
+Wales,4G,Premises (Indoor),Total,At least one,98.98,1548829,Sep-24
+Wales,4G,Premises (Indoor),Total,H3,89.66,1402888,Sep-24
+Wales,4G,Premises (Indoor),Total,EE,94.67,1481301,Sep-24
+Wales,4G,Premises (Indoor),Total,None,1.02,15923,Sep-24

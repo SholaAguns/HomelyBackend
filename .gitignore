@@ -2,8 +2,11 @@
 .env
 settings_old.py
 *.sqlite3
+*.pyc
 
 drafts/
+
+__pycache__/
 
 # Distribution / packaging
 .Python
