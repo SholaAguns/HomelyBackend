@@ -8,7 +8,7 @@ import json
 from typing import Dict, Any, Optional
 from decimal import Decimal
 from datetime import datetime
-from property.services.interface import IPropertyCreationService
+from property.services.property_creation.interface import IPropertyCreationService
 
 logger = logging.getLogger('property.services.zoopla')
 

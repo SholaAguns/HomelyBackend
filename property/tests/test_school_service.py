@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 
 from property.models import Property, PropertyList, School
-from property.services.context import SchoolRatingService
+from property.services.context_retrieval import SchoolRatingService
 
 
 class SchoolRatingServiceTest(TestCase):
@@ -300,7 +300,7 @@ class SchoolRatingServiceTest(TestCase):
 
     def test_fetch_data_note_about_ofsted(self):
         """Test response includes note about Ofsted"""
-        with patch('property.services.ofsted_service.OfstedService.get_ofsted_report') as mock_ofsted:
+        with patch('property.services.context_retrieval.ofsted_service.OfstedService.get_ofsted_report') as mock_ofsted:
             # Mock Ofsted responses
             mock_ofsted.return_value = {
                 'overall_rating': 'Good',
@@ -314,7 +314,7 @@ class SchoolRatingServiceTest(TestCase):
             self.assertIn('note', result)
             self.assertIn('Ofsted', result['note'])
 
-    @patch('property.services.ofsted_service.OfstedService.get_ofsted_report')
+    @patch('property.services.context_retrieval.ofsted_service.OfstedService.get_ofsted_report')
     def test_fetch_data_includes_ofsted_ratings(self, mock_ofsted):
         """Test Ofsted ratings are fetched and included for each school"""
         # Mock Ofsted response
@@ -342,7 +342,7 @@ class SchoolRatingServiceTest(TestCase):
         # Verify Ofsted service was called for each school
         self.assertGreater(mock_ofsted.call_count, 0)
 
-    @patch('property.services.ofsted_service.OfstedService.get_ofsted_report')
+    @patch('property.services.context_retrieval.ofsted_service.OfstedService.get_ofsted_report')
     def test_fetch_data_handles_ofsted_errors_gracefully(self, mock_ofsted):
         """Test that Ofsted errors don't break school service"""
         # Mock Ofsted error

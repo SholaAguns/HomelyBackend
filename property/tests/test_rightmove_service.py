@@ -6,7 +6,7 @@ from django.test import TestCase
 from unittest.mock import patch, MagicMock
 from decimal import Decimal
 
-from property.services.rightmove_service import RightmoveService
+from property.services.property_creation.rightmove_service import RightmoveService
 from property.tests.mocks.rightmove_mock import (
     MockRightmoveService,
     mock_requests_get,

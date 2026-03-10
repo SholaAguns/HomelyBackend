@@ -53,7 +53,7 @@ class SchoolRatingService(IContextService):
         """
         from property.models import School
         from property.services.location_service import LocationService
-        from property.services.ofsted_service import OfstedService
+        from property.services.context_retrieval.ofsted_service import OfstedService
 
         self.validate_property_data(property_obj)
 

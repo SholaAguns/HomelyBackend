@@ -75,7 +75,7 @@ def run_service_task(self, property_id, service_name):
     Implements automatic retry with exponential backoff for transient errors.
     """
     from property.models import Property, ContextData
-    from property.services.context import context_service_factory
+    from property.services.context_retrieval import context_service_factory
     from django.core.cache import cache
     from django.utils import timezone
     import requests

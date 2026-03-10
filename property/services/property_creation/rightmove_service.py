@@ -9,7 +9,7 @@ import time
 from typing import Dict, Any, List, Optional
 from decimal import Decimal
 from datetime import datetime, timezone
-from property.services.interface import IPropertyCreationService
+from property.services.property_creation.interface import IPropertyCreationService
 
 logger = logging.getLogger('property.services.rightmove')
 

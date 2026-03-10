@@ -8,8 +8,8 @@ from django.test import TestCase
 from django.core.cache import cache
 
 from property.models import Property, BroadbandCoverage, MobileCoverage
-from property.services.context.broadband_dataset_service import BroadbandDatasetService
-from property.services.context.mobile_dataset_service import MobileDatasetService
+from property.services.context_retrieval.broadband_dataset_service import BroadbandDatasetService
+from property.services.context_retrieval.mobile_dataset_service import MobileDatasetService
 
 
 class BroadbandDatasetServiceTest(TestCase):

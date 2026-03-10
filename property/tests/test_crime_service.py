@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 
 from property.models import Property, PropertyList
-from property.services.context import CrimeService
+from property.services.context_retrieval import CrimeService
 
 
 class CrimeServiceTest(TestCase):
@@ -93,7 +93,7 @@ class CrimeServiceTest(TestCase):
 
         self.assertIn('latitude', str(context.exception).lower())
 
-    @patch('property.services.context.crime_service.requests.get')
+    @patch('property.services.context_retrieval.crime_service.requests.get')
     def test_fetch_data_with_mock(self, mock_get):
         """Test fetch_data with mocked API responses"""
         # Mock locate-neighbourhood response

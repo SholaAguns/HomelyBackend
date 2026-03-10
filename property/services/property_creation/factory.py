@@ -1,7 +1,7 @@
 from typing import Optional
-from property.services.interface import IPropertyCreationService
-from property.services.rightmove_service import RightmoveService
-from property.services.zoopla_service import ZooplaService
+from property.services.property_creation.interface import IPropertyCreationService
+from property.services.property_creation.rightmove_service import RightmoveService
+from property.services.property_creation.zoopla_service import ZooplaService
 
 TEXT_SERVICES = [
     ZooplaService

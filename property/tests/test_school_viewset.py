@@ -23,7 +23,7 @@ class SchoolViewSetTest(TestCase):
         )
         self.client.force_authenticate(user=self.user)
 
-    @patch('property.services.ofsted_service.OfstedService.get_ofsted_report')
+    @patch('property.services.context_retrieval.ofsted_service.OfstedService.get_ofsted_report')
     def test_get_ofsted_report_success(self, mock_get_report):
         """Test successful Ofsted report retrieval"""
         # Mock service response
@@ -50,7 +50,7 @@ class SchoolViewSetTest(TestCase):
         self.assertEqual(response.data['overall_rating'], 'Outstanding')
         mock_get_report.assert_called_once_with('100000')
 
-    @patch('property.services.ofsted_service.OfstedService.get_ofsted_report')
+    @patch('property.services.context_retrieval.ofsted_service.OfstedService.get_ofsted_report')
     def test_get_ofsted_report_not_found(self, mock_get_report):
         """Test 404 response for non-existent school"""
         # Mock service response
@@ -68,7 +68,7 @@ class SchoolViewSetTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.data['error'], 'School not found')
 
-    @patch('property.services.ofsted_service.OfstedService.get_ofsted_report')
+    @patch('property.services.context_retrieval.ofsted_service.OfstedService.get_ofsted_report')
     def test_get_ofsted_report_server_error(self, mock_get_report):
         """Test 500 response for server errors"""
         # Mock service response
@@ -96,7 +96,7 @@ class SchoolViewSetTest(TestCase):
         # Verify
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    @patch('property.services.ofsted_service.OfstedService.get_ofsted_report')
+    @patch('property.services.context_retrieval.ofsted_service.OfstedService.get_ofsted_report')
     def test_get_ofsted_report_cached_response(self, mock_get_report):
         """Test cached Ofsted report includes cached flag"""
         # Mock cached response

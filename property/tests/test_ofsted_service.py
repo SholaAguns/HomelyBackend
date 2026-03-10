@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 from django.test import TestCase
 from django.core.cache import cache
 
-from property.services.ofsted_service import OfstedService
+from property.services.context_retrieval.ofsted_service import OfstedService
 
 
 class OfstedServiceTest(TestCase):
@@ -19,7 +19,7 @@ class OfstedServiceTest(TestCase):
         """Clear cache after each test"""
         cache.clear()
 
-    @patch('property.services.ofsted_service.requests.get')
+    @patch('property.services.context_retrieval.ofsted_service.requests.get')
     def test_get_ofsted_report_success(self, mock_get):
         """Test successful Ofsted report retrieval"""
         # Mock HTML response
@@ -62,7 +62,7 @@ class OfstedServiceTest(TestCase):
         self.assertIn('report_url', result)
         self.assertFalse(result['cached'])
 
-    @patch('property.services.ofsted_service.requests.get')
+    @patch('property.services.context_retrieval.ofsted_service.requests.get')
     def test_get_ofsted_report_not_found(self, mock_get):
         """Test 404 response for non-existent school"""
         mock_response = Mock()
@@ -76,7 +76,7 @@ class OfstedServiceTest(TestCase):
         self.assertEqual(result['error'], 'School not found')
         self.assertEqual(result['urn'], '999999')
 
-    @patch('property.services.ofsted_service.requests.get')
+    @patch('property.services.context_retrieval.ofsted_service.requests.get')
     def test_get_ofsted_report_network_error(self, mock_get):
         """Test network error handling"""
         mock_get.side_effect = Exception('Connection timeout')
@@ -88,7 +88,7 @@ class OfstedServiceTest(TestCase):
         self.assertEqual(result['error'], 'Parse error')
         self.assertEqual(result['urn'], '100000')
 
-    @patch('property.services.ofsted_service.requests.get')
+    @patch('property.services.context_retrieval.ofsted_service.requests.get')
     def test_get_ofsted_report_caching(self, mock_get):
         """Test that results are cached"""
         html_content = """
@@ -117,7 +117,7 @@ class OfstedServiceTest(TestCase):
         # Should only call requests.get once
         self.assertEqual(mock_get.call_count, 1)
 
-    @patch('property.services.ofsted_service.requests.get')
+    @patch('property.services.context_retrieval.ofsted_service.requests.get')
     def test_parse_missing_overall_rating(self, mock_get):
         """Test parsing when overall rating is missing"""
         html_content = """
@@ -140,7 +140,7 @@ class OfstedServiceTest(TestCase):
         # Verify
         self.assertEqual(result['error'], 'Could not parse Ofsted rating')
 
-    @patch('property.services.ofsted_service.requests.get')
+    @patch('property.services.context_retrieval.ofsted_service.requests.get')
     def test_parse_sub_judgements(self, mock_get):
         """Test parsing all sub-judgements"""
         html_content = """
@@ -191,7 +191,7 @@ class OfstedServiceTest(TestCase):
         self.assertEqual(result['sub_judgements']['leadership_and_management'], 'Good')
         self.assertEqual(result['sub_judgements']['early_years_provision'], 'Good')
 
-    @patch('property.services.ofsted_service.requests.get')
+    @patch('property.services.context_retrieval.ofsted_service.requests.get')
     def test_parse_requires_improvement(self, mock_get):
         """Test parsing 'Requires improvement' rating"""
         html_content = """
@@ -215,7 +215,7 @@ class OfstedServiceTest(TestCase):
         # Verify
         self.assertEqual(result['overall_rating'], 'Requires improvement')
 
-    @patch('property.services.ofsted_service.requests.get')
+    @patch('property.services.context_retrieval.ofsted_service.requests.get')
     def test_clear_cache(self, mock_get):
         """Test cache clearing"""
         html_content = """
@@ -246,7 +246,7 @@ class OfstedServiceTest(TestCase):
         # Should call requests.get twice (once before clear, once after)
         self.assertEqual(mock_get.call_count, 2)
 
-    @patch('property.services.ofsted_service.requests.get')
+    @patch('property.services.context_retrieval.ofsted_service.requests.get')
     def test_http_500_error(self, mock_get):
         """Test handling of HTTP 500 error"""
         mock_response = Mock()

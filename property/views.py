@@ -363,7 +363,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
     def broadband(self, request, uuid=None):
         """Get broadband coverage data for property"""
         from property.models import ContextData
-        from property.services.context.broadband_dataset_service import BroadbandDatasetService
+        from property.services.context_retrieval.broadband_dataset_service import BroadbandDatasetService
 
         property_obj = self.get_object()
 
@@ -409,7 +409,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
     def mobile(self, request, uuid=None):
         """Get mobile coverage data for property"""
         from property.models import ContextData
-        from property.services.context.mobile_dataset_service import MobileDatasetService
+        from property.services.context_retrieval.mobile_dataset_service import MobileDatasetService
 
         property_obj = self.get_object()
 
@@ -615,7 +615,7 @@ class SchoolViewSet(viewsets.ViewSet):
         Example:
             GET /api/schools/ofsted/100000/
         """
-        from property.services.ofsted_service import OfstedService
+        from property.services.context_retrieval.ofsted_service import OfstedService
 
         if not urn:
             return Response(
