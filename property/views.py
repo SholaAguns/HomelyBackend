@@ -15,8 +15,10 @@ from property.serializers import (
     PropertyListSerializer, PropertyListDetailSerializer,
     SavedLocationSerializer, CreateFromInputSerializer,
     BulkPropertyCreationSerializer, PropertyListTaskSerializer,
-    SearchCriteriaSerializer, PlaceOfInterestSerializer
+    SearchCriteriaSerializer, PlaceOfInterestSerializer,
+    ContextOptionsSerializer,
 )
+from property.stage2_models import ContextOptions
 from property.tasks import retrieve_context_data, calculate_property_rating, scrape_rightmove_properties
 from property.services import property_creation_service_factory
 
@@ -164,6 +166,22 @@ class PropertyListViewSet(viewsets.ModelViewSet):
                 {'error': f'Task {task_uuid} not found for this property list'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+    @action(detail=True, methods=['get', 'put', 'patch'], url_path='context-options')
+    def context_options(self, request, uuid=None):
+        """Get or update context options for a property list"""
+        property_list = self.get_object()
+        context_options_obj, _ = ContextOptions.objects.get_or_create(property_list=property_list)
+
+        if request.method == 'GET':
+            serializer = ContextOptionsSerializer(context_options_obj)
+            return Response(serializer.data)
+
+        partial = request.method == 'PATCH'
+        serializer = ContextOptionsSerializer(context_options_obj, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class PropertyViewSet(viewsets.ModelViewSet):

@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
 from property.models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, PlaceOfInterest
+from property.stage2_models import ContextOptions
 
 
 class SearchCriteriaSerializer(serializers.ModelSerializer):
@@ -370,3 +371,26 @@ class PropertyListTaskSerializer(serializers.ModelSerializer):
             host = request.get_host()
             return f"{ws_scheme}://{host}/ws/property-list/{obj.property_list.uuid}/"
         return None
+
+
+class ContextOptionsSerializer(serializers.ModelSerializer):
+    """Serializer for ContextOptions model"""
+
+    property_list_uuid = serializers.ReadOnlyField(source='property_list.uuid')
+
+    class Meta:
+        model = ContextOptions
+        fields = [
+            'uuid',
+            'property_list_uuid',
+            'enable_crime',
+            'enable_schools',
+            'enable_broadband',
+            'enable_mobile',
+            'enable_poi',
+            'poi_types',
+            'poi_search_radius_meters',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['uuid', 'property_list_uuid', 'created_at', 'updated_at']
