@@ -285,28 +285,31 @@ class PropertyViewSet(viewsets.ModelViewSet):
     def context_data(self, request, uuid=None):
         """Get all context data for a property"""
         from property.models import ContextData
+        from property.report_transformers import transform_context_data
 
         property_obj = self.get_object()
         context_data = ContextData.objects.filter(property=property_obj)
 
         data = []
         for cd in context_data:
+            # Transform service data to match frontend expectations
+            transformed_data = None
+            if cd.status == 'COMPLETE' and cd.data:
+                transformed_data = transform_context_data(cd.service_name, cd.data)
+
             data.append({
+                'id': str(cd.uuid),
+                'property_id': str(property_obj.uuid),
                 'service_name': cd.service_name,
                 'status': cd.status,
-                'data': cd.data,
+                'data': transformed_data,
                 'error_message': cd.error_message,
-                'error_type': cd.error_type,
-                'retry_count': cd.retry_count,
+                'started_at': cd.last_attempt_at,
                 'completed_at': cd.completed_at,
-                'last_attempt_at': cd.last_attempt_at
+                'cached': False
             })
 
-        return Response({
-            'property_id': str(property_obj.uuid),
-            'property_state': property_obj.state,
-            'context_data': data
-        })
+        return Response(data)
 
     @action(detail=True, methods=['get'], url_path='context-data/(?P<service_name>[^/.]+)')
     def context_data_detail(self, request, uuid=None, service_name=None):

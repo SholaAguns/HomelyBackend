@@ -394,3 +394,95 @@ class ContextOptionsSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['uuid', 'property_list_uuid', 'created_at', 'updated_at']
+
+
+# Context Report Data Serializers
+
+class PlaceSerializer(serializers.Serializer):
+    """Serializer for POI Place data"""
+    name = serializers.CharField()
+    distance_km = serializers.FloatField()
+    address = serializers.CharField(required=False, allow_null=True)
+    rating = serializers.FloatField(required=False, allow_null=True)
+    user_ratings_total = serializers.IntegerField(required=False, allow_null=True)
+
+
+class PoiReportDataSerializer(serializers.Serializer):
+    """Serializer for POI report data matching frontend PoiReportData interface"""
+    total_places = serializers.IntegerField()
+    categories = serializers.ListField(child=serializers.CharField(), required=False)
+    by_category = serializers.DictField(child=PlaceSerializer(many=True), required=False)
+    data_source = serializers.CharField()
+    search_radius_km = serializers.FloatField()
+
+
+class SchoolSerializer(serializers.Serializer):
+    """Serializer for School data"""
+    name = serializers.CharField()
+    distance_miles = serializers.FloatField()
+    pupil_count = serializers.IntegerField()
+    type = serializers.CharField()
+    ofsted_url = serializers.URLField(required=False, allow_null=True)
+
+
+class SchoolStatisticsSerializer(serializers.Serializer):
+    """Serializer for School statistics"""
+    primary_count = serializers.IntegerField()
+    secondary_count = serializers.IntegerField()
+    closest_primary_km = serializers.FloatField(required=False, allow_null=True)
+    closest_secondary_km = serializers.FloatField(required=False, allow_null=True)
+
+
+class SchoolsReportDataSerializer(serializers.Serializer):
+    """Serializer for Schools report data matching frontend SchoolsReportData interface"""
+    statistics = SchoolStatisticsSerializer()
+    primary_schools = SchoolSerializer(many=True, required=False)
+    secondary_schools = SchoolSerializer(many=True, required=False)
+    note = serializers.CharField(required=False, allow_null=True)
+
+
+class CrimeCategorySerializer(serializers.Serializer):
+    """Serializer for Crime category data"""
+    category = serializers.CharField()
+    count = serializers.IntegerField()
+
+
+class CrimeReportDataSerializer(serializers.Serializer):
+    """Serializer for Crime report data matching frontend CrimeReportData interface"""
+    total_crimes = serializers.IntegerField()
+    period = serializers.CharField()
+    crime_rating = serializers.CharField()
+    top_categories = CrimeCategorySerializer(many=True)
+    data_source = serializers.CharField()
+    postcode_sector = serializers.CharField()
+
+
+class FullFibreDataSerializer(serializers.Serializer):
+    """Serializer for full fibre data"""
+    availability_pct = serializers.FloatField()
+    take_up_pct = serializers.FloatField()
+
+
+class BroadbandReportDataSerializer(serializers.Serializer):
+    """Serializer for Broadband report data matching frontend BroadbandReportData interface"""
+    max_download_mbps = serializers.FloatField()
+    max_upload_mbps = serializers.FloatField()
+    full_fibre = FullFibreDataSerializer(required=False, allow_null=True)
+    data_source = serializers.CharField()
+    granularity = serializers.CharField()
+
+
+class MobileOperatorSerializer(serializers.Serializer):
+    """Serializer for Mobile operator data"""
+    name = serializers.CharField()
+    indoor_4g = serializers.FloatField()
+    outdoor_4g = serializers.FloatField()
+    indoor_5g = serializers.FloatField(required=False, allow_null=True)
+    outdoor_5g = serializers.FloatField(required=False, allow_null=True)
+
+
+class MobileCoverageReportDataSerializer(serializers.Serializer):
+    """Serializer for Mobile coverage report data matching frontend MobileCoverageReportData interface"""
+    operators = MobileOperatorSerializer(many=True)
+    data_source = serializers.CharField()
+    granularity = serializers.CharField()
