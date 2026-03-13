@@ -109,24 +109,28 @@ def transform_mobile_data(service_data):
     """
     Transform Mobile service response to match MobileCoverageReportDataSerializer
 
-    Backend has complex structure with coverage data by network count
-    Frontend expects: list of operators with indoor/outdoor 4g/5g percentages
-
-    NOTE: Current backend structure doesn't have per-operator data.
-    This is a placeholder that needs backend service update.
+    Ofcom dataset provides aggregate coverage by network count, not per-operator.
+    Frontend now displays aggregate coverage data.
     """
     if not service_data:
         return None
 
-    # TODO: Backend needs to be updated to provide per-operator data
-    # For now, return a placeholder structure
-    # The backend response has aggregate coverage data but not per-operator
-
-    return {
-        'operators': [],  # Empty until backend provides operator-specific data
+    # Return the data structure that frontend expects
+    result = {
+        'scores': service_data.get('scores', {}),
+        '4g_coverage': service_data.get('4g_coverage', {}),
         'data_source': service_data.get('data_source', ''),
         'granularity': service_data.get('granularity', ''),
     }
+
+    # Optional fields
+    if '5g_coverage_high_confidence' in service_data:
+        result['5g_coverage_high_confidence'] = service_data['5g_coverage_high_confidence']
+
+    if 'laua_name' in service_data:
+        result['laua_name'] = service_data['laua_name']
+
+    return result
 
 
 def transform_context_data(service_name, service_data):
