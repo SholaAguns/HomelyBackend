@@ -11,7 +11,8 @@
       "Bash(python:*)",
       "Bash(dir:*)",
       "WebSearch",
-      "WebFetch(domain:community.fabric.microsoft.com)"
+      "WebFetch(domain:community.fabric.microsoft.com)",
+      "Bash(tasklist | grep -i celery)"
     ]
   }
 }

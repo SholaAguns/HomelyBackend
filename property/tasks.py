@@ -46,9 +46,14 @@ def retrieve_context_data(self, property_id, property_list_id=None):
         if not enabled_services:
             raise ValueError('No context services enabled')
 
-        # Transition to Stage2InProgress (FSM transition)
-        property_obj.run_stage2()
-        property_obj.save()
+        # Verify property is in correct state (FSM transition handled by caller - view or signal)
+        if property_obj.state not in ['STAGE2_IN_PROGRESS', 'NEW']:
+            raise ValueError(f'Cannot run context retrieval from state {property_obj.state}')
+
+        # If still in NEW state, transition now (handles bulk operations where view doesn't call FSM)
+        if property_obj.state == 'NEW':
+            property_obj.run_stage2()
+            property_obj.save()
 
         # Create ContextData records for each service
         for service_name in enabled_services:
