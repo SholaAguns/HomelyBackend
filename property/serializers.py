@@ -388,6 +388,7 @@ class ContextOptionsSerializer(serializers.ModelSerializer):
             'enable_broadband',
             'enable_mobile',
             'enable_poi',
+            'enable_council_tax',
             'poi_types',
             'poi_search_radius_meters',
             'created_at',

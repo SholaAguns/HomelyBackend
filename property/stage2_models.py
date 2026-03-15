@@ -14,6 +14,7 @@ class ContextOptions(models.Model):
     enable_schools = models.BooleanField(default=False)
     enable_broadband = models.BooleanField(default=False)
     enable_mobile = models.BooleanField(default=False)
+    enable_council_tax = models.BooleanField(default=False)
 
     # POI configuration
     enable_poi = models.BooleanField(default=False)
@@ -42,6 +43,8 @@ class ContextOptions(models.Model):
             services.append('mobile')
         if self.enable_poi:
             services.append('poi')
+        if self.enable_council_tax:
+            services.append('council_tax')
         return services
 
 
