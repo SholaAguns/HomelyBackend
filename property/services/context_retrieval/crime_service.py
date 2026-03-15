@@ -64,11 +64,16 @@ class CrimeService(IContextService):
 
         if not location_id:
             logger.warning(f"No location ID found for {property_obj.postcode}")
+            postcode_sector = property_obj.postcode.replace(' ', '')[:4].upper()
             return {
                 'total_crimes': 0,
                 'crime_rating': 'Unknown',
                 'categories': {},
                 'months_analyzed': 0,
+                'period': '12 months',
+                'data_source': 'UK Police API',
+                'postcode_sector': postcode_sector,
+                'top_categories': [],
                 'error': 'No location data available'
             }
 
@@ -77,6 +82,12 @@ class CrimeService(IContextService):
 
         # Aggregate and analyze
         analysis = self._analyze_crime_data(crime_data)
+
+        # Add metadata fields
+        postcode_sector = property_obj.postcode.replace(' ', '')[:4].upper()
+        analysis['period'] = '12 months'
+        analysis['data_source'] = 'UK Police API'
+        analysis['postcode_sector'] = postcode_sector
 
         return analysis
 

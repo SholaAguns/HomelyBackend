@@ -412,9 +412,21 @@ class PoiReportDataSerializer(serializers.Serializer):
     """Serializer for POI report data matching frontend PoiReportData interface"""
     total_places = serializers.IntegerField()
     categories = serializers.ListField(child=serializers.CharField(), required=False)
-    by_category = serializers.DictField(child=PlaceSerializer(many=True), required=False)
+    by_category = serializers.DictField(required=False)  # Dict of category -> list of places
     data_source = serializers.CharField()
     search_radius_km = serializers.FloatField()
+
+    def validate_by_category(self, value):
+        """Validate that by_category values are lists of place dicts"""
+        if value:
+            for category, places in value.items():
+                if not isinstance(places, list):
+                    raise serializers.ValidationError(f"Category '{category}' must contain a list of places")
+                # Validate each place
+                for place in places:
+                    place_serializer = PlaceSerializer(data=place)
+                    place_serializer.is_valid(raise_exception=True)
+        return value
 
 
 class SchoolSerializer(serializers.Serializer):
@@ -497,3 +509,14 @@ class MobileCoverageReportDataSerializer(serializers.Serializer):
     data_source = serializers.CharField()
     granularity = serializers.CharField()
     laua_name = serializers.CharField(required=False, allow_null=True)
+
+
+class CouncilTaxReportDataSerializer(serializers.Serializer):
+    """Serializer for Council Tax report data matching frontend CouncilTaxReportData interface"""
+    band = serializers.CharField(allow_null=True)
+    band_range = serializers.CharField(allow_null=True)
+    local_authority = serializers.CharField(allow_null=True)
+    address = serializers.CharField(required=False, allow_null=True)
+    is_exact_match = serializers.BooleanField(default=True)
+    country = serializers.CharField(default='England')
+    retrieved_at = serializers.CharField(allow_null=True)

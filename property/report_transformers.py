@@ -1,6 +1,14 @@
 """
 Transformers to convert service response data to match frontend report data models
 """
+from property.serializers import (
+    PoiReportDataSerializer,
+    SchoolsReportDataSerializer,
+    CrimeReportDataSerializer,
+    BroadbandReportDataSerializer,
+    MobileCoverageReportDataSerializer,
+    CouncilTaxReportDataSerializer,
+)
 
 
 def transform_poi_data(service_data):
@@ -29,13 +37,18 @@ def transform_poi_data(service_data):
             })
         by_category[category] = transformed_places
 
-    return {
+    transformed = {
         'total_places': service_data.get('total_pois_found', 0),
         'categories': service_data.get('types_searched', []),
         'by_category': by_category,
         'data_source': 'Google Places API',
         'search_radius_km': service_data.get('search_radius_meters', 0) / 1000,
     }
+
+    # Validate through serializer
+    serializer = PoiReportDataSerializer(data=transformed)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data
 
 
 def transform_schools_data(service_data):
@@ -60,12 +73,17 @@ def transform_schools_data(service_data):
     # Transform schools - assuming they already have correct fields
     # If not, we would transform here
 
-    return {
+    transformed = {
         'statistics': statistics,
         'primary_schools': service_data.get('primary_schools', []),
         'secondary_schools': service_data.get('secondary_schools', []),
         'note': service_data.get('note'),
     }
+
+    # Validate through serializer
+    serializer = SchoolsReportDataSerializer(data=transformed)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data
 
 
 def transform_crime_data(service_data):
@@ -77,7 +95,7 @@ def transform_crime_data(service_data):
     if not service_data:
         return None
 
-    return {
+    transformed = {
         'total_crimes': service_data.get('total_crimes', 0),
         'period': service_data.get('period', ''),
         'crime_rating': service_data.get('crime_rating', ''),
@@ -85,6 +103,11 @@ def transform_crime_data(service_data):
         'data_source': service_data.get('data_source', ''),
         'postcode_sector': service_data.get('postcode_sector', ''),
     }
+
+    # Validate through serializer
+    serializer = CrimeReportDataSerializer(data=transformed)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data
 
 
 def transform_broadband_data(service_data):
@@ -96,13 +119,18 @@ def transform_broadband_data(service_data):
     if not service_data:
         return None
 
-    return {
+    transformed = {
         'max_download_mbps': service_data.get('max_download_mbps', 0),
         'max_upload_mbps': service_data.get('max_upload_mbps', 0),
         'full_fibre': service_data.get('full_fibre'),
         'data_source': service_data.get('data_source', ''),
         'granularity': service_data.get('granularity', ''),
     }
+
+    # Validate through serializer
+    serializer = BroadbandReportDataSerializer(data=transformed)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data
 
 
 def transform_mobile_data(service_data):
@@ -115,8 +143,8 @@ def transform_mobile_data(service_data):
     if not service_data:
         return None
 
-    # Return the data structure that frontend expects
-    result = {
+    # Build data structure that frontend expects
+    transformed = {
         'scores': service_data.get('scores', {}),
         '4g_coverage': service_data.get('4g_coverage', {}),
         'data_source': service_data.get('data_source', ''),
@@ -125,12 +153,40 @@ def transform_mobile_data(service_data):
 
     # Optional fields
     if '5g_coverage_high_confidence' in service_data:
-        result['5g_coverage_high_confidence'] = service_data['5g_coverage_high_confidence']
+        transformed['5g_coverage_high_confidence'] = service_data['5g_coverage_high_confidence']
 
     if 'laua_name' in service_data:
-        result['laua_name'] = service_data['laua_name']
+        transformed['laua_name'] = service_data['laua_name']
 
-    return result
+    # Validate through serializer
+    serializer = MobileCoverageReportDataSerializer(data=transformed)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data
+
+
+def transform_council_tax_data(service_data):
+    """
+    Transform Council Tax service response to match CouncilTaxReportDataSerializer
+
+    Council tax band data is relatively simple, just pass through with validation
+    """
+    if not service_data:
+        return None
+
+    transformed = {
+        'band': service_data.get('band'),
+        'band_range': service_data.get('band_range'),
+        'local_authority': service_data.get('local_authority'),
+        'address': service_data.get('address'),
+        'is_exact_match': service_data.get('is_exact_match', True),
+        'country': service_data.get('country', 'England'),
+        'retrieved_at': service_data.get('retrieved_at'),
+    }
+
+    # Validate through serializer
+    serializer = CouncilTaxReportDataSerializer(data=transformed)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data
 
 
 def transform_context_data(service_name, service_data):
@@ -150,6 +206,7 @@ def transform_context_data(service_name, service_data):
         'crime': transform_crime_data,
         'broadband': transform_broadband_data,
         'mobile': transform_mobile_data,
+        'council_tax': transform_council_tax_data,
     }
 
     transformer = transformers.get(service_name)
