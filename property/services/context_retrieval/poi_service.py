@@ -4,6 +4,7 @@ POI (Places of Interest) service using Google Maps API
 import logging
 from typing import Dict, Any, List
 from django.core.cache import cache
+from django.conf import settings
 from .interface import IContextService
 from .googlemaps_service import GoogleMapsService
 from property.models import PlaceOfInterest
@@ -17,7 +18,7 @@ class POIService(IContextService):
 
     Features:
     - User-configurable POI types (from ContextOptions.poi_types)
-    - Returns top 3 closest places for each type
+    - Returns top N closest places for each type (configurable via POI_RESULTS_LIMIT)
     - Includes distance (straight, driving, walking) and time
     - Grid-based caching (30 days) by rounded coordinates
     - Stores results in PlaceOfInterest model
@@ -147,7 +148,7 @@ class POIService(IContextService):
             radius: Search radius in meters
 
         Returns:
-            List of place dicts (up to 3)
+            List of place dicts (up to POI_RESULTS_LIMIT)
         """
         # Check cache (per-type cache key)
         cache_key = self._get_type_cache_key(property_obj, place_type)
@@ -166,7 +167,7 @@ class POIService(IContextService):
             lon=float(property_obj.longitude),
             place_type=place_type,
             radius=radius,
-            limit=3
+            limit=settings.POI_RESULTS_LIMIT
         )
 
         if not places:

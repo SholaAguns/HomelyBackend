@@ -205,6 +205,7 @@ FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 
 # Google Maps API Configuration
 GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY', '')
+POI_RESULTS_LIMIT = int(os.getenv('POI_RESULTS_LIMIT', '3'))
 
 # REST Framework Configuration
 REST_FRAMEWORK = {

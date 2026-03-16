@@ -15,7 +15,7 @@ from property.serializers import (
     PropertyListSerializer, PropertyListDetailSerializer,
     SavedLocationSerializer, CreateFromInputSerializer,
     BulkPropertyCreationSerializer, PropertyListTaskSerializer,
-    SearchCriteriaSerializer, PlaceOfInterestSerializer,
+    PlaceOfInterestSerializer,
     ContextOptionsSerializer,
 )
 from property.stage2_models import ContextOptions
@@ -285,7 +285,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
     def context_data(self, request, uuid=None):
         """Get all context data for a property"""
         from property.models import ContextData
-        from property.report_transformers import transform_context_data
+        from property.utils.report_transformers import transform_context_data
 
         property_obj = self.get_object()
         context_data = ContextData.objects.filter(property=property_obj)
