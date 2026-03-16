@@ -16,14 +16,14 @@ class PropertyUpdateConsumer(AsyncJsonWebsocketConsumer):
 
     async def connect(self):
         """Accept WebSocket connection and join appropriate room."""
-        self.property_id = self.scope['url_route']['kwargs'].get('property_id')
-        self.list_id = self.scope['url_route']['kwargs'].get('list_id')
+        self.property_uuid = self.scope['url_route']['kwargs'].get('property_id')
+        self.list_uuid = self.scope['url_route']['kwargs'].get('list_id')
 
         # Determine room name based on what we're tracking
-        if self.property_id:
-            self.room_group_name = f'property_{self.property_id}'
-        elif self.list_id:
-            self.room_group_name = f'property_list_{self.list_id}'
+        if self.property_uuid:
+            self.room_group_name = f'property_{self.property_uuid}'
+        elif self.list_uuid:
+            self.room_group_name = f'property_list_{self.list_uuid}'
         else:
             await self.close()
             return

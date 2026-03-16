@@ -208,7 +208,7 @@ def calculate_property_rating(self, property_id):
 
         # Send initial progress update
         _send_websocket_update(
-            property_id,
+            property_obj.uuid,
             'progress_update',
             {'message': 'Starting rating calculation', 'progress': 0}
         )
@@ -432,17 +432,17 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
 
 
 
-def _send_websocket_update(property_id, message_type, data):
+def _send_websocket_update(property_uuid, message_type, data):
     """
     Helper function to send WebSocket updates to connected clients.
 
     Args:
-        property_id: The property ID
+        property_uuid: The property UUID
         message_type: Type of message (progress_update, service_complete, etc)
         data: Message data dictionary
     """
     channel_layer = get_channel_layer()
-    room_group_name = f'property_{property_id}'
+    room_group_name = f'property_{property_uuid}'
 
     async_to_sync(channel_layer.group_send)(
         room_group_name,
@@ -541,7 +541,7 @@ def _send_service_update(property_obj, service_name, status, data=None, error=No
     in_progress = all_context_data.filter(status__in=['PENDING', 'IN_PROGRESS']).count()
 
     message_data = {
-        'property_id': property_obj.id,
+        'property_id': str(property_obj.uuid),
         'property_state': property_obj.state,
         'service': service_name,
         'status': status,
@@ -555,7 +555,12 @@ def _send_service_update(property_obj, service_name, status, data=None, error=No
         }
     }
 
-    _send_websocket_update(property_obj.id, 'service_update', message_data)
+    # Send to property channel
+    _send_websocket_update(property_obj.uuid, 'service_update', message_data)
+
+    # Also send to all property list channels that contain this property
+    for property_list in property_obj.property_lists.all():
+        _send_list_websocket_update(property_list.uuid, 'service_update', message_data)
 
 
 def _get_enabled_services_from_all_lists(property_obj):
@@ -638,12 +643,15 @@ def _check_stage2_completion(property_obj):
         property_obj.save()
 
         # Send completion WebSocket update
-        _send_websocket_update(
-            property_obj.id,
-            'stage2_complete',
-            {
-                'property_id': property_obj.id,
-                'property_state': property_obj.state,
-                'message': 'Context data retrieval complete'
-            }
-        )
+        completion_data = {
+            'property_id': str(property_obj.uuid),
+            'property_state': property_obj.state,
+            'message': 'Context data retrieval complete'
+        }
+
+        # Send to property channel
+        _send_websocket_update(property_obj.uuid, 'stage2_complete', completion_data)
+
+        # Also send to all property list channels that contain this property
+        for property_list in property_obj.property_lists.all():
+            _send_list_websocket_update(property_list.uuid, 'stage2_complete', completion_data)
