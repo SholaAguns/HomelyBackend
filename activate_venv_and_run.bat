@@ -7,9 +7,9 @@ echo Starting Redis Server...
 start "Redis Server" redis-server
 timeout /t 2 /nobreak >nul
 
-REM Start Django Development Server
-echo Starting Django Server...
-start "Django Server" cmd /k "cd C:/Users/shola/Repos/HomelyBackend/.venv/Scripts && call activate.bat && cd C:/Users/shola/Repos/HomelyBackend && python manage.py runserver"
+REM Start Django Development Server with ASGI (for WebSocket support)
+echo Starting Django ASGI Server (Uvicorn)...
+start "Django Server" cmd /k "cd C:/Users/shola/Repos/HomelyBackend/.venv/Scripts && call activate.bat && cd C:/Users/shola/Repos/HomelyBackend && uvicorn homely_core.asgi:application --host 127.0.0.1 --port 8000 --reload"
 timeout /t 2 /nobreak >nul
 
 REM Start Celery Worker

@@ -17,7 +17,7 @@ services:
 
   backend:
     build: .
-    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    command: sh -c "python manage.py migrate && uvicorn homely_core.asgi:application --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - .:/app
     ports:

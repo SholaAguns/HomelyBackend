@@ -279,6 +279,11 @@ else:
                 'level': 'DEBUG',
                 'propagate': False,
             },
+            'homely_core': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+                'propagate': False,
+            },
         },
     }
 

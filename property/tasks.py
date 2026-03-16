@@ -11,17 +11,6 @@ logger = logging.getLogger('property.tasks')
 
 @shared_task(bind=True, max_retries=3)
 def retrieve_context_data(self, property_id, property_list_id=None):
-    """
-    Orchestrates Stage 2 context data retrieval.
-
-    Creates ContextData records for enabled services and launches
-    individual service tasks. Property must be in 'New' or 'Stage2Complete' state.
-
-    Args:
-        property_id: Property ID
-        property_list_id: Optional PropertyList ID (if running from specific list)
-                         If None, compiles services from all property lists
-    """
     from property.models import Property, ContextData, PropertyList
 
     try:
@@ -141,6 +130,7 @@ def run_service_task(self, property_id, service_name):
         logger.info(f'Service {service_name} completed for property {property_id}')
 
         # Send WebSocket update
+        logger.info(f'SENDING UPDATE FOR Service: {service_name} ')
         _send_service_update(property_obj, service_name, 'COMPLETE', data)
 
         # Check if all services complete
@@ -441,6 +431,13 @@ def _send_websocket_update(property_uuid, message_type, data):
         message_type: Type of message (progress_update, service_complete, etc)
         data: Message data dictionary
     """
+    logger.info("=" * 80)
+    logger.info("SENDING WEBSOCKET UPDATE TO PROPERTY CHANNEL")
+    logger.info(f"PROPERTY_UUID: {property_uuid}")
+    logger.info(f"MESSAGE_TYPE: {message_type}")
+    logger.info(f"ROOM_GROUP_NAME: property_{property_uuid}")
+    logger.info(f"DATA: {data}")
+
     channel_layer = get_channel_layer()
     room_group_name = f'property_{property_uuid}'
 
@@ -451,6 +448,8 @@ def _send_websocket_update(property_uuid, message_type, data):
             'data': data
         }
     )
+    logger.info("WEBSOCKET UPDATE SENT SUCCESSFULLY")
+    logger.info("=" * 80)
 
 
 def _send_list_websocket_update(property_list_uuid, message_type, data):
@@ -462,6 +461,13 @@ def _send_list_websocket_update(property_list_uuid, message_type, data):
         message_type: Type of message (scrape_progress, scrape_complete, etc)
         data: Message data dictionary
     """
+    logger.info("=" * 80)
+    logger.info("SENDING WEBSOCKET UPDATE TO PROPERTY LIST CHANNEL")
+    logger.info(f"PROPERTY_LIST_UUID: {property_list_uuid}")
+    logger.info(f"MESSAGE_TYPE: {message_type}")
+    logger.info(f"ROOM_GROUP_NAME: property_list_{property_list_uuid}")
+    logger.info(f"DATA: {data}")
+
     channel_layer = get_channel_layer()
     room_group_name = f'property_list_{property_list_uuid}'
 
@@ -472,6 +478,8 @@ def _send_list_websocket_update(property_list_uuid, message_type, data):
             'data': data
         }
     )
+    logger.info("WEBSOCKET UPDATE SENT SUCCESSFULLY")
+    logger.info("=" * 80)
 
 
 def _classify_error(exc) -> dict:
