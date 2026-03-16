@@ -40,13 +40,19 @@ class GoogleMapsService(IGeoService):
         'restaurant': ['restaurant'],
         'gym': ['gym'],
         'pharmacy': ['pharmacy'],
-        'station': ['train_station', 'bus_station'],  # Multiple types
+        'train_station': ['train_station'],
+        'bus_station': ['bus_station'],
+        'petrol_station': ['gas_station'],
         'mosque': ['mosque'],
         'church': ['church'],
         'temple': ['hindu_temple'],
         'library': ['library'],
         'shopping': ['shopping_mall'],
         'airport': ['airport'],
+        'cafe': ['cafe'],
+        'bank': ['bank'],
+        'pub': ['pub'],
+        'dentist': ['dentist'],
     }
 
     def __init__(self):

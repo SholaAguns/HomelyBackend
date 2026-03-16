@@ -151,7 +151,7 @@ class Property(models.Model):
     def __str__(self):
         return f"{self.title} - {self.postcode}"
 
-    @transition(field=state, source='NEW', target='STAGE2_IN_PROGRESS')
+    @transition(field=state, source=['NEW', 'STAGE2_COMPLETE'], target='STAGE2_IN_PROGRESS')
     def run_stage2(self):
         """User triggers Stage 2 context retrieval"""
         pass
