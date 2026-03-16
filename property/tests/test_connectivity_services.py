@@ -173,12 +173,12 @@ class MobileDatasetServiceTest(TestCase):
         self.assertEqual(data['laua_name'], 'Westminster')
 
         # Check 4G data
-        self.assertIn('4g_coverage', data)
-        self.assertEqual(data['4g_coverage']['outdoor']['all_4_networks'], 99.8)
-        self.assertEqual(data['4g_coverage']['indoor']['all_4_networks'], 95.2)
+        self.assertIn('four_g_coverage', data)
+        self.assertEqual(data['four_g_coverage']['outdoor']['all_4_networks'], 99.8)
+        self.assertEqual(data['four_g_coverage']['indoor']['all_4_networks'], 95.2)
 
         # Check 5G data
-        self.assertIn('5g_coverage_high_confidence', data)
+        self.assertIn('five_g_coverage_high_confidence', data)
 
         # Check metadata
         self.assertEqual(data['data_source'], 'Ofcom Connected Nations Dataset')

@@ -488,23 +488,23 @@ class BroadbandReportDataSerializer(serializers.Serializer):
 class CoverageByNetworkSerializer(serializers.Serializer):
     """Serializer for coverage breakdown by network count"""
     all_4_networks = serializers.FloatField()
-    three_networks = serializers.FloatField(source='3_networks')
-    two_networks = serializers.FloatField(source='2_networks')
-    one_network = serializers.FloatField(source='1_network')
+    three_networks = serializers.FloatField()
+    two_networks = serializers.FloatField()
+    one_network = serializers.FloatField()
     no_coverage = serializers.FloatField()
 
 
 class CoverageScoresSerializer(serializers.Serializer):
     """Serializer for composite coverage scores"""
-    four_g_coverage = serializers.FloatField(source='4g_coverage')
-    five_g_coverage = serializers.FloatField(source='5g_coverage')
+    four_g_coverage = serializers.FloatField()
+    five_g_coverage = serializers.FloatField()
     overall_coverage = serializers.FloatField()
 
 
 class MobileCoverageReportDataSerializer(serializers.Serializer):
     """Serializer for Mobile coverage report data matching frontend MobileCoverageReportData interface"""
     scores = CoverageScoresSerializer()
-    four_g_coverage = serializers.DictField(source='4g_coverage')
+    four_g_coverage = serializers.DictField()
     five_g_coverage_high_confidence = serializers.DictField(required=False, allow_null=True)
     data_source = serializers.CharField()
     granularity = serializers.CharField()

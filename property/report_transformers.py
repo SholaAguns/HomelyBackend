@@ -29,8 +29,8 @@ def transform_poi_data(service_data):
         transformed_places = []
         for place in places:
             transformed_places.append({
-                'name': place.get('name'),
-                'distance_km': place.get('straight_distance_km'),
+                'name': place.get('name', 'Unknown'),
+                'distance_km': place.get('straight_distance_km', 0.0),
                 'address': place.get('address'),
                 'rating': place.get('rating'),
                 'user_ratings_total': place.get('user_ratings_total'),
@@ -143,17 +143,26 @@ def transform_mobile_data(service_data):
     if not service_data:
         return None
 
-    # Build data structure that frontend expects
+    # Get scores and set defaults for missing values
+    scores = service_data.get('scores', {})
+    if not scores.get('four_g_coverage'):
+        scores['four_g_coverage'] = 0
+    if not scores.get('five_g_coverage'):
+        scores['five_g_coverage'] = 0
+    if not scores.get('overall_coverage'):
+        scores['overall_coverage'] = 0
+
+    # Build data structure for validation
     transformed = {
-        'scores': service_data.get('scores', {}),
-        '4g_coverage': service_data.get('4g_coverage', {}),
+        'scores': scores,
+        'four_g_coverage': service_data.get('four_g_coverage', {}),
         'data_source': service_data.get('data_source', ''),
         'granularity': service_data.get('granularity', ''),
     }
 
     # Optional fields
-    if '5g_coverage_high_confidence' in service_data:
-        transformed['5g_coverage_high_confidence'] = service_data['5g_coverage_high_confidence']
+    if 'five_g_coverage_high_confidence' in service_data:
+        transformed['five_g_coverage_high_confidence'] = service_data['five_g_coverage_high_confidence']
 
     if 'laua_name' in service_data:
         transformed['laua_name'] = service_data['laua_name']

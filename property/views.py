@@ -212,7 +212,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return PropertyDetailSerializer
         return PropertySerializer
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], url_path='run-stage2')
     def run_stage2(self, request, uuid=None):
         """Trigger Stage 2 context retrieval (NEW → STAGE2_IN_PROGRESS)"""
         property_obj = self.get_object()

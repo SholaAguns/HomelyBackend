@@ -82,47 +82,47 @@ class MobileDatasetService(IContextService):
 
             # Composite scores (0-100)
             'scores': {
-                '4g_coverage': coverage.get_4g_coverage_score(),
-                '5g_coverage': coverage.get_5g_coverage_score(),
+                'four_g_coverage': coverage.get_4g_coverage_score(),
+                'five_g_coverage': coverage.get_5g_coverage_score(),
                 'overall_coverage': coverage.get_overall_coverage_score(),
             },
 
             # 4G Coverage breakdown
-            '4g_coverage': {
+            'four_g_coverage': {
                 'outdoor': {
                     'all_4_networks': float(coverage.fourg_premises_outdoor_4 or 0),
-                    '3_networks': float(coverage.fourg_premises_outdoor_3 or 0),
-                    '2_networks': float(coverage.fourg_premises_outdoor_2 or 0),
-                    '1_network': float(coverage.fourg_premises_outdoor_1 or 0),
+                    'three_networks': float(coverage.fourg_premises_outdoor_3 or 0),
+                    'two_networks': float(coverage.fourg_premises_outdoor_2 or 0),
+                    'one_network': float(coverage.fourg_premises_outdoor_1 or 0),
                     'no_coverage': float(coverage.fourg_premises_outdoor_0 or 0),
                 },
                 'indoor': {
                     'all_4_networks': float(coverage.fourg_premises_indoor_4 or 0),
-                    '3_networks': float(coverage.fourg_premises_indoor_3 or 0),
-                    '2_networks': float(coverage.fourg_premises_indoor_2 or 0),
-                    '1_network': float(coverage.fourg_premises_indoor_1 or 0),
+                    'three_networks': float(coverage.fourg_premises_indoor_3 or 0),
+                    'two_networks': float(coverage.fourg_premises_indoor_2 or 0),
+                    'one_network': float(coverage.fourg_premises_indoor_1 or 0),
                     'no_coverage': float(coverage.fourg_premises_indoor_0 or 0),
                 },
             },
 
             # 5G Coverage (high confidence)
-            '5g_coverage_high_confidence': {
+            'five_g_coverage_high_confidence': {
                 'outdoor': {
                     'all_4_networks': float(coverage.fiveg_high_premises_outdoor_4 or 0),
-                    '3_networks': float(coverage.fiveg_high_premises_outdoor_3 or 0),
-                    '2_networks': float(coverage.fiveg_high_premises_outdoor_2 or 0),
-                    '1_network': float(coverage.fiveg_high_premises_outdoor_1 or 0),
+                    'three_networks': float(coverage.fiveg_high_premises_outdoor_3 or 0),
+                    'two_networks': float(coverage.fiveg_high_premises_outdoor_2 or 0),
+                    'one_network': float(coverage.fiveg_high_premises_outdoor_1 or 0),
                     'no_coverage': float(coverage.fiveg_high_premises_outdoor_0 or 0),
                 },
             },
 
             # 5G Coverage (very high confidence)
-            '5g_coverage_very_high_confidence': {
+            'five_g_coverage_very_high_confidence': {
                 'outdoor': {
                     'all_4_networks': float(coverage.fiveg_very_high_premises_outdoor_4 or 0),
-                    '3_networks': float(coverage.fiveg_very_high_premises_outdoor_3 or 0),
-                    '2_networks': float(coverage.fiveg_very_high_premises_outdoor_2 or 0),
-                    '1_network': float(coverage.fiveg_very_high_premises_outdoor_1 or 0),
+                    'three_networks': float(coverage.fiveg_very_high_premises_outdoor_3 or 0),
+                    'two_networks': float(coverage.fiveg_very_high_premises_outdoor_2 or 0),
+                    'one_network': float(coverage.fiveg_very_high_premises_outdoor_1 or 0),
                     'no_coverage': float(coverage.fiveg_very_high_premises_outdoor_0 or 0),
                 },
             },
