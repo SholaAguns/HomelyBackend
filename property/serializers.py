@@ -401,9 +401,20 @@ class ContextOptionsSerializer(serializers.ModelSerializer):
 
 class PlaceSerializer(serializers.Serializer):
     """Serializer for POI Place data"""
+    place_id = serializers.CharField()
     name = serializers.CharField()
-    distance_km = serializers.FloatField()
     address = serializers.CharField(required=False, allow_null=True)
+    latitude = serializers.FloatField()
+    longitude = serializers.FloatField()
+    distance_km = serializers.FloatField()
+    straight_distance_km = serializers.FloatField(required=False, allow_null=True)
+    walking_distance_km = serializers.FloatField(required=False, allow_null=True)
+    walking_time_min = serializers.FloatField(required=False, allow_null=True)
+    driving_distance_km = serializers.FloatField(required=False, allow_null=True)
+    driving_time_min = serializers.FloatField(required=False, allow_null=True)
+    website_url = serializers.URLField(required=False, allow_null=True, allow_blank=True)
+    phone_number = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    google_maps_url = serializers.URLField()
     rating = serializers.FloatField(required=False, allow_null=True)
     user_ratings_total = serializers.IntegerField(required=False, allow_null=True)
 

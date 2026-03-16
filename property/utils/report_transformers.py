@@ -29,9 +29,20 @@ def transform_poi_data(service_data):
         transformed_places = []
         for place in places:
             transformed_places.append({
+                'place_id': place.get('place_id', ''),
                 'name': place.get('name', 'Unknown'),
-                'distance_km': place.get('straight_distance_km', 0.0),
                 'address': place.get('address'),
+                'latitude': place.get('latitude', 0.0),
+                'longitude': place.get('longitude', 0.0),
+                'distance_km': place.get('straight_distance_km', 0.0),
+                'straight_distance_km': place.get('straight_distance_km'),
+                'walking_distance_km': place.get('walking_distance_km'),
+                'walking_time_min': place.get('walking_time_min'),
+                'driving_distance_km': place.get('driving_distance_km'),
+                'driving_time_min': place.get('driving_time_min'),
+                'website_url': place.get('website_url') or None,
+                'phone_number': place.get('phone_number') or None,
+                'google_maps_url': place.get('google_maps_url', ''),
                 'rating': place.get('rating'),
                 'user_ratings_total': place.get('user_ratings_total'),
             })

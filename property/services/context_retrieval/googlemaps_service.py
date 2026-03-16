@@ -63,28 +63,6 @@ class GoogleMapsService(IGeoService):
         radius: int,
         limit: int = 3
     ) -> List[Dict]:
-        """
-        Search for nearby places using Google Places API.
-
-        Uses rankby=distance for more relevant results (ignores radius).
-        Fetches Place Details for contact info.
-        Fetches Directions for driving/walking times.
-        Deduplicates across multiple types (e.g., train_station + bus_station).
-
-        Args:
-            lat: Property latitude
-            lon: Property longitude
-            place_type: Internal type ('school', 'hospital', etc.)
-            radius: Search radius in meters (not used with rankby=distance)
-            limit: Maximum results to return (default 3)
-
-        Returns:
-            List of place dicts sorted by straight-line distance
-
-        Raises:
-            ValueError: If place_type is unknown
-            requests.exceptions.RequestException: If API call fails
-        """
         google_types = self.PLACE_TYPE_GOOGLE.get(place_type)
         if not google_types:
             raise ValueError(f"Unknown place_type: {place_type}")
