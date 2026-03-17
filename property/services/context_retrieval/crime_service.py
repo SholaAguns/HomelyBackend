@@ -41,12 +41,12 @@ class CrimeService(IContextService):
         if property_obj.postcode:
             postcode_sector = property_obj.postcode.replace(' ', '')[:4].upper()
             cache_key = f"crime:{postcode_sector}"
-            logger.info(f"Crime Service: returning cache key with postcode {cache_key}")
+            logger.debug(f"Crime Service: returning cache key with postcode {cache_key}")
             return cache_key
         lat = round(property_obj.latitude, 4)
         lon = round(property_obj.longitude, 4)
         cache_key = f"crime:{lat}-{lon}"
-        logger.info(f"Crime Service: returning cache key with coordinates {cache_key}")
+        logger.debug(f"Crime Service: returning cache key with coordinates {cache_key}")
         return cache_key
 
 
@@ -140,14 +140,14 @@ class CrimeService(IContextService):
             logger.error(f"Failed to get neighbourhood location: {e}")
             return None
 
-    def _fetch_crimes_by_location(self, location_id: str, months: int = 12) -> list:
+    def _fetch_crimes_by_location(self, location_id: str, months_range: int = 13) -> list:
         all_crimes = []
 
         # UK Police API allows fetching by month
         # Format: YYYY-MM
         current_date = datetime.now()
 
-        for month in range(1, months):
+        for month in range(1, months_range):
             date = current_date - timedelta(days=30 * month)
             date_str = date.strftime('%Y-%m')
 
@@ -166,8 +166,7 @@ class CrimeService(IContextService):
                 if crimes:
                     all_crimes.extend(crimes)
 
-                # Rate limiting: sleep to avoid "Too Many Requests"
-                time.sleep(0.5)  # 100ms delay = max 10 req/sec (under 15 req/sec limit)
+                time.sleep(0.5)
 
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 404:
