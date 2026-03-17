@@ -277,12 +277,12 @@ else:
         'loggers': {
             'property': {
                 'handlers': ['console'],
-                'level': 'DEBUG',
+                'level': 'INFO',
                 'propagate': False,
             },
             'homely_core': {
                 'handlers': ['console'],
-                'level': 'DEBUG',
+                'level': 'INFO',
                 'propagate': False,
             },
         },

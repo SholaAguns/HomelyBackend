@@ -158,8 +158,8 @@ class CrimeService(IContextService):
         # Format: YYYY-MM
         current_date = datetime.now()
 
-        for i in range(months):
-            date = current_date - timedelta(days=30 * i)
+        for month in range(1, months):
+            date = current_date - timedelta(days=30 * month)
             date_str = date.strftime('%Y-%m')
 
             try:

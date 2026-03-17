@@ -175,23 +175,6 @@ class GoogleMapsService(IGeoService):
         dest_lon: float,
         profile: str
     ) -> Tuple[Optional[float], Optional[float]]:
-        """
-        Get route distance and time using Google Directions API.
-
-        Args:
-            orig_lat: Origin latitude
-            orig_lon: Origin longitude
-            dest_lat: Destination latitude
-            dest_lon: Destination longitude
-            profile: 'driving' or 'walking'
-
-        Returns:
-            Tuple of (time_minutes, distance_km)
-            Returns (None, None) if no route found
-
-        Raises:
-            requests.exceptions.RequestException: If API call fails
-        """
         mode = 'driving' if profile == 'driving' else 'walking'
 
         try:
@@ -229,18 +212,6 @@ class GoogleMapsService(IGeoService):
             return None, None
 
     def _get_place_details(self, place_id: str) -> Tuple[Optional[str], Optional[str]]:
-        """
-        Fetch Place Details for website and phone number.
-
-        Args:
-            place_id: Google Place ID
-
-        Returns:
-            Tuple of (website_url, phone_number)
-            Returns (None, None) if details unavailable
-
-        Note: Does not raise exceptions - details are optional
-        """
         try:
             params = {
                 'place_id': place_id,
@@ -267,16 +238,6 @@ class GoogleMapsService(IGeoService):
             return None, None
 
     def _build_google_maps_url(self, name: str, place_id: str) -> str:
-        """
-        Build a shareable Google Maps URL for a place.
-
-        Args:
-            name: Place name
-            place_id: Google Place ID
-
-        Returns:
-            Shareable Google Maps URL
-        """
         return (
             f"https://www.google.com/maps/search/?api=1"
             f"&query={quote_plus(name)}"
