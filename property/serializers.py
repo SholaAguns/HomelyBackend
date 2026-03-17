@@ -478,7 +478,7 @@ class CrimeReportDataSerializer(serializers.Serializer):
     crime_rating = serializers.CharField()
     top_categories = CrimeCategorySerializer(many=True)
     data_source = serializers.CharField()
-    postcode_sector = serializers.CharField()
+    postcode_sector = serializers.CharField(required=False, allow_null=True)
 
 
 class FullFibreDataSerializer(serializers.Serializer):

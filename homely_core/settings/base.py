@@ -277,12 +277,12 @@ else:
         'loggers': {
             'property': {
                 'handlers': ['console'],
-                'level': 'INFO',
+                'level': os.getenv('PROPERTY_LOG_LEVEL', 'INFO'),
                 'propagate': False,
             },
             'homely_core': {
                 'handlers': ['console'],
-                'level': 'INFO',
+                'level': os.getenv('HOMELY_CORE_LOG_LEVEL', 'INFO'),
                 'propagate': False,
             },
         },

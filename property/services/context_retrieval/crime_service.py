@@ -3,6 +3,7 @@ Crime data service using UK Police API
 """
 import requests
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Dict, Any
 from .interface import IContextService
@@ -28,35 +29,33 @@ class CrimeService(IContextService):
 
     def validate_property_data(self, property_obj) -> bool:
         """Check property has postcode and coordinates"""
-        if not property_obj.postcode:
-            raise ValueError("Property must have postcode for crime data")
+        has_postcode_or_coordinates = property_obj.postcode or (property_obj.latitude and property_obj.longitude)
 
-        if not property_obj.latitude or not property_obj.longitude:
-            raise ValueError("Property must have latitude/longitude for crime data")
+        if not has_postcode_or_coordinates:
+            raise ValueError("Property must have postcode or coordinates to retrieve crime data")
 
         return True
 
     def get_cache_key(self, property_obj) -> str:
         """Cache by postcode sector (first 4 chars) for broader sharing"""
-        postcode_sector = property_obj.postcode.replace(' ', '')[:4].upper()
-        return f"crime:{postcode_sector}"
+        if property_obj.postcode:
+            postcode_sector = property_obj.postcode.replace(' ', '')[:4].upper()
+            cache_key = f"crime:{postcode_sector}"
+            logger.info(f"Crime Service: returning cache key with postcode {cache_key}")
+            return cache_key
+        lat = round(property_obj.latitude, 4)
+        lon = round(property_obj.longitude, 4)
+        cache_key = f"crime:{lat}-{lon}"
+        logger.info(f"Crime Service: returning cache key with coordinates {cache_key}")
+        return cache_key
+
 
     def get_cache_ttl(self) -> int:
         return self.CACHE_TTL
 
     def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
-        """
-        Fetch crime data from UK Police API.
-
-        Retrieves last 12 months of crime at property location.
-        Aggregates by crime category.
-
-        Returns:
-            Dict with crime statistics and breakdown by category
-        """
         self.validate_property_data(property_obj)
 
-        # Get location ID first
         location_id = self._get_location_id(
             property_obj.latitude,
             property_obj.longitude
@@ -142,16 +141,6 @@ class CrimeService(IContextService):
             return None
 
     def _fetch_crimes_by_location(self, location_id: str, months: int = 12) -> list:
-        """
-        Fetch crime data for multiple months.
-
-        Args:
-            location_id: Location identifier (lat,lng format)
-            months: Number of months to retrieve (default 12)
-
-        Returns:
-            List of crime records
-        """
         all_crimes = []
 
         # UK Police API allows fetching by month
@@ -176,6 +165,9 @@ class CrimeService(IContextService):
                 crimes = response.json()
                 if crimes:
                     all_crimes.extend(crimes)
+
+                # Rate limiting: sleep to avoid "Too Many Requests"
+                time.sleep(0.5)  # 100ms delay = max 10 req/sec (under 15 req/sec limit)
 
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 404:
