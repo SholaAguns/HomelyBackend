@@ -451,8 +451,10 @@ class SchoolSerializer(serializers.Serializer):
 
 class SchoolStatisticsSerializer(serializers.Serializer):
     """Serializer for School statistics"""
+    nursery_count = serializers.IntegerField()
     primary_count = serializers.IntegerField()
     secondary_count = serializers.IntegerField()
+    closest_nursery_km = serializers.FloatField(required=False, allow_null=True)
     closest_primary_km = serializers.FloatField(required=False, allow_null=True)
     closest_secondary_km = serializers.FloatField(required=False, allow_null=True)
 
@@ -460,6 +462,7 @@ class SchoolStatisticsSerializer(serializers.Serializer):
 class SchoolsReportDataSerializer(serializers.Serializer):
     """Serializer for Schools report data matching frontend SchoolsReportData interface"""
     statistics = SchoolStatisticsSerializer()
+    nursery_schools = SchoolSerializer(many=True, required=False)
     primary_schools = SchoolSerializer(many=True, required=False)
     secondary_schools = SchoolSerializer(many=True, required=False)
     note = serializers.CharField(required=False, allow_null=True)

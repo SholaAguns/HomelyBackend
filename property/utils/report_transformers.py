@@ -67,7 +67,7 @@ def transform_schools_data(service_data):
     Transform Schools service response to match SchoolsReportDataSerializer
 
     Remove: all_through_schools and extra statistics fields
-    Keep: primary_schools, secondary_schools, minimal statistics, note
+    Keep: nursery_schools, primary_schools, secondary_schools, minimal statistics, note
     """
     if not service_data:
         return None
@@ -75,8 +75,10 @@ def transform_schools_data(service_data):
     # Transform statistics - only keep fields frontend expects
     backend_stats = service_data.get('statistics', {})
     statistics = {
+        'nursery_count': backend_stats.get('nursery_count', 0),
         'primary_count': backend_stats.get('primary_count', 0),
         'secondary_count': backend_stats.get('secondary_count', 0),
+        'closest_nursery_km': backend_stats.get('closest_nursery_km'),
         'closest_primary_km': backend_stats.get('closest_primary_km'),
         'closest_secondary_km': backend_stats.get('closest_secondary_km'),
     }
@@ -86,6 +88,7 @@ def transform_schools_data(service_data):
 
     transformed = {
         'statistics': statistics,
+        'nursery_schools': service_data.get('nursery_schools', []),
         'primary_schools': service_data.get('primary_schools', []),
         'secondary_schools': service_data.get('secondary_schools', []),
         'note': service_data.get('note'),

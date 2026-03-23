@@ -107,6 +107,7 @@ class SchoolRatingService(IContextService):
         schools_with_distance.sort(key=lambda x: x['distance_km'])
 
         # Separate by phase
+        nursery_schools = []
         primary_schools = []
         secondary_schools = []
         all_through_schools = []
@@ -159,7 +160,9 @@ class SchoolRatingService(IContextService):
                 'ofsted': ofsted_info
             }
 
-            if 'primary' in phase:
+            if 'nursery' in phase:
+                nursery_schools.append(school_data)
+            elif 'primary' in phase:
                 primary_schools.append(school_data)
             elif 'secondary' in phase:
                 secondary_schools.append(school_data)
@@ -169,13 +172,15 @@ class SchoolRatingService(IContextService):
                 other_schools.append(school_data)
 
         # Limit results per phase
+        nursery_schools = nursery_schools[:self.MAX_SCHOOLS_PER_PHASE]
         primary_schools = primary_schools[:self.MAX_SCHOOLS_PER_PHASE]
         secondary_schools = secondary_schools[:self.MAX_SCHOOLS_PER_PHASE]
         all_through_schools = all_through_schools[:5]
 
         # Calculate statistics
-        total_schools = len(primary_schools) + len(secondary_schools) + len(all_through_schools) + len(other_schools)
+        total_schools = len(nursery_schools) + len(primary_schools) + len(secondary_schools) + len(all_through_schools) + len(other_schools)
 
+        closest_nursery_km = nursery_schools[0]['distance_km'] if nursery_schools else None
         closest_primary_km = primary_schools[0]['distance_km'] if primary_schools else None
         closest_secondary_km = secondary_schools[0]['distance_km'] if secondary_schools else None
 
@@ -187,16 +192,20 @@ class SchoolRatingService(IContextService):
             )
 
         return {
+            'nursery_schools': nursery_schools,
             'primary_schools': primary_schools,
             'secondary_schools': secondary_schools,
             'all_through_schools': all_through_schools,
             'statistics': {
                 'total_schools_found': total_schools,
+                'nursery_count': len(nursery_schools),
                 'primary_count': len(primary_schools),
                 'secondary_count': len(secondary_schools),
                 'all_through_count': len(all_through_schools),
                 'search_radius_km': self.DEFAULT_RADIUS_KM,
                 'search_radius_miles': round(self.DEFAULT_RADIUS_KM * 0.621371, 1),
+                'closest_nursery_km': closest_nursery_km,
+                'closest_nursery_miles': round(closest_nursery_km * 0.621371, 2) if closest_nursery_km else None,
                 'closest_primary_km': closest_primary_km,
                 'closest_primary_miles': round(closest_primary_km * 0.621371, 2) if closest_primary_km else None,
                 'closest_secondary_km': closest_secondary_km,
