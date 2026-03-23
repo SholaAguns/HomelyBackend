@@ -5,7 +5,9 @@ from property.admin_views import (
     SchoolAdminViewSet, upload_broadband_data, upload_mobile_data,
     admin_dashboard_statistics, admin_system_status,
     admin_retry_context_service, admin_cancel_task,
-    admin_bulk_delete_properties, admin_bulk_stage_transition
+    admin_bulk_delete_properties, admin_bulk_stage_transition,
+    AdminPropertyViewSet, AdminPropertyListViewSet,
+    AdminPropertyListTaskViewSet, AdminContextDataViewSet
 )
 
 router = DefaultRouter()
@@ -13,6 +15,12 @@ router.register(r'property-lists', PropertyListViewSet, basename='propertylist')
 router.register(r'properties', PropertyViewSet, basename='property')
 router.register(r'saved-locations', SavedLocationViewSet, basename='savedlocation')
 router.register(r'admin/schools', SchoolAdminViewSet, basename='admin-schools')
+
+# Admin CRUD routes
+router.register(r'admin/properties', AdminPropertyViewSet, basename='admin-properties')
+router.register(r'admin/property-lists', AdminPropertyListViewSet, basename='admin-property-lists')
+router.register(r'admin/tasks', AdminPropertyListTaskViewSet, basename='admin-tasks')
+router.register(r'admin/context-data', AdminContextDataViewSet, basename='admin-context-data')
 
 urlpatterns = [
     path('', include(router.urls)),

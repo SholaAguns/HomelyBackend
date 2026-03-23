@@ -10,14 +10,282 @@ from decimal import Decimal, InvalidOperation
 from datetime import date
 from django.core.management import call_command
 from django.utils import timezone
-from rest_framework import viewsets, status
+from django.db.models import Q
+from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
+from rest_framework.pagination import PageNumberPagination
 from property.models import (
     School, BroadbandCoverage, MobileCoverage, Property,
     PropertyList, ContextData, PropertyListTask
 )
+from property.admin_serializers import (
+    PropertySerializer, PropertyListSerializer,
+    PropertyListTaskSerializer, ContextDataSerializer
+)
+
+
+class AdminPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+# ===== CRUD VIEWSETS =====
+
+class AdminPropertyViewSet(viewsets.ModelViewSet):
+    """Admin CRUD for Properties"""
+    permission_classes = [IsAdminUser]
+    serializer_class = PropertySerializer
+    pagination_class = AdminPagination
+    lookup_field = 'uuid'
+
+    def get_queryset(self):
+        queryset = Property.objects.all().prefetch_related('images', 'property_lists')
+
+        # Search
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(postcode__icontains=search) |
+                Q(address_line_1__icontains=search)
+            )
+
+        # Filters
+        state = self.request.query_params.get('state', None)
+        if state:
+            queryset = queryset.filter(state=state)
+
+        bedrooms = self.request.query_params.get('bedrooms', None)
+        if bedrooms:
+            queryset = queryset.filter(bedrooms=bedrooms)
+
+        min_price = self.request.query_params.get('min_price', None)
+        if min_price:
+            queryset = queryset.filter(price__gte=min_price)
+
+        max_price = self.request.query_params.get('max_price', None)
+        if max_price:
+            queryset = queryset.filter(price__lte=max_price)
+
+        # Sorting
+        ordering = self.request.query_params.get('ordering', '-created_at')
+        queryset = queryset.order_by(ordering)
+
+        return queryset
+
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    def bulk_delete(self, request):
+        """Bulk delete properties"""
+        uuids = request.data.get('uuids', [])
+        if not uuids:
+            return Response({'error': 'No UUIDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        deleted_count, _ = Property.objects.filter(uuid__in=uuids).delete()
+        return Response({'success': True, 'deleted_count': deleted_count})
+
+    @action(detail=False, methods=['post'], url_path='bulk-transition')
+    def bulk_transition(self, request):
+        """Bulk stage transitions"""
+        uuids = request.data.get('uuids', [])
+        action_name = request.data.get('action')
+
+        if not uuids or not action_name:
+            return Response(
+                {'error': 'Missing uuids or action'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        properties = Property.objects.filter(uuid__in=uuids)
+        success_count = 0
+        errors = []
+
+        for prop in properties:
+            try:
+                if action_name == 'run_stage2' and prop.state in ['NEW', 'STAGE2_COMPLETE']:
+                    prop.run_stage2()
+                    prop.save()
+                    success_count += 1
+                elif action_name == 'run_stage3' and prop.state in ['STAGE2_COMPLETE', 'STAGE3_COMPLETE']:
+                    prop.run_stage3()
+                    prop.save()
+                    success_count += 1
+                elif action_name == 'rerun_services':
+                    prop.rerun_services()
+                    prop.save()
+                    success_count += 1
+            except Exception as e:
+                errors.append({'uuid': str(prop.uuid), 'error': str(e)})
+
+        return Response({
+            'success': True,
+            'processed_count': success_count,
+            'errors': errors
+        })
+
+
+class AdminPropertyListViewSet(viewsets.ModelViewSet):
+    """Admin CRUD for PropertyLists"""
+    permission_classes = [IsAdminUser]
+    serializer_class = PropertyListSerializer
+    pagination_class = AdminPagination
+    lookup_field = 'uuid'
+
+    def get_queryset(self):
+        queryset = PropertyList.objects.all().select_related('owner')
+
+        # Search
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(owner__username__icontains=search)
+            )
+
+        # Filters
+        state = self.request.query_params.get('state', None)
+        if state:
+            queryset = queryset.filter(state=state)
+
+        owner = self.request.query_params.get('owner', None)
+        if owner:
+            queryset = queryset.filter(owner__id=owner)
+
+        # Sorting
+        ordering = self.request.query_params.get('ordering', '-created_at')
+        queryset = queryset.order_by(ordering)
+
+        return queryset
+
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    def bulk_delete(self, request):
+        """Bulk delete property lists"""
+        uuids = request.data.get('uuids', [])
+        if not uuids:
+            return Response({'error': 'No UUIDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        deleted_count, _ = PropertyList.objects.filter(uuid__in=uuids).delete()
+        return Response({'success': True, 'deleted_count': deleted_count})
+
+
+class AdminPropertyListTaskViewSet(viewsets.ReadOnlyModelViewSet):
+    """Admin view for PropertyListTasks (read-only + cancel)"""
+    permission_classes = [IsAdminUser]
+    serializer_class = PropertyListTaskSerializer
+    pagination_class = AdminPagination
+    lookup_field = 'uuid'
+
+    def get_queryset(self):
+        queryset = PropertyListTask.objects.all().select_related('property_list')
+
+        # Filters
+        status_filter = self.request.query_params.get('status', None)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        task_type = self.request.query_params.get('task_type', None)
+        if task_type:
+            queryset = queryset.filter(task_type=task_type)
+
+        # Sorting
+        ordering = self.request.query_params.get('ordering', '-created_at')
+        queryset = queryset.order_by(ordering)
+
+        return queryset
+
+    @action(detail=True, methods=['post'], url_path='cancel')
+    def cancel(self, request, uuid=None):
+        """Cancel a task"""
+        task = self.get_object()
+
+        if task.status not in ['QUEUED', 'IN_PROGRESS']:
+            return Response(
+                {'error': 'Can only cancel queued or in-progress tasks'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        task.status = 'CANCELLED'
+        task.completed_at = timezone.now()
+        task.save()
+
+        return Response({'success': True, 'message': 'Task cancelled'})
+
+
+class AdminContextDataViewSet(viewsets.ModelViewSet):
+    """Admin CRUD for ContextData"""
+    permission_classes = [IsAdminUser]
+    serializer_class = ContextDataSerializer
+    pagination_class = AdminPagination
+
+    def get_queryset(self):
+        queryset = ContextData.objects.all().select_related('property')
+
+        # Search
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(property__title__icontains=search)
+
+        # Filters
+        status_filter = self.request.query_params.get('status', None)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        service = self.request.query_params.get('service_name', None)
+        if service:
+            queryset = queryset.filter(service_name=service)
+
+        # Sorting
+        ordering = self.request.query_params.get('ordering', '-created_at')
+        queryset = queryset.order_by(ordering)
+
+        return queryset
+
+    @action(detail=True, methods=['post'], url_path='retry')
+    def retry(self, request, pk=None):
+        """Retry a failed service"""
+        context_data = self.get_object()
+
+        if context_data.status != 'FAILED':
+            return Response(
+                {'error': 'Can only retry failed services'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        context_data.status = 'PENDING'
+        context_data.retry_count += 1
+        context_data.error_message = ''
+        context_data.save()
+
+        # Trigger orchestrator
+        from property.services.stage2_orchestrator import Stage2Orchestrator
+        orchestrator = Stage2Orchestrator()
+        orchestrator.process_property(context_data.property.id)
+
+        return Response({
+            'success': True,
+            'message': f'Retrying {context_data.service_name}'
+        })
+
+    @action(detail=False, methods=['post'], url_path='bulk-retry')
+    def bulk_retry(self, request):
+        """Bulk retry failed services"""
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({'error': 'No IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        context_data_list = ContextData.objects.filter(id__in=ids, status='FAILED')
+        retried_count = 0
+
+        for cd in context_data_list:
+            cd.status = 'PENDING'
+            cd.retry_count += 1
+            cd.error_message = ''
+            cd.save()
+            retried_count += 1
+
+        return Response({'success': True, 'retried_count': retried_count})
 
 
 class SchoolAdminViewSet(viewsets.ViewSet):

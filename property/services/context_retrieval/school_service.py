@@ -4,6 +4,7 @@ School rating service using local GIAS database
 import logging
 from typing import Dict, Any
 from decimal import Decimal
+from math import cos, radians
 from .interface import IContextService
 
 logger = logging.getLogger(__name__)
@@ -28,10 +29,6 @@ class SchoolRatingService(IContextService):
         return 'schools'
 
     def validate_property_data(self, property_obj) -> bool:
-        """Check property has required location data"""
-        if not property_obj.postcode:
-            raise ValueError("Property must have postcode for school search")
-
         if not property_obj.latitude or not property_obj.longitude:
             raise ValueError("Property must have latitude/longitude for school search")
 
@@ -39,7 +36,16 @@ class SchoolRatingService(IContextService):
 
     def get_cache_key(self, property_obj) -> str:
         """Cache by postcode"""
-        return f"schools:{property_obj.postcode}"
+        if property_obj.postcode:
+            postcode_sector = property_obj.postcode.replace(' ', '')[:4].upper()
+            cache_key = f"crime:{postcode_sector}"
+            logger.debug(f"Crime Service: returning cache key with postcode {cache_key}")
+            return cache_key
+        lat = round(property_obj.latitude, 4)
+        lon = round(property_obj.longitude, 4)
+        cache_key = f"crime:{lat}-{lon}"
+        logger.debug(f"Crime Service: returning cache key with coordinates {cache_key}")
+        return cache_key
 
     def get_cache_ttl(self) -> int:
         return self.CACHE_TTL
@@ -60,13 +66,17 @@ class SchoolRatingService(IContextService):
         prop_lat = float(property_obj.latitude)
         prop_lng = float(property_obj.longitude)
 
-        # Get all open schools (filter by postcode sector for performance)
-        postcode_sector = property_obj.postcode.replace(' ', '')[:4].upper()
+        # Calculate bounding box for spatial filtering (more accurate than postcode)
+        # 1 degree latitude ≈ 111.32 km
+        lat_delta = self.DEFAULT_RADIUS_KM / 111.32
+        # Longitude distance varies by latitude (narrower near poles)
+        lng_delta = self.DEFAULT_RADIUS_KM / (111.32 * cos(radians(prop_lat)))
 
-        # Query schools in same postcode sector first (performance optimization)
+        # Query schools within bounding box (uses lat/lng index)
         nearby_schools = School.objects.filter(
             establishment_status__icontains='Open',
-            postcode__startswith=postcode_sector
+            latitude__range=(prop_lat - lat_delta, prop_lat + lat_delta),
+            longitude__range=(prop_lng - lng_delta, prop_lng + lng_delta)
         ).exclude(
             latitude__isnull=True
         ).exclude(

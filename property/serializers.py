@@ -444,7 +444,7 @@ class SchoolSerializer(serializers.Serializer):
     """Serializer for School data"""
     name = serializers.CharField()
     distance_miles = serializers.FloatField()
-    pupil_count = serializers.IntegerField()
+    pupil_count = serializers.IntegerField(required=False, allow_null=True)
     type = serializers.CharField()
     ofsted_url = serializers.URLField(required=False, allow_null=True)
 
