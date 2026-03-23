@@ -9,11 +9,15 @@ import re
 from decimal import Decimal, InvalidOperation
 from datetime import date
 from django.core.management import call_command
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
-from property.models import School, BroadbandCoverage, MobileCoverage
+from property.models import (
+    School, BroadbandCoverage, MobileCoverage, Property,
+    PropertyList, ContextData, PropertyListTask
+)
 
 
 class SchoolAdminViewSet(viewsets.ViewSet):
@@ -611,4 +615,238 @@ def upload_mobile_data(request):
             'errors': len(errors),
         },
         'error_samples': errors[:10] if errors else []
+    })
+
+
+# ===== DASHBOARD ENDPOINTS =====
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_dashboard_statistics(request):
+    """Get overall system statistics for admin dashboard"""
+    from django.db.models import Count, Avg
+    from datetime import timedelta
+
+    # Property statistics
+    total_properties = Property.objects.count()
+    properties_by_state = dict(
+        Property.objects.values('state')
+        .annotate(count=Count('id'))
+        .values_list('state', 'count')
+    )
+    avg_price = Property.objects.aggregate(avg=Avg('price'))['avg']
+
+    # Property List statistics
+    total_lists = PropertyList.objects.count()
+    active_lists = PropertyList.objects.filter(state='ACTIVE').count()
+
+    # Recent properties (last 7 days)
+    seven_days_ago = timezone.now() - timedelta(days=7)
+    recent_properties = Property.objects.filter(created_at__gte=seven_days_ago).count()
+
+    # Context Data statistics
+    context_stats = {
+        'pending': ContextData.objects.filter(status='PENDING').count(),
+        'in_progress': ContextData.objects.filter(status='IN_PROGRESS').count(),
+        'complete': ContextData.objects.filter(status='COMPLETE').count(),
+        'failed': ContextData.objects.filter(status='FAILED').count(),
+    }
+
+    # Task statistics
+    task_stats = {
+        'queued': PropertyListTask.objects.filter(status='QUEUED').count(),
+        'in_progress': PropertyListTask.objects.filter(status='IN_PROGRESS').count(),
+        'completed': PropertyListTask.objects.filter(status='COMPLETED').count(),
+        'failed': PropertyListTask.objects.filter(status='FAILED').count(),
+    }
+
+    return Response({
+        'properties': {
+            'total': total_properties,
+            'by_state': properties_by_state,
+            'avg_price': float(avg_price) if avg_price else 0,
+            'recent_count': recent_properties,
+        },
+        'lists': {
+            'total': total_lists,
+            'active': active_lists,
+        },
+        'context_services': context_stats,
+        'tasks': task_stats,
+        'last_updated': timezone.now().isoformat(),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_system_status(request):
+    """Get system health and status information"""
+    from property.models import StateTransitionLog
+
+    # Failed services needing attention
+    failed_services = ContextData.objects.filter(status='FAILED').select_related('property')[:10]
+
+    # Active tasks with progress
+    active_tasks = PropertyListTask.objects.filter(
+        status='IN_PROGRESS'
+    ).select_related('property_list')[:10]
+
+    # Recent state transitions (audit log)
+    recent_transitions = StateTransitionLog.objects.select_related(
+        'triggered_by', 'content_type'
+    )[:20]
+
+    return Response({
+        'failed_services': [
+            {
+                'id': fs.id,
+                'service_name': fs.service_name,
+                'property_uuid': str(fs.property.uuid),
+                'property_title': fs.property.title,
+                'error_message': fs.error_message,
+                'retry_count': fs.retry_count,
+                'last_attempt': fs.last_attempt_at.isoformat() if fs.last_attempt_at else None,
+            }
+            for fs in failed_services
+        ],
+        'active_tasks': [
+            {
+                'id': task.id,
+                'uuid': str(task.uuid),
+                'task_type': task.task_type,
+                'list_uuid': str(task.property_list.uuid),
+                'list_title': task.property_list.title,
+                'progress': task.progress_percentage,
+                'total_items': task.total_items,
+                'completed_items': task.completed_items,
+                'failed_items': task.failed_items,
+            }
+            for task in active_tasks
+        ],
+        'recent_activity': [
+            {
+                'id': log.id,
+                'from_state': log.from_state,
+                'to_state': log.to_state,
+                'transition': log.transition_name,
+                'user': log.triggered_by.username if log.triggered_by else 'System',
+                'timestamp': log.timestamp.isoformat(),
+            }
+            for log in recent_transitions
+        ],
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_retry_context_service(request, context_data_id):
+    """Retry a failed context service"""
+    from property.services.stage2_orchestrator import Stage2Orchestrator
+
+    try:
+        context_data = ContextData.objects.select_related('property').get(id=context_data_id)
+
+        if context_data.status != 'FAILED':
+            return Response(
+                {'error': 'Can only retry failed services'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Reset status
+        context_data.status = 'PENDING'
+        context_data.retry_count += 1
+        context_data.error_message = ''
+        context_data.save()
+
+        # Trigger orchestrator
+        orchestrator = Stage2Orchestrator()
+        orchestrator.process_property(context_data.property.id)
+
+        return Response({
+            'success': True,
+            'message': f'Retrying {context_data.service_name} for {context_data.property.title}'
+        })
+
+    except ContextData.DoesNotExist:
+        return Response({'error': 'Service not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_cancel_task(request, task_uuid):
+    """Cancel a queued or active task"""
+    try:
+        task = PropertyListTask.objects.get(uuid=task_uuid)
+
+        if task.status not in ['QUEUED', 'IN_PROGRESS']:
+            return Response(
+                {'error': 'Can only cancel queued or in-progress tasks'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        task.status = 'CANCELLED'
+        task.completed_at = timezone.now()
+        task.save()
+
+        return Response({
+            'success': True,
+            'message': f'Task {task.get_task_type_display()} cancelled'
+        })
+
+    except PropertyListTask.DoesNotExist:
+        return Response({'error': 'Task not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_bulk_delete_properties(request):
+    """Bulk delete properties by UUIDs"""
+    property_uuids = request.data.get('property_uuids', [])
+
+    if not property_uuids:
+        return Response({'error': 'No property UUIDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+    deleted_count, _ = Property.objects.filter(uuid__in=property_uuids).delete()
+
+    return Response({'success': True, 'deleted_count': deleted_count})
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_bulk_stage_transition(request):
+    """Bulk trigger stage transitions for properties"""
+    property_uuids = request.data.get('property_uuids', [])
+    action = request.data.get('action')  # 'run_stage2', 'run_stage3', 'rerun_services'
+
+    if not property_uuids or not action:
+        return Response(
+            {'error': 'Missing property_uuids or action'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    properties = Property.objects.filter(uuid__in=property_uuids)
+    success_count = 0
+    errors = []
+
+    for prop in properties:
+        try:
+            if action == 'run_stage2' and prop.state in ['NEW', 'STAGE2_COMPLETE']:
+                prop.run_stage2()
+                prop.save()
+                success_count += 1
+            elif action == 'run_stage3' and prop.state in ['STAGE2_COMPLETE', 'STAGE3_COMPLETE']:
+                prop.run_stage3()
+                prop.save()
+                success_count += 1
+            elif action == 'rerun_services' and prop.state in ['STAGE2_COMPLETE', 'STAGE3_IN_PROGRESS', 'STAGE3_COMPLETE']:
+                prop.rerun_services()
+                prop.save()
+                success_count += 1
+        except Exception as e:
+            errors.append({'property_uuid': str(prop.uuid), 'error': str(e)})
+
+    return Response({
+        'success': True,
+        'processed_count': success_count,
+        'errors': errors,
     })

@@ -13,7 +13,8 @@
       "WebSearch",
       "WebFetch(domain:community.fabric.microsoft.com)",
       "Bash(tasklist | grep -i celery)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(cd:*)"
     ]
   }
 }
