@@ -195,7 +195,7 @@ class CrimeService(IContextService):
         if not crimes:
             return {
                 'total_crimes': 0,
-                'crime_rating': 'Low',
+                'crime_rating': 'Very Low',
                 'categories': {},
                 'months_analyzed': 12,
                 'average_per_month': 0
