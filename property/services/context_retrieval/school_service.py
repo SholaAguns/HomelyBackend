@@ -56,12 +56,18 @@ class SchoolRatingService(IContextService):
 
         Returns schools within radius, separated by phase (primary/secondary).
         Includes Ofsted ratings for each school (cached 30 days).
+
+        Args:
+            school_types: List of school types to retrieve (nursery, primary, secondary, all_through)
         """
         from property.models import School
         from property.services.location_service import LocationService
         from property.services.context_retrieval.ofsted_service import OfstedService
 
         self.validate_property_data(property_obj)
+
+        # Get requested school types (default to all if not specified)
+        requested_types = kwargs.get('school_types', ['nursery', 'primary', 'secondary', 'all_through'])
 
         prop_lat = float(property_obj.latitude)
         prop_lng = float(property_obj.longitude)
@@ -191,27 +197,48 @@ class SchoolRatingService(IContextService):
                 2
             )
 
-        return {
-            'nursery_schools': nursery_schools,
-            'primary_schools': primary_schools,
-            'secondary_schools': secondary_schools,
-            'all_through_schools': all_through_schools,
-            'statistics': {
-                'total_schools_found': total_schools,
-                'nursery_count': len(nursery_schools),
-                'primary_count': len(primary_schools),
-                'secondary_count': len(secondary_schools),
-                'all_through_count': len(all_through_schools),
-                'search_radius_km': self.DEFAULT_RADIUS_KM,
-                'search_radius_miles': round(self.DEFAULT_RADIUS_KM * 0.621371, 1),
-                'closest_nursery_km': closest_nursery_km,
-                'closest_nursery_miles': round(closest_nursery_km * 0.621371, 2) if closest_nursery_km else None,
-                'closest_primary_km': closest_primary_km,
-                'closest_primary_miles': round(closest_primary_km * 0.621371, 2) if closest_primary_km else None,
-                'closest_secondary_km': closest_secondary_km,
-                'closest_secondary_miles': round(closest_secondary_km * 0.621371, 2) if closest_secondary_km else None,
-                'average_distance_km': avg_distance_km,
-                'average_distance_miles': round(avg_distance_km * 0.621371, 2) if avg_distance_km else None
-            },
-            'note': 'Ofsted ratings included for each school (cached 30 days). Full details via /api/schools/ofsted/{urn}/'
+        # Build response with only requested school types
+        response = {}
+        statistics = {
+            'search_radius_km': self.DEFAULT_RADIUS_KM,
+            'search_radius_miles': round(self.DEFAULT_RADIUS_KM * 0.621371, 1),
         }
+
+        if 'nursery' in requested_types:
+            response['nursery_schools'] = nursery_schools
+            statistics['nursery_count'] = len(nursery_schools)
+            statistics['closest_nursery_km'] = closest_nursery_km
+            statistics['closest_nursery_miles'] = round(closest_nursery_km * 0.621371, 2) if closest_nursery_km else None
+
+        if 'primary' in requested_types:
+            response['primary_schools'] = primary_schools
+            statistics['primary_count'] = len(primary_schools)
+            statistics['closest_primary_km'] = closest_primary_km
+            statistics['closest_primary_miles'] = round(closest_primary_km * 0.621371, 2) if closest_primary_km else None
+
+        if 'secondary' in requested_types:
+            response['secondary_schools'] = secondary_schools
+            statistics['secondary_count'] = len(secondary_schools)
+            statistics['closest_secondary_km'] = closest_secondary_km
+            statistics['closest_secondary_miles'] = round(closest_secondary_km * 0.621371, 2) if closest_secondary_km else None
+
+        if 'all_through' in requested_types:
+            response['all_through_schools'] = all_through_schools
+            statistics['all_through_count'] = len(all_through_schools)
+
+        # Recalculate total based on requested types only
+        requested_total = sum([
+            len(nursery_schools) if 'nursery' in requested_types else 0,
+            len(primary_schools) if 'primary' in requested_types else 0,
+            len(secondary_schools) if 'secondary' in requested_types else 0,
+            len(all_through_schools) if 'all_through' in requested_types else 0,
+        ])
+
+        statistics['total_schools_found'] = requested_total
+        statistics['average_distance_km'] = avg_distance_km
+        statistics['average_distance_miles'] = round(avg_distance_km * 0.621371, 2) if avg_distance_km else None
+
+        response['statistics'] = statistics
+        response['note'] = 'Ofsted ratings included for each school (cached 30 days). Full details via /api/schools/ofsted/{urn}/'
+
+        return response

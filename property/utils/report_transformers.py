@@ -66,33 +66,47 @@ def transform_schools_data(service_data):
     """
     Transform Schools service response to match SchoolsReportDataSerializer
 
-    Remove: all_through_schools and extra statistics fields
-    Keep: nursery_schools, primary_schools, secondary_schools, minimal statistics, note
+    Keep: nursery_schools, primary_schools, secondary_schools, all_through_schools, minimal statistics, note
+    Only include school types that were requested
     """
     if not service_data:
         return None
 
-    # Transform statistics - only keep fields frontend expects
+    # Transform statistics - only keep fields that exist (based on requested types)
     backend_stats = service_data.get('statistics', {})
-    statistics = {
-        'nursery_count': backend_stats.get('nursery_count', 0),
-        'primary_count': backend_stats.get('primary_count', 0),
-        'secondary_count': backend_stats.get('secondary_count', 0),
-        'closest_nursery_km': backend_stats.get('closest_nursery_km'),
-        'closest_primary_km': backend_stats.get('closest_primary_km'),
-        'closest_secondary_km': backend_stats.get('closest_secondary_km'),
-    }
+    statistics = {}
 
-    # Transform schools - assuming they already have correct fields
-    # If not, we would transform here
+    # Only include counts that exist in the backend response
+    if 'nursery_count' in backend_stats:
+        statistics['nursery_count'] = backend_stats['nursery_count']
+        statistics['closest_nursery_km'] = backend_stats.get('closest_nursery_km')
 
+    if 'primary_count' in backend_stats:
+        statistics['primary_count'] = backend_stats['primary_count']
+        statistics['closest_primary_km'] = backend_stats.get('closest_primary_km')
+
+    if 'secondary_count' in backend_stats:
+        statistics['secondary_count'] = backend_stats['secondary_count']
+        statistics['closest_secondary_km'] = backend_stats.get('closest_secondary_km')
+
+    if 'all_through_count' in backend_stats:
+        statistics['all_through_count'] = backend_stats['all_through_count']
+
+    # Transform schools - only include types that exist
     transformed = {
         'statistics': statistics,
-        'nursery_schools': service_data.get('nursery_schools', []),
-        'primary_schools': service_data.get('primary_schools', []),
-        'secondary_schools': service_data.get('secondary_schools', []),
         'note': service_data.get('note'),
     }
+
+    # Only include school lists that exist in the service data
+    if 'nursery_schools' in service_data:
+        transformed['nursery_schools'] = service_data['nursery_schools']
+    if 'primary_schools' in service_data:
+        transformed['primary_schools'] = service_data['primary_schools']
+    if 'secondary_schools' in service_data:
+        transformed['secondary_schools'] = service_data['secondary_schools']
+    if 'all_through_schools' in service_data:
+        transformed['all_through_schools'] = service_data['all_through_schools']
 
     # Validate through serializer
     serializer = SchoolsReportDataSerializer(data=transformed)

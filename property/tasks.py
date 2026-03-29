@@ -596,6 +596,7 @@ def _get_service_params(property_obj, service_name):
     Get service-specific parameters for fetch_data call.
 
     For POI service: Compiles poi_types from all property lists
+    For Schools service: Compiles school_types from all property lists
     For other services: Returns empty dict
 
     Args:
@@ -605,6 +606,21 @@ def _get_service_params(property_obj, service_name):
     Returns:
         Dict of parameters to pass to service.fetch_data()
     """
+    if service_name == 'schools':
+        # Compile school types from all property lists
+        school_types_set = set()
+
+        for property_list in property_obj.property_lists.all():
+            context_options = getattr(property_list, 'context_options', None)
+            if context_options and context_options.enable_schools:
+                # Add school_types from this list
+                if context_options.school_types:
+                    school_types_set.update(context_options.school_types)
+
+        return {
+            'school_types': list(school_types_set) if school_types_set else ['nursery', 'primary', 'secondary', 'all_through']
+        }
+
     if service_name == 'poi':
         # Compile POI types from all property lists
         poi_types_set = set()

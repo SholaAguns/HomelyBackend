@@ -385,6 +385,7 @@ class ContextOptionsSerializer(serializers.ModelSerializer):
             'property_list_uuid',
             'enable_crime',
             'enable_schools',
+            'school_types',
             'enable_broadband',
             'enable_mobile',
             'enable_poi',
@@ -451,9 +452,10 @@ class SchoolSerializer(serializers.Serializer):
 
 class SchoolStatisticsSerializer(serializers.Serializer):
     """Serializer for School statistics"""
-    nursery_count = serializers.IntegerField()
-    primary_count = serializers.IntegerField()
-    secondary_count = serializers.IntegerField()
+    nursery_count = serializers.IntegerField(required=False, allow_null=True)
+    primary_count = serializers.IntegerField(required=False, allow_null=True)
+    secondary_count = serializers.IntegerField(required=False, allow_null=True)
+    all_through_count = serializers.IntegerField(required=False, allow_null=True)
     closest_nursery_km = serializers.FloatField(required=False, allow_null=True)
     closest_primary_km = serializers.FloatField(required=False, allow_null=True)
     closest_secondary_km = serializers.FloatField(required=False, allow_null=True)
@@ -465,6 +467,7 @@ class SchoolsReportDataSerializer(serializers.Serializer):
     nursery_schools = SchoolSerializer(many=True, required=False)
     primary_schools = SchoolSerializer(many=True, required=False)
     secondary_schools = SchoolSerializer(many=True, required=False)
+    all_through_schools = SchoolSerializer(many=True, required=False)
     note = serializers.CharField(required=False, allow_null=True)
 
 

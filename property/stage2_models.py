@@ -16,6 +16,9 @@ class ContextOptions(models.Model):
     enable_mobile = models.BooleanField(default=False)
     enable_council_tax = models.BooleanField(default=False)
 
+    # Schools configuration
+    school_types = models.JSONField(default=list, blank=True)
+
     # POI configuration
     enable_poi = models.BooleanField(default=False)
     poi_types = models.JSONField(default=list, blank=True)
