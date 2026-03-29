@@ -81,6 +81,7 @@ class CouncilTaxService(IContextService):
         Returns:
             Dict with council tax band and related information
         """
+        self.ensure_postcode(property_obj)
         self.validate_property_data(property_obj)
 
         try:
@@ -130,15 +131,6 @@ class CouncilTaxService(IContextService):
             raise ValueError(f"Failed to parse council tax data: {str(e)}")
 
     def _search_by_postcode(self, postcode: str) -> list:
-        """
-        Search GOV.UK for properties in postcode.
-
-        Args:
-            postcode: UK postcode
-
-        Returns:
-            List of property dictionaries with band information
-        """
         try:
             # Format postcode (remove extra spaces)
             formatted_postcode = postcode.strip().upper()

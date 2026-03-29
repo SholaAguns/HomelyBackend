@@ -320,3 +320,35 @@ def validate_postcode(postcode: str) -> bool:
 
     except:
         return False
+
+
+def reverse_geocode(latitude: float, longitude: float, limit: int = 1) -> Optional[str]:
+    # Cache key based on rounded coordinates (to avoid cache bloat)
+    cache_key = f'reverse_geo:{round(latitude, 5)}:{round(longitude, 5)}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached if cached != 'NOT_FOUND' else None
+
+    try:
+        url = f'https://api.postcodes.io/postcodes?lon={longitude}&lat={latitude}&limit={limit}'
+        response = requests.get(url, timeout=5)
+
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('status') == 200 and data.get('result'):
+                results = data['result']
+                if results and len(results) > 0:
+                    postcode = results[0].get('postcode')
+                    cache.set(cache_key, postcode if postcode else 'NOT_FOUND', timeout=None)
+                    return postcode
+
+            # No results found
+            cache.set(cache_key, 'NOT_FOUND', timeout=None)
+            return None
+        else:
+            raise GeocodingError(f'Postcodes.io API returned status {response.status_code}')
+
+    except requests.RequestException as e:
+        raise GeocodingError(f'Failed to call Postcodes.io API: {str(e)}')
+
+    return None
