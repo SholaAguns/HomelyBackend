@@ -6,6 +6,8 @@ import logging
 from typing import Dict, Any
 from bs4 import BeautifulSoup
 from .interface import IContextService
+from datetime import datetime
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -72,15 +74,6 @@ class CouncilTaxService(IContextService):
         return self.CACHE_TTL
 
     def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
-        """
-        Fetch council tax band from GOV.UK.
-
-        Uses web scraping as no official API exists.
-        Searches by postcode first, then attempts to match property address.
-
-        Returns:
-            Dict with council tax band and related information
-        """
         self.ensure_postcode(property_obj)
         self.validate_property_data(property_obj)
 
@@ -135,15 +128,58 @@ class CouncilTaxService(IContextService):
             # Format postcode (remove extra spaces)
             formatted_postcode = postcode.strip().upper()
 
-            # Make request to GOV.UK
-            response = requests.get(
+            # Use session to maintain cookies
+            session = requests.Session()
+            session.headers.update({
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+
+            # Step 1: GET search page to extract CSRF token
+            logger.debug(f"Council Tax: Fetching search form for CSRF token")
+            form_response = session.get(self.BASE_URL, timeout=15)
+            form_response.raise_for_status()
+
+            form_soup = BeautifulSoup(form_response.text, 'html.parser')
+            csrf_token_input = form_soup.find('input', {'name': 'csrfToken'})
+
+            if not csrf_token_input:
+                logger.error("Failed to extract CSRF token from form")
+                raise ValueError("CSRF token not found in search form")
+
+            csrf_token = csrf_token_input.get('value')
+            logger.debug(f"Extracted CSRF token: {csrf_token[:20]}...")
+
+            # Step 2: POST search with postcode and CSRF token
+            logger.debug(f"Council Tax API Request: POST {self.BASE_URL}")
+            logger.debug(f"Form data: postcode={formatted_postcode}")
+
+            response = session.post(
                 self.BASE_URL,
-                params={'postcode': formatted_postcode},
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                data={
+                    'postcode': formatted_postcode,
+                    'csrfToken': csrf_token
                 },
                 timeout=15
             )
+
+            # Log response details
+
+            # Write full response to log file
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_file = f"logs/council_tax_response_{formatted_postcode.replace(' ', '')}_{timestamp}.html"
+            try:
+                with open(log_file, 'w', encoding='utf-8') as f:
+                    f.write(f"Request URL: {response.url}\n")
+                    f.write(f"Status Code: {response.status_code}\n")
+                    f.write(f"Headers: {dict(response.headers)}\n")
+                    f.write(f"\n{'='*80}\n")
+                    f.write(f"Response Body:\n")
+                    f.write(f"{'='*80}\n\n")
+                    f.write(response.text)
+                logger.debug(f"Response written to {log_file}")
+            except Exception as e:
+                logger.warning(f"Failed to write response to file: {e}")
+
             response.raise_for_status()
 
             # Parse HTML response
@@ -152,6 +188,8 @@ class CouncilTaxService(IContextService):
             # Extract results from table
             results = self._parse_results_table(soup)
 
+            logger.debug(f"Parsed {len(results)} results from response")
+
             return results
 
         except requests.exceptions.RequestException as e:
@@ -159,33 +197,31 @@ class CouncilTaxService(IContextService):
             raise
 
     def _parse_results_table(self, soup: BeautifulSoup) -> list:
-        """
-        Parse results table from GOV.UK response.
-
-        Args:
-            soup: BeautifulSoup parsed HTML
-
-        Returns:
-            List of property records
-        """
         results = []
 
         # Find results table (structure may vary, adapt as needed)
-        table = soup.find('table')
+        table = soup.find('table', {'class': 'govuk-table'})
         if not table:
+            logger.debug("No govuk-table found, trying generic table")
+            table = soup.find('table')
+
+        if not table:
+            logger.warning("No table found in response, trying alternative parsing")
             # Try alternative parsing if table not found
             return self._parse_results_alternative(soup)
 
         rows = table.find_all('tr')[1:]  # Skip header row
+        logger.debug(f"Found {len(rows)} rows in results table")
 
         for row in rows:
             cells = row.find_all('td')
-            if len(cells) >= 3:  # Expect at least address, band, authority
+            if len(cells) >= 2:  # Need at least address and band
                 property_data = {
                     'address': cells[0].get_text(strip=True),
                     'band': cells[1].get_text(strip=True),
                     'local_authority': cells[2].get_text(strip=True) if len(cells) > 2 else None
                 }
+                logger.debug(f"Parsed result: {property_data['address'][:50]}... Band: {property_data['band']}")
                 results.append(property_data)
 
         return results
