@@ -116,8 +116,12 @@ def run_service_task(self, property_id, service_name):
             # Fetch from external API
             data = service.fetch_data(property_obj, **service_params)
 
-            # Cache with service-specific TTL
-            cache.set(cache_key, data, service.get_cache_ttl())
+            # Only cache successful responses (no error field or error is None/empty)
+            if not data.get('error'):
+                cache.set(cache_key, data, service.get_cache_ttl())
+                logger.info(f'Cached successful response for {service_name} - {cache_key}')
+            else:
+                logger.info(f'Not caching error response for {service_name}: {data.get("error")}')
 
         # Update ContextData with result
         context_data.data = data
