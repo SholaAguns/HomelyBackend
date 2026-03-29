@@ -260,9 +260,9 @@ class CriterionScoreAdmin(admin.ModelAdmin):
 
 @admin.register(SavedLocation)
 class SavedLocationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'address', 'latitude', 'longitude', 'created_at')
+    list_display = ('name', 'user', 'postcode', 'address_line_1', 'latitude', 'longitude', 'created_at')
     list_filter = ('created_at', 'user')
-    search_fields = ('name', 'address', 'user__username')
+    search_fields = ('name', 'postcode', 'address_line_1', 'city', 'user__username')
     readonly_fields = ('uuid', 'created_at', 'updated_at')
 
 

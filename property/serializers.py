@@ -6,6 +6,7 @@ import re
 from decimal import Decimal
 from property.models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, PlaceOfInterest
 from property.stage2_models import ContextOptions
+from property.utils.geocoding import geocode_postcode
 
 
 class SearchCriteriaSerializer(serializers.ModelSerializer):
@@ -319,12 +320,39 @@ class SavedLocationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SavedLocation
-        fields = ['uuid', 'user', 'name', 'address', 'latitude', 'longitude', 'created_at', 'updated_at']
-        read_only_fields = ['uuid', 'user', 'created_at', 'updated_at']
+        fields = ['uuid', 'user', 'name', 'postcode', 'address_line_1', 'address_line_2', 'city', 'latitude', 'longitude', 'created_at', 'updated_at']
+        read_only_fields = ['uuid', 'user', 'latitude', 'longitude', 'created_at', 'updated_at']
+
+    def validate_postcode(self, value):
+        """Validate postcode is not empty"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Postcode cannot be empty")
+        return value.strip().upper()
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
+
+        # Auto-geocode from postcode if lat/lng not provided
+        if 'latitude' not in validated_data or 'longitude' not in validated_data:
+            postcode = validated_data.get('postcode')
+            if postcode:
+                lat, lng = geocode_postcode(postcode)
+                if lat and lng:
+                    validated_data['latitude'] = lat
+                    validated_data['longitude'] = lng
+
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        # If postcode changed, re-geocode
+        postcode = validated_data.get('postcode')
+        if postcode and postcode != instance.postcode:
+            lat, lng = geocode_postcode(postcode)
+            if lat and lng:
+                validated_data['latitude'] = lat
+                validated_data['longitude'] = lng
+
+        return super().update(instance, validated_data)
 
 
 class PropertyListDetailSerializer(PropertyListSerializer):
