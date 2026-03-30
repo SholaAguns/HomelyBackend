@@ -91,6 +91,9 @@ class PropertyListSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
     properties_count = serializers.SerializerMethodField()
     status_summary = serializers.SerializerMethodField()
+    average_price = serializers.SerializerMethodField()
+    highest_price = serializers.SerializerMethodField()
+    lowest_price = serializers.SerializerMethodField()
     search_criteria = SearchCriteriaSerializer(read_only=True)
     viewers = serializers.SlugRelatedField(
         slug_field='email',
@@ -111,6 +114,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
             'uuid', 'owner', 'title', 'state',
             'search_criteria', 'viewers', 'contributors',
             'properties_count', 'status_summary',
+            'average_price', 'highest_price', 'lowest_price',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['uuid', 'owner', 'state', 'created_at', 'updated_at']
@@ -120,6 +124,21 @@ class PropertyListSerializer(serializers.ModelSerializer):
 
     def get_status_summary(self, obj):
         return obj.get_status_summary()
+
+    def get_average_price(self, obj):
+        from django.db.models import Avg
+        result = obj.properties.aggregate(avg_price=Avg('price'))
+        return round(result['avg_price'], 2) if result['avg_price'] else None
+
+    def get_highest_price(self, obj):
+        from django.db.models import Max
+        result = obj.properties.aggregate(max_price=Max('price'))
+        return result['max_price']
+
+    def get_lowest_price(self, obj):
+        from django.db.models import Min
+        result = obj.properties.aggregate(min_price=Min('price'))
+        return result['min_price']
 
     def create(self, validated_data):
         # Set owner from request user
