@@ -4,7 +4,7 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
-from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage
+from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, Project, TaskList, Task
 from property.models.stage2_models import ContextOptions
 from property.models.models_poi import PlaceOfInterest
 from property.utils.geocoding import geocode_postcode
@@ -53,6 +53,81 @@ class SearchCriteriaSerializer(serializers.ModelSerializer):
         return data
 
 
+class ProjectSerializer(serializers.ModelSerializer):
+    """Serializer for Project model"""
+
+    owner = serializers.ReadOnlyField(source='owner.username')
+    property_lists_count = serializers.SerializerMethodField()
+    viewers = serializers.SlugRelatedField(
+        slug_field='email',
+        queryset=User.objects.all(),
+        many=True,
+        required=False
+    )
+    contributors = serializers.SlugRelatedField(
+        slug_field='email',
+        queryset=User.objects.all(),
+        many=True,
+        required=False
+    )
+
+    class Meta:
+        model = Project
+        fields = [
+            'uuid', 'owner', 'title', 'description',
+            'viewers', 'contributors', 'property_lists_count',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['uuid', 'owner', 'created_at', 'updated_at']
+
+    def get_property_lists_count(self, obj):
+        return obj.property_lists.count()
+
+    def create(self, validated_data):
+        validated_data['owner'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    """Serializer for Task model"""
+
+    task_list_uuid = serializers.UUIDField(source='task_list.uuid', read_only=True)
+    assigned_to_username = serializers.ReadOnlyField(source='assigned_to.username')
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    priority_display = serializers.CharField(source='get_priority_display', read_only=True)
+
+    class Meta:
+        model = Task
+        fields = [
+            'uuid', 'task_list_uuid', 'title', 'description',
+            'status', 'status_display', 'priority', 'priority_display',
+            'assigned_to', 'assigned_to_username', 'due_date', 'order',
+            'created_at', 'updated_at', 'completed_at'
+        ]
+        read_only_fields = ['uuid', 'task_list_uuid', 'created_at', 'updated_at', 'completed_at']
+
+
+class TaskListSerializer(serializers.ModelSerializer):
+    """Serializer for TaskList model"""
+
+    project_uuid = serializers.UUIDField(source='project.uuid', read_only=True)
+    project_title = serializers.ReadOnlyField(source='project.title')
+    tasks_count = serializers.SerializerMethodField()
+    tasks = TaskSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = TaskList
+        fields = [
+            'uuid', 'project_uuid', 'project_title', 'title', 'description',
+            'tasks_count', 'tasks',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['uuid', 'project_uuid', 'created_at', 'updated_at']
+
+    def get_tasks_count(self, obj):
+        return obj.tasks.count()
+
+
 class CreateFromInputSerializer(serializers.Serializer):
     """Serializer for create-from-input endpoint request"""
 
@@ -90,35 +165,31 @@ class PropertyListSerializer(serializers.ModelSerializer):
     """Serializer for PropertyList model"""
 
     owner = serializers.ReadOnlyField(source='owner.username')
+    project_uuid = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all(),
+        source='project',
+        write_only=True,
+        pk_field=serializers.UUIDField()
+    )
+    project_title = serializers.ReadOnlyField(source='project.title')
     properties_count = serializers.SerializerMethodField()
     status_summary = serializers.SerializerMethodField()
     average_price = serializers.SerializerMethodField()
     highest_price = serializers.SerializerMethodField()
     lowest_price = serializers.SerializerMethodField()
     search_criteria = SearchCriteriaSerializer(read_only=True)
-    viewers = serializers.SlugRelatedField(
-        slug_field='email',
-        queryset=User.objects.all(),
-        many=True,
-        required=False
-    )
-    contributors = serializers.SlugRelatedField(
-        slug_field='email',
-        queryset=User.objects.all(),
-        many=True,
-        required=False
-    )
 
     class Meta:
         model = PropertyList
         fields = [
-            'uuid', 'owner', 'title', 'state',
-            'search_criteria', 'viewers', 'contributors',
+            'uuid', 'owner', 'title',
+            'project_uuid', 'project_title',
+            'search_criteria',
             'properties_count', 'status_summary',
             'average_price', 'highest_price', 'lowest_price',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['uuid', 'owner', 'state', 'created_at', 'updated_at']
+        read_only_fields = ['uuid', 'owner', 'created_at', 'updated_at']
 
     def get_properties_count(self, obj):
         return obj.properties.count()
@@ -142,8 +213,18 @@ class PropertyListSerializer(serializers.ModelSerializer):
         return result['min_price']
 
     def create(self, validated_data):
-        # Set owner from request user
-        validated_data['owner'] = self.context['request'].user
+        user = self.context['request'].user
+        validated_data['owner'] = user
+
+        # If no project provided, use or create default project
+        if 'project' not in validated_data or validated_data['project'] is None:
+            default_project, created = Project.objects.get_or_create(
+                owner=user,
+                title="My Properties",
+                defaults={'description': 'Default project for standalone property lists'}
+            )
+            validated_data['project'] = default_project
+
         return super().create(validated_data)
 
 

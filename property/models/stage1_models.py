@@ -7,6 +7,95 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
 
+class Project(models.Model):
+    """Top-level container for organizing property lists and housing applications"""
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='projects')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    # Collaboration
+    viewers = models.ManyToManyField(User, related_name='viewable_projects', blank=True)
+    contributors = models.ManyToManyField(User, related_name='editable_projects', blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'projects'
+        ordering = ['-created_at']
+        unique_together = [['owner', 'title']]
+
+    def __str__(self):
+        return f"{self.title} ({self.owner.username})"
+
+
+class TaskList(models.Model):
+    """Project-level task list for managing tasks"""
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='task_lists')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'task_lists'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} ({self.project.title})"
+
+
+class Task(models.Model):
+    """Individual task within a task list"""
+
+    STATUS_CHOICES = [
+        ('TODO', 'To Do'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('DONE', 'Done'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+
+    PRIORITY_CHOICES = [
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+        ('URGENT', 'Urgent'),
+    ]
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    task_list = models.ForeignKey('TaskList', on_delete=models.CASCADE, related_name='tasks')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='TODO')
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='MEDIUM')
+
+    # Optional associations
+    assigned_to = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='assigned_tasks')
+    due_date = models.DateField(null=True, blank=True)
+
+    # Ordering
+    order = models.IntegerField(default=0, help_text="Display order within task list")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'tasks'
+        ordering = ['order', '-created_at']
+        indexes = [
+            models.Index(fields=['task_list', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.get_status_display()})"
+
+
 class SearchCriteria(models.Model):
     """Search criteria for bulk property scraping from listing sites"""
 
@@ -37,24 +126,15 @@ class SearchCriteria(models.Model):
 class PropertyList(models.Model):
     """Container for a collection of properties with shared configuration"""
 
-    STATE_CHOICES = [
-        ('DRAFT', 'Draft'),
-        ('ACTIVE', 'Active'),
-    ]
-
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='property_lists')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='property_lists')
     title = models.CharField(max_length=255)
-    state = FSMField(default='DRAFT', choices=STATE_CHOICES)
 
     # Optional configurations
     rating_criteria = models.ForeignKey('RatingCriteria', null=True, blank=True, on_delete=models.SET_NULL, related_name='property_lists')
     rating_criteria_source = models.ForeignKey('RatingCriteria', null=True, blank=True, on_delete=models.SET_NULL, related_name='derived_lists')
     search_criteria = models.ForeignKey(SearchCriteria, null=True, blank=True, on_delete=models.SET_NULL, related_name='property_lists')
-
-    # Collaboration
-    viewers = models.ManyToManyField(User, related_name='viewable_lists', blank=True)
-    contributors = models.ManyToManyField(User, related_name='editable_lists', blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -66,11 +146,6 @@ class PropertyList(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.owner.username})"
-
-    @transition(field=state, source='DRAFT', target='ACTIVE')
-    def activate(self):
-        """Transition from Draft to Active"""
-        pass
 
     def get_status_summary(self):
         """Returns aggregated status of all properties in list"""

@@ -1,6 +1,9 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from property.views import PropertyListViewSet, PropertyViewSet, SavedLocationViewSet, SchoolViewSet
+from property.views import (
+    ProjectViewSet, TaskListViewSet, TaskViewSet,
+    PropertyListViewSet, PropertyViewSet, SavedLocationViewSet, SchoolViewSet
+)
 from property.admin_views import (
     SchoolAdminViewSet, upload_broadband_data, upload_mobile_data,
     admin_dashboard_statistics, admin_system_status,
@@ -11,6 +14,9 @@ from property.admin_views import (
 )
 
 router = DefaultRouter()
+router.register(r'projects', ProjectViewSet, basename='project')
+router.register(r'task-lists', TaskListViewSet, basename='tasklist')
+router.register(r'tasks', TaskViewSet, basename='task')
 router.register(r'property-lists', PropertyListViewSet, basename='propertylist')
 router.register(r'properties', PropertyViewSet, basename='property')
 router.register(r'saved-locations', SavedLocationViewSet, basename='savedlocation')

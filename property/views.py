@@ -15,13 +15,71 @@ from property.models.stage2_models import ContextData, ContextOptions
 from property.models.models_poi import PlaceOfInterest
 from property.tasks import retrieve_context_data, calculate_property_rating, scrape_rightmove_properties
 from property.services import property_creation_service_factory
+from django.db.models import Q
+
+
+class ProjectViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Project CRUD operations.
+    Users can access projects they own, view, or contribute to.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProjectSerializer
+    lookup_field = 'uuid'
+
+    def get_queryset(self):
+        """Filter to projects user owns, views, or contributes to"""
+        user = self.request.user
+        return Project.objects.filter(
+            Q(owner=user) |
+            Q(viewers=user) |
+            Q(contributors=user)
+        ).distinct()
+
+
+class TaskListViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for TaskList CRUD operations.
+    Users can access task lists for projects they have access to.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = TaskListSerializer
+    lookup_field = 'uuid'
+
+    def get_queryset(self):
+        """Filter to task lists in accessible projects"""
+        user = self.request.user
+        return TaskList.objects.filter(
+            Q(project__owner=user) |
+            Q(project__viewers=user) |
+            Q(project__contributors=user)
+        ).distinct()
+
+
+class TaskViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Task CRUD operations.
+    Users can access tasks in task lists they have access to.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
+    lookup_field = 'uuid'
+
+    def get_queryset(self):
+        """Filter to tasks in accessible task lists"""
+        user = self.request.user
+        return Task.objects.filter(
+            Q(task_list__project__owner=user) |
+            Q(task_list__project__viewers=user) |
+            Q(task_list__project__contributors=user)
+        ).distinct()
 
 
 class PropertyListViewSet(viewsets.ModelViewSet):
     """
     ViewSet for PropertyList CRUD operations.
 
-    Users can only access their own property lists.
+    Users can access property lists in projects they own, view, or contribute to.
     Lookup by UUID for public-facing URLs.
     """
     permission_classes = [IsAuthenticated]
@@ -29,32 +87,19 @@ class PropertyListViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
 
     def get_queryset(self):
-        """Filter to user's own lists"""
-        return PropertyList.objects.filter(owner=self.request.user)
+        """Filter to lists in accessible projects"""
+        user = self.request.user
+        return PropertyList.objects.filter(
+            Q(project__owner=user) |
+            Q(project__viewers=user) |
+            Q(project__contributors=user)
+        ).distinct()
 
     def get_serializer_class(self):
         """Use detailed serializer for retrieve action"""
         if self.action == 'retrieve':
             return PropertyListDetailSerializer
         return PropertyListSerializer
-
-    @action(detail=True, methods=['post'])
-    def activate(self, request, uuid=None):
-        """Activate a property list (DRAFT → ACTIVE)"""
-        property_list = self.get_object()
-
-        try:
-            property_list.activate()
-            property_list.save()
-            return Response({
-                'status': 'activated',
-                'state': property_list.state
-            })
-        except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
     @action(detail=True, methods=['post'], url_path='run-stage2-bulk')
     def run_stage2_bulk(self, request, uuid=None):

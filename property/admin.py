@@ -43,23 +43,93 @@ class SearchCriteriaAdmin(admin.ModelAdmin):
     price_range.short_description = 'Price'
 
 
-@admin.register(PropertyList)
-class PropertyListAdmin(admin.ModelAdmin):
-    list_display = ('title', 'owner', 'state', 'property_count', 'created_at')
-    list_filter = ('state', 'created_at')
-    search_fields = ('title', 'owner__username', 'owner__email')
-    readonly_fields = ('uuid', 'state', 'created_at', 'updated_at', 'status_summary')
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ('title', 'owner', 'property_lists_count', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('title', 'owner__username', 'owner__email', 'description')
+    readonly_fields = ('uuid', 'created_at', 'updated_at')
     filter_horizontal = ('viewers', 'contributors')
     fieldsets = (
         ('Basic Info', {
-            'fields': ('uuid', 'title', 'owner', 'state')
-        }),
-        ('Configuration', {
-            'fields': ('rating_criteria', 'rating_criteria_source', 'search_criteria')
+            'fields': ('uuid', 'title', 'owner', 'description')
         }),
         ('Collaboration', {
             'fields': ('viewers', 'contributors'),
             'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def property_lists_count(self, obj):
+        return obj.property_lists.count()
+    property_lists_count.short_description = 'Property Lists'
+
+
+class TaskInline(admin.TabularInline):
+    model = Task
+    extra = 0
+    fields = ('title', 'status', 'priority', 'assigned_to', 'due_date', 'order')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(TaskList)
+class TaskListAdmin(admin.ModelAdmin):
+    list_display = ('title', 'project', 'tasks_count', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('title', 'project__title', 'description')
+    readonly_fields = ('uuid', 'created_at', 'updated_at')
+    inlines = [TaskInline]
+    fieldsets = (
+        ('Basic Info', {
+            'fields': ('uuid', 'title', 'project', 'description')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def tasks_count(self, obj):
+        return obj.tasks.count()
+    tasks_count.short_description = 'Tasks'
+
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ('title', 'task_list', 'status', 'priority', 'assigned_to', 'due_date', 'created_at')
+    list_filter = ('status', 'priority', 'created_at', 'due_date')
+    search_fields = ('title', 'description', 'task_list__title')
+    readonly_fields = ('uuid', 'created_at', 'updated_at', 'completed_at')
+    fieldsets = (
+        ('Basic Info', {
+            'fields': ('uuid', 'title', 'task_list', 'description')
+        }),
+        ('Status & Priority', {
+            'fields': ('status', 'priority', 'assigned_to', 'due_date', 'order')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at', 'completed_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(PropertyList)
+class PropertyListAdmin(admin.ModelAdmin):
+    list_display = ('title', 'project', 'owner', 'property_count', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('title', 'owner__username', 'owner__email', 'project__title')
+    readonly_fields = ('uuid', 'created_at', 'updated_at', 'status_summary')
+    fieldsets = (
+        ('Basic Info', {
+            'fields': ('uuid', 'title', 'project', 'owner')
+        }),
+        ('Configuration', {
+            'fields': ('rating_criteria', 'rating_criteria_source', 'search_criteria')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
