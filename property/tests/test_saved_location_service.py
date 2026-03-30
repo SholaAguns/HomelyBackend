@@ -92,6 +92,7 @@ class SavedLocationServiceTest(TestCase):
         self.assertIn('location_uuid', distance)
         self.assertIn('location_name', distance)
         self.assertIn('address', distance)
+        self.assertIn('postcode', distance)
         self.assertIn('distance_km', distance)
         self.assertIn('distance_miles', distance)
 

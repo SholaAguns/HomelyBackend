@@ -575,6 +575,7 @@ class SavedLocationDistanceSerializer(serializers.Serializer):
     location_uuid = serializers.UUIDField()
     location_name = serializers.CharField()
     address = serializers.CharField()
+    postcode = serializers.CharField()
     latitude = serializers.FloatField()
     longitude = serializers.FloatField()
     distance_km = serializers.FloatField()

@@ -106,6 +106,7 @@ class SavedLocationService(IContextService):
                         'location_uuid': str(location.uuid),
                         'location_name': location.name,
                         'address': f"{location.address_line_1}, {location.postcode}",
+                        'postcode': location.postcode,
                         'latitude': float(location.latitude),
                         'longitude': float(location.longitude),
                         'distance_km': round(distance_km, 2),
