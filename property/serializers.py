@@ -421,7 +421,7 @@ class ContextOptionsSerializer(serializers.ModelSerializer):
             'poi_types',
             'poi_search_radius_meters',
             'enable_saved_locations',
-            'saved_location_ids',
+            'saved_location_uuids',
             'created_at',
             'updated_at',
         ]

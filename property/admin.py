@@ -181,7 +181,7 @@ class ContextOptionsAdmin(admin.ModelAdmin):
             'fields': ('enable_poi', 'poi_types', 'poi_search_radius_meters')
         }),
         ('Saved Locations Configuration', {
-            'fields': ('enable_saved_locations', 'saved_location_ids')
+            'fields': ('enable_saved_locations', 'saved_location_uuids')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),

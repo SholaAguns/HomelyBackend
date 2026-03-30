@@ -26,7 +26,7 @@ class ContextOptions(models.Model):
 
     # Saved locations configuration
     enable_saved_locations = models.BooleanField(default=False)
-    saved_location_ids = models.JSONField(default=list, blank=True)
+    saved_location_uuids = models.JSONField(default=list, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

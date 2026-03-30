@@ -58,7 +58,7 @@ class SavedLocationService(IContextService):
         Args:
             property_obj: Property instance
             **kwargs:
-                saved_location_ids: List of SavedLocation IDs to calculate distances for
+                saved_location_uuids: List of SavedLocation UUIDs to calculate distances for
 
         Returns:
             Dict with distances to each saved location, sorted by distance
@@ -67,21 +67,21 @@ class SavedLocationService(IContextService):
 
         self.validate_property_data(property_obj)
 
-        # Get saved location IDs from kwargs
-        saved_location_ids = kwargs.get('saved_location_ids', [])
+        # Get saved location UUIDs from kwargs
+        saved_location_uuids = kwargs.get('saved_location_uuids', [])
 
-        if not saved_location_ids:
+        if not saved_location_uuids:
             logger.info(f"No saved locations specified for property {property_obj.uuid}")
             return {
                 'distances': [],
                 'total_locations': 0
             }
 
-        # Fetch saved locations
-        saved_locations = SavedLocation.objects.filter(id__in=saved_location_ids)
+        # Fetch saved locations by UUID
+        saved_locations = SavedLocation.objects.filter(uuid__in=saved_location_uuids)
 
         if not saved_locations.exists():
-            logger.warning(f"No saved locations found for IDs: {saved_location_ids}")
+            logger.warning(f"No saved locations found for UUIDs: {saved_location_uuids}")
             return {
                 'distances': [],
                 'total_locations': 0,
