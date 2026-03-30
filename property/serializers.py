@@ -420,6 +420,8 @@ class ContextOptionsSerializer(serializers.ModelSerializer):
             'enable_council_tax',
             'poi_types',
             'poi_search_radius_meters',
+            'enable_saved_locations',
+            'saved_location_ids',
             'created_at',
             'updated_at',
         ]

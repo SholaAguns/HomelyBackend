@@ -9,6 +9,7 @@ from .broadband_dataset_service import BroadbandDatasetService
 from .mobile_dataset_service import MobileDatasetService
 from .poi_service import POIService
 from .council_tax_service import CouncilTaxService
+from .saved_location_service import SavedLocationService
 
 
 def context_service_factory(service_name: str) -> Optional[IContextService]:
@@ -31,6 +32,7 @@ def context_service_factory(service_name: str) -> Optional[IContextService]:
         'mobile': MobileDatasetService,
         'poi': POIService,
         'council_tax': CouncilTaxService,
+        'saved_locations': SavedLocationService,
     }
 
     service_class = services.get(service_name)

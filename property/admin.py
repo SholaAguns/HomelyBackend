@@ -167,18 +167,21 @@ class PropertyListTaskAdmin(admin.ModelAdmin):
 
 @admin.register(ContextOptions)
 class ContextOptionsAdmin(admin.ModelAdmin):
-    list_display = ('property_list', 'enable_crime', 'enable_schools', 'enable_broadband', 'enable_mobile', 'enable_council_tax', 'enable_poi')
-    list_filter = ('enable_crime', 'enable_schools', 'enable_broadband', 'enable_mobile', 'enable_council_tax', 'enable_poi')
+    list_display = ('property_list', 'enable_crime', 'enable_schools', 'enable_broadband', 'enable_mobile', 'enable_council_tax', 'enable_poi', 'enable_saved_locations')
+    list_filter = ('enable_crime', 'enable_schools', 'enable_broadband', 'enable_mobile', 'enable_council_tax', 'enable_poi', 'enable_saved_locations')
     readonly_fields = ('uuid', 'created_at', 'updated_at')
     fieldsets = (
         ('Property List', {
             'fields': ('uuid', 'property_list')
         }),
         ('Context Services', {
-            'fields': ('enable_crime', 'enable_schools', 'enable_broadband', 'enable_mobile', 'enable_council_tax')
+            'fields': ('enable_crime', 'enable_schools', 'school_types', 'enable_broadband', 'enable_mobile', 'enable_council_tax')
         }),
         ('POI Configuration', {
             'fields': ('enable_poi', 'poi_types', 'poi_search_radius_meters')
+        }),
+        ('Saved Locations Configuration', {
+            'fields': ('enable_saved_locations', 'saved_location_ids')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),

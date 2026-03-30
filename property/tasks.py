@@ -645,6 +645,21 @@ def _get_service_params(property_obj, service_name):
             'radius': radius
         }
 
+    if service_name == 'saved_locations':
+        # Compile saved location IDs from all property lists
+        saved_location_ids_set = set()
+
+        for property_list in property_obj.property_lists.all():
+            context_options = getattr(property_list, 'context_options', None)
+            if context_options and context_options.enable_saved_locations:
+                # Add saved_location_ids from this list
+                if context_options.saved_location_ids:
+                    saved_location_ids_set.update(context_options.saved_location_ids)
+
+        return {
+            'saved_location_ids': list(saved_location_ids_set)
+        }
+
     # No special params for other services
     return {}
 

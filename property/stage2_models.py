@@ -24,6 +24,10 @@ class ContextOptions(models.Model):
     poi_types = models.JSONField(default=list, blank=True)
     poi_search_radius_meters = models.IntegerField(default=1600)
 
+    # Saved locations configuration
+    enable_saved_locations = models.BooleanField(default=False)
+    saved_location_ids = models.JSONField(default=list, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -48,6 +52,8 @@ class ContextOptions(models.Model):
             services.append('poi')
         if self.enable_council_tax:
             services.append('council_tax')
+        if self.enable_saved_locations:
+            services.append('saved_locations')
         return services
 
 

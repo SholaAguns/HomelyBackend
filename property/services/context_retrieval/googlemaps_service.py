@@ -7,7 +7,7 @@ from urllib.parse import quote_plus
 from typing import List, Dict, Tuple, Optional
 from django.conf import settings
 from .igeoservice import IGeoService
-from property.services.location_service import LocationService
+from property.utils.geocoding import calculate_distance
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class GoogleMapsService(IGeoService):
                     lon_place = item['geometry']['location']['lng']
 
                     # Calculate straight-line distance
-                    dist_km = LocationService.calculate_distance(
+                    dist_km = calculate_distance(
                         lat, lon, lat_place, lon_place
                     )
 
