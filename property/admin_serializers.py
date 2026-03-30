@@ -2,12 +2,12 @@
 Serializers for admin CRUD operations
 """
 from rest_framework import serializers
-from .models import (
-    Property, PropertyList, PropertyImage, SearchCriteria,
-    PropertyListTask, ContextOptions, ContextData,
-    RatingCriteria, Criterion, CriterionScore, SavedLocation,
-    StateTransitionLog
-)
+from property.models.models_school import School
+from property.models.models_connectivity import BroadbandCoverage, MobileCoverage
+from property.models.stage1_models import Property,PropertyList, PropertyListTask, PropertyImage, SavedLocation, SearchCriteria, StateTransitionLog
+from property.models.stage2_models import ContextData, ContextOptions
+from property.models.stage3_models import RatingCriteria, Criterion, CriterionScore
+
 
 
 class PropertyListSerializer(serializers.ModelSerializer):

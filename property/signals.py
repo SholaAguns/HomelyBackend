@@ -1,6 +1,6 @@
 from django.dispatch import receiver
 from django_fsm.signals import post_transition
-from .models import StateTransitionLog
+from property.models.stage1_models import StateTransitionLog
 
 
 @receiver(post_transition)

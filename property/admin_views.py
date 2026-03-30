@@ -16,10 +16,10 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
 from rest_framework.pagination import PageNumberPagination
-from property.models import (
-    School, BroadbandCoverage, MobileCoverage, Property,
-    PropertyList, ContextData, PropertyListTask
-)
+from property.models.models_school import School
+from property.models.models_connectivity import BroadbandCoverage, MobileCoverage
+from property.models.stage1_models import Property,PropertyList, PropertyListTask, StateTransitionLog
+from property.models.stage2_models import ContextData
 from property.admin_serializers import (
     PropertySerializer, PropertyListSerializer,
     PropertyListTaskSerializer, ContextDataSerializer
@@ -259,9 +259,9 @@ class AdminContextDataViewSet(viewsets.ModelViewSet):
         context_data.save()
 
         # Trigger orchestrator
-        from property.services.stage2_orchestrator import Stage2Orchestrator
-        orchestrator = Stage2Orchestrator()
-        orchestrator.process_property(context_data.property.id)
+        #from property.services.stage2_orchestrator import Stage2Orchestrator
+        #orchestrator = Stage2Orchestrator()
+        #orchestrator.process_property(context_data.property.id)
 
         return Response({
             'success': True,
@@ -948,8 +948,6 @@ def admin_dashboard_statistics(request):
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def admin_system_status(request):
-    """Get system health and status information"""
-    from property.models import StateTransitionLog
 
     # Failed services needing attention
     failed_services = ContextData.objects.filter(status='FAILED').select_related('property')[:10]
@@ -1009,7 +1007,6 @@ def admin_system_status(request):
 @permission_classes([IsAdminUser])
 def admin_retry_context_service(request, context_data_id):
     """Retry a failed context service"""
-    from property.services.stage2_orchestrator import Stage2Orchestrator
 
     try:
         context_data = ContextData.objects.select_related('property').get(id=context_data_id)
@@ -1027,8 +1024,8 @@ def admin_retry_context_service(request, context_data_id):
         context_data.save()
 
         # Trigger orchestrator
-        orchestrator = Stage2Orchestrator()
-        orchestrator.process_property(context_data.property.id)
+        #orchestrator = Stage2Orchestrator()
+        #orchestrator.process_property(context_data.property.id)
 
         return Response({
             'success': True,

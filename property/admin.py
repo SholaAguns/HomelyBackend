@@ -1,12 +1,12 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models import Count, Avg, Q
-from .models import (
-    PropertyList, Property, ContextOptions, ContextData,
-    RatingCriteria, Criterion, CriterionScore, SavedLocation,
-    StateTransitionLog, SearchCriteria, PropertyImage, PropertyListTask,
-    School, BroadbandCoverage, MobileCoverage, PlaceOfInterest
-)
+from property.models.stage1_models import *
+from property.models.stage2_models import *
+from property.models.stage3_models import *
+from property.models.models_poi import *
+from property.models.models_school import *
+from property.models.models_connectivity import *
 
 # Customize admin site branding
 admin.site.site_header = 'Homely Admin Dashboard'

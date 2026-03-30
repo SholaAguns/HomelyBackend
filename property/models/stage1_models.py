@@ -3,6 +3,8 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django_fsm import FSMField, transition
 import uuid
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 
 
 class SearchCriteria(models.Model):
@@ -322,3 +324,27 @@ class PropertyListTask(models.Model):
 
         self.errors.append(error_entry)
         self.save(update_fields=['errors', 'updated_at'])
+
+class StateTransitionLog(models.Model):
+    """Audit trail for state transitions"""
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    from_state = models.CharField(max_length=30)
+    to_state = models.CharField(max_length=30)
+    transition_name = models.CharField(max_length=50)
+
+    triggered_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    triggered_by_system = models.BooleanField(default=False)
+
+    timestamp = models.DateTimeField(auto_now_add=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = 'state_transition_logs'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.from_state} → {self.to_state} ({self.timestamp})"
