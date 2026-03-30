@@ -567,3 +567,22 @@ class CouncilTaxReportDataSerializer(serializers.Serializer):
     is_exact_match = serializers.BooleanField(default=True)
     country = serializers.CharField(default='England')
     retrieved_at = serializers.CharField(allow_null=True)
+
+
+class SavedLocationDistanceSerializer(serializers.Serializer):
+    """Serializer for individual saved location distance data"""
+    location_id = serializers.IntegerField()
+    location_uuid = serializers.UUIDField()
+    location_name = serializers.CharField()
+    address = serializers.CharField()
+    latitude = serializers.FloatField()
+    longitude = serializers.FloatField()
+    distance_km = serializers.FloatField()
+    distance_miles = serializers.FloatField()
+
+
+class SavedLocationsReportDataSerializer(serializers.Serializer):
+    """Serializer for Saved Locations report data matching frontend SavedLocationsReportData interface"""
+    distances = SavedLocationDistanceSerializer(many=True)
+    total_locations = serializers.IntegerField()
+    closest_location = SavedLocationDistanceSerializer(allow_null=True, required=False)

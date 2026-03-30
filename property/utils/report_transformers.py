@@ -8,6 +8,7 @@ from property.serializers import (
     BroadbandReportDataSerializer,
     MobileCoverageReportDataSerializer,
     CouncilTaxReportDataSerializer,
+    SavedLocationsReportDataSerializer,
 )
 
 
@@ -226,12 +227,36 @@ def transform_council_tax_data(service_data):
     return serializer.validated_data
 
 
+def transform_saved_locations_data(service_data):
+    """
+    Transform Saved Locations service response to match SavedLocationsReportDataSerializer
+
+    Service returns distances to user's saved locations with both km and miles
+    """
+    if not service_data:
+        return None
+
+    transformed = {
+        'distances': service_data.get('distances', []),
+        'total_locations': service_data.get('total_locations', 0),
+    }
+
+    # Add closest_location if present
+    if 'closest_location' in service_data and service_data['closest_location']:
+        transformed['closest_location'] = service_data['closest_location']
+
+    # Validate through serializer
+    serializer = SavedLocationsReportDataSerializer(data=transformed)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data
+
+
 def transform_context_data(service_name, service_data):
     """
     Main transformer that routes to appropriate service-specific transformer
 
     Args:
-        service_name: One of 'poi', 'schools', 'crime', 'broadband', 'mobile'
+        service_name: One of 'poi', 'schools', 'crime', 'broadband', 'mobile', 'council_tax', 'saved_locations'
         service_data: Raw service response data
 
     Returns:
@@ -244,6 +269,7 @@ def transform_context_data(service_name, service_data):
         'broadband': transform_broadband_data,
         'mobile': transform_mobile_data,
         'council_tax': transform_council_tax_data,
+        'saved_locations': transform_saved_locations_data,
     }
 
     transformer = transformers.get(service_name)
