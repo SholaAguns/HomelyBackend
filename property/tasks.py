@@ -646,18 +646,18 @@ def _get_service_params(property_obj, service_name):
         }
 
     if service_name == 'saved_locations':
-        # Compile saved location IDs from all property lists
-        saved_location_ids_set = set()
+        # Compile saved location UUIDs from all property lists
+        saved_location_uuids_set = set()
 
         for property_list in property_obj.property_lists.all():
             context_options = getattr(property_list, 'context_options', None)
             if context_options and context_options.enable_saved_locations:
-                # Add saved_location_ids from this list
-                if context_options.saved_location_ids:
-                    saved_location_ids_set.update(context_options.saved_location_ids)
+                # Add saved_location_uuids from this list
+                if context_options.saved_location_uuids:
+                    saved_location_uuids_set.update(context_options.saved_location_uuids)
 
         return {
-            'saved_location_ids': list(saved_location_ids_set)
+            'saved_location_uuids': list(saved_location_uuids_set)
         }
 
     # No special params for other services

@@ -41,7 +41,7 @@ class SavedLocationService(IContextService):
         Generate cache key based on property coordinates.
 
         Format: saved_locations:{lat}:{lon}
-        Note: saved_location_ids are not included in cache key as distances
+        Note: saved_location_uuids are not included in cache key as distances
         are calculated dynamically based on requested locations.
         """
         lat = round(float(property_obj.latitude), 4)
