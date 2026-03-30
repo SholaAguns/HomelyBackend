@@ -4,8 +4,9 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
-from property.models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, PlaceOfInterest
-from property.stage2_models import ContextOptions
+from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage
+from property.models.stage2_models import ContextOptions
+from property.models.models_poi import PlaceOfInterest
 from property.utils.geocoding import geocode_postcode
 
 

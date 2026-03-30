@@ -9,16 +9,10 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 logger = logging.getLogger('property.views')
 
-from property.models import Property, PropertyList, SavedLocation, PropertyListTask, SearchCriteria
-from property.serializers import (
-    PropertySerializer, PropertyDetailSerializer,
-    PropertyListSerializer, PropertyListDetailSerializer,
-    SavedLocationSerializer, CreateFromInputSerializer,
-    BulkPropertyCreationSerializer, PropertyListTaskSerializer,
-    PlaceOfInterestSerializer,
-    ContextOptionsSerializer,
-)
-from property.stage2_models import ContextOptions
+from property.models.stage1_models import *
+from property.serializers import *
+from property.models.stage2_models import ContextData, ContextOptions
+from property.models.models_poi import PlaceOfInterest
 from property.tasks import retrieve_context_data, calculate_property_rating, scrape_rightmove_properties
 from property.services import property_creation_service_factory
 
@@ -284,7 +278,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='context-data')
     def context_data(self, request, uuid=None):
         """Get all context data for a property"""
-        from property.models import ContextData
         from property.utils.report_transformers import transform_context_data
 
         property_obj = self.get_object()
@@ -314,7 +307,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='context-data/(?P<service_name>[^/.]+)')
     def context_data_detail(self, request, uuid=None, service_name=None):
         """Get specific service context data for a property"""
-        from property.models import ContextData
 
         property_obj = self.get_object()
 
@@ -343,7 +335,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='retry-service/(?P<service_name>[^/.]+)')
     def retry_service(self, request, uuid=None, service_name=None):
         """Retry a failed context service"""
-        from property.models import ContextData
         from property.tasks import run_service_task
 
         property_obj = self.get_object()
@@ -383,7 +374,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='broadband')
     def broadband(self, request, uuid=None):
         """Get broadband coverage data for property"""
-        from property.models import ContextData
         from property.services.context_retrieval.broadband_dataset_service import BroadbandDatasetService
 
         property_obj = self.get_object()
@@ -429,7 +419,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='mobile')
     def mobile(self, request, uuid=None):
         """Get mobile coverage data for property"""
-        from property.models import ContextData
         from property.services.context_retrieval.mobile_dataset_service import MobileDatasetService
 
         property_obj = self.get_object()
@@ -480,7 +469,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
         Optional query param:
         - place_type: Filter by specific type (e.g., 'school', 'hospital')
         """
-        from property.models import PlaceOfInterest
 
         property_obj = self.get_object()
         place_type = request.query_params.get('place_type')
