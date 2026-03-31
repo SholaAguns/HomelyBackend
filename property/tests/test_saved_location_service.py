@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
 from decimal import Decimal
-from property.models import Property, PropertyList, SavedLocation
+from property.models import Property, PropertyList, Project, SavedLocation
 from property.services.context_retrieval.saved_location_service import SavedLocationService
 
 
@@ -15,8 +15,14 @@ class SavedLocationServiceTest(TestCase):
             password='testpass123'
         )
 
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
+
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
 

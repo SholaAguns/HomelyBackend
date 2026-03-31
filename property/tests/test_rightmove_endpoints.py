@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from unittest.mock import patch, MagicMock
 from decimal import Decimal
 
-from property.models import Property, PropertyList, SearchCriteria, PropertyListTask
+from property.models import Property, PropertyList, Project, SearchCriteria, PropertyListTask
 from property.tests.mocks.rightmove_mock import MockRightmoveService
 
 
@@ -29,8 +29,13 @@ class CreateFromSearchEndpointTest(TransactionTestCase):
         self.token = RefreshToken.for_user(self.user).access_token
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
 
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
 
@@ -181,8 +186,13 @@ class CreateFromSearchEndpointTest(TransactionTestCase):
             email='other@test.com',
             password='testpass123'
         )
+        other_project = Project.objects.create(
+            owner=other_user,
+            title='Other Project'
+        )
         other_list = PropertyList.objects.create(
             owner=other_user,
+            project=other_project,
             title='Other List'
         )
 
@@ -213,8 +223,13 @@ class ScrapeStatusEndpointTest(APITestCase):
         self.token = RefreshToken.for_user(self.user).access_token
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
 
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
 
@@ -269,8 +284,13 @@ class ScrapeStatusEndpointTest(APITestCase):
             email='other@test.com',
             password='testpass123'
         )
+        other_project = Project.objects.create(
+            owner=other_user,
+            title='Other Project'
+        )
         other_list = PropertyList.objects.create(
             owner=other_user,
+            project=other_project,
             title='Other List'
         )
         other_task = PropertyListTask.objects.create(
@@ -298,8 +318,13 @@ class EnhancedCreateFromInputEndpointTest(APITestCase):
         self.token = RefreshToken.for_user(self.user).access_token
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
 
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
 
@@ -450,8 +475,13 @@ class EnhancedCreateFromInputEndpointTest(APITestCase):
             email='other@test.com',
             password='testpass123'
         )
+        other_project = Project.objects.create(
+            owner=other_user,
+            title='Other Project'
+        )
         other_list = PropertyList.objects.create(
             owner=other_user,
+            project=other_project,
             title='Other List'
         )
 
@@ -532,8 +562,13 @@ class PropertyListTaskModelTest(TestCase):
             email='test@test.com',
             password='testpass123'
         )
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
 

@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 
-from property.models import Property, PropertyList, ContextOptions, PlaceOfInterest
+from property.models import Property, PropertyList, Project, ContextOptions, PlaceOfInterest
 from property.services.context_retrieval import POIService
 
 
@@ -26,14 +26,19 @@ class POIServiceTest(TestCase):
             email='test@example.com',
             password='testpass123'
         )
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
 
         # Create context options
         self.context_options = ContextOptions.objects.create(
-            property_list=self.property_list,
+            project=self.project,
             enable_poi=True,
             poi_types=['school', 'hospital'],
             poi_search_radius_meters=1600

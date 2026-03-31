@@ -4,7 +4,7 @@ from django.utils import timezone
 from unittest.mock import patch, MagicMock, call
 from decimal import Decimal
 
-from property.models import Property, PropertyList, SearchCriteria, PropertyListTask
+from property.models import Property, PropertyList, Project, SearchCriteria, PropertyListTask
 from property.tasks import scrape_rightmove_properties
 # _map_rightmove_to_property moved to RightmoveService._map_extracted_to_property
 from property.tests.mocks.rightmove_mock import MockRightmoveService
@@ -19,6 +19,11 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
             password='testpass123'
         )
 
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
+
         self.search_criteria = SearchCriteria.objects.create(
             area='Manchester',
             bedrooms_min=2,
@@ -28,6 +33,7 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
 
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List',
             search_criteria=self.search_criteria
         )
