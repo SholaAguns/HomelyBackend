@@ -15,7 +15,8 @@
       "Bash(tasklist | grep -i celery)",
       "Bash(find:*)",
       "Bash(cd:*)",
-      "Bash(grep -E \"\\(^OK$|^FAILED|Ran [0-9]+ test\\)\")"
+      "Bash(grep -E \"\\(^OK$|^FAILED|Ran [0-9]+ test\\)\")",
+      "Bash(tee test_output.txt)"
     ]
   }
 }

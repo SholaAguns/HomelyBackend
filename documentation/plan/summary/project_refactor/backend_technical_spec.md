@@ -1616,45 +1616,46 @@ python manage.py test property.tests.test_bulk_operations
 ## Checklist
 
 ### Pre-Implementation
-- [ ] Review and approve this spec
-- [ ] Create feature branch: `git checkout -b feature/project-refactor`
-- [ ] Backup test database (optional)
+- done Review and approve this spec
+- done Create feature branch: `git checkout -b feature/project-refactor`
+- done Backup test database (optional)
 
 ### Phase 1: Database
-- [ ] Flush test data
-- [ ] Update Project model
-- [ ] Update PropertyList model
-- [ ] Update ContextOptions model
-- [ ] Update Property model (indexes)
-- [ ] Generate migrations
-- [ ] Run migrations
-- [ ] Verify with shell
+- done Flush test data
+- done Update Project model
+- done Update PropertyList model
+- done Update ContextOptions model
+- done Update Property model (indexes)
+- done Generate migrations
+- done Run migrations
+- done Verify with shell
+- done Fix migration (rating_criteria fields)
 
 ### Phase 2: Business Logic
-- [ ] Create property_deduplication.py
-- [ ] Create title_generation.py
-- [ ] Create rightmove_validation.py
-- [ ] Write unit tests
-- [ ] All tests pass
+- done Create property_deduplication.py
+- done Create title_generation.py
+- done Create rightmove_validation.py
+- done Write unit tests
+- in progress All tests pass (175/300 passing, need to fix test fixtures)
 
 ### Phase 3: API
-- [ ] Update ProjectSerializer
-- [ ] Update PropertyListSerializer
-- [ ] Update ContextOptionsSerializer
-- [ ] Add Project endpoints
-- [ ] Update PropertyList.create()
-- [ ] Add bulk operation endpoints
+- done Update ProjectSerializer
+- done Update PropertyListSerializer
+- done Update ContextOptionsSerializer
+- done Add Project endpoints
+- done Update PropertyList.create()
+- done Add bulk operation endpoints
 - [ ] Test endpoints manually
 
 ### Phase 4: Tasks
-- [ ] Update retrieve_context_data
-- [ ] Add bulk_retrieve_context_data_for_list
-- [ ] Add bulk_calculate_ratings_for_list
-- [ ] Update scrape_rightmove_properties
+- done Update retrieve_context_data
+- done Add bulk_retrieve_context_data_for_list
+- done Add bulk_calculate_ratings_for_list
+- done Update scrape_rightmove_properties
 - [ ] Test Celery tasks
 
 ### Phase 5: Testing
-- [ ] Write integration tests
+- done Write integration tests
 - [ ] End-to-end testing
 - [ ] Fix bugs
 - [ ] Performance testing
