@@ -44,17 +44,44 @@
 
 ## Database Changes
 
-### Step 1: Flush Existing Data
+### Step 1: Delete Existing Migrations and Flush Data
 
 **File:** N/A (Command line)
 
+**Rationale:** Starting fresh with migrations is cleaner than maintaining migration history with contradictory changes. Since we're making major schema changes (Project model, relationship shifts from PropertyList to Project), and all existing data is test data that can be deleted, we should:
+1. Delete all existing migration files
+2. Flush the database
+3. Create a new initial migration with the final schema
+
 ```bash
-# Backup database first (optional, since it's test data)
+# 1. Delete all migration files except __init__.py
+# Windows (PowerShell):
+Get-ChildItem "property/migrations/*.py" | Where-Object {$_.Name -ne "__init__.py"} | Remove-Item
+
+# Windows (Git Bash/Unix):
+rm property/migrations/0*.py
+
+# Linux/Mac:
+rm property/migrations/0*.py
+
+# 2. Backup database first (optional, since it's test data)
 python manage.py dumpdata > backup_test_data.json
 
-# Flush all data
+# 3. Flush all data
 python manage.py flush --no-input
+
+# 4. Drop and recreate database (alternative to flush)
+# This is cleaner and removes any migration tracking issues
+python manage.py reset_db --noinput  # If django-extensions installed
+# OR manually: DROP DATABASE homely; CREATE DATABASE homely;
 ```
+
+**Why delete migrations:**
+- Test data only (nothing in production)
+- Avoids conflicts between old PropertyList schema and new one
+- Single 0001_initial.py migration is easier to maintain
+- Cleaner than migration history with contradictory changes (e.g., 0019-0022 added Project/collaboration, but we're changing the approach)
+- No backward compatibility needed
 
 ### Step 2: Update Models
 
@@ -231,38 +258,50 @@ class Property(models.Model):
     # ... rest of model ...
 ```
 
-### Step 3: Create Migrations
+### Step 3: Create Fresh Initial Migration
 
 ```bash
-# Generate migrations
-python manage.py makemigrations property --name refactor_project_context_rating
+# Generate fresh initial migration with all current models
+python manage.py makemigrations property
 
-# Review migration file
-# Should show:
-# - Add rating_criteria to Project
-# - Remove rating_criteria from PropertyList
-# - Change ContextOptions FK: property_list → project
-# - Change PropertyList unique_together
-# - Add indexes to Property.normalized_address and Property.uprn
+# Review migration file (should be 0001_initial.py)
+# Should include ALL models in their final state:
+# - Project (with rating_criteria)
+# - PropertyList (with project FK, without rating_criteria/viewers/contributors)
+# - ContextOptions (with project FK, not property_list)
+# - Property (with normalized_address, uprn indexes)
+# - All other models (TaskList, Task, RatingCriteria, SearchCriteria, etc.)
 ```
 
-**Expected Migration Operations:**
+**Expected Migration File:** `property/migrations/0001_initial.py`
 
-1. Add `Project.rating_criteria` (nullable FK)
-2. Add `Project.rating_criteria_source` (nullable FK)
-3. Remove `PropertyList.rating_criteria`
-4. Remove `PropertyList.rating_criteria_source`
-5. Alter `PropertyList` unique_together constraint
-6. Alter `ContextOptions.project` field (from property_list)
-7. Remove `ContextOptions.property_list` field
-8. Add index to `Property.normalized_address`
-9. Add index to `Property.uprn`
+This will be a clean initial migration containing the complete schema with all refactor changes already applied:
 
-### Step 4: Run Migrations
+**Key Schema Points:**
+1. `Project` has `rating_criteria` and `rating_criteria_source` FKs
+2. `PropertyList` has `project` FK (required), no `rating_criteria`, no `viewers`/`contributors`, no `state`
+3. `PropertyList` unique_together is `(project, title)`
+4. `ContextOptions` has `project` OneToOne field (not `property_list`)
+5. `Property` has `normalized_address` field with index
+6. `Property` has `uprn` field with index
+7. `TaskList` and `Task` models included
+
+### Step 4: Run Initial Migration
 
 ```bash
+# Run the fresh initial migration
 python manage.py migrate property
+
+# Verify tables created
+python manage.py dbshell
+# \dt  (PostgreSQL) or SHOW TABLES; (MySQL) to verify:
+# - projects table exists with rating_criteria columns
+# - property_lists table has project FK, no rating_criteria
+# - context_options table has project FK
+# - property table has normalized_address and uprn indexes
 ```
+
+**No data migration needed** - starting with empty database and fresh schema.
 
 ---
 
