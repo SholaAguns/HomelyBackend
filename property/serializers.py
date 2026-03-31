@@ -92,6 +92,13 @@ class TaskSerializer(serializers.ModelSerializer):
     """Serializer for Task model"""
 
     task_list_uuid = serializers.UUIDField(source='task_list.uuid', read_only=True)
+    task_list_input = serializers.PrimaryKeyRelatedField(
+        queryset=TaskList.objects.none(),  # Will be overridden in __init__
+        source='task_list',
+        write_only=True,
+        pk_field=serializers.UUIDField(),
+        required=False
+    )
     assigned_to_username = serializers.ReadOnlyField(source='assigned_to.username')
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
@@ -99,18 +106,31 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = [
-            'uuid', 'task_list_uuid', 'title', 'description',
+            'uuid', 'task_list_uuid', 'task_list_input', 'title', 'description',
             'status', 'status_display', 'priority', 'priority_display',
             'assigned_to', 'assigned_to_username', 'due_date', 'order',
             'created_at', 'updated_at', 'completed_at'
         ]
         read_only_fields = ['uuid', 'task_list_uuid', 'created_at', 'updated_at', 'completed_at']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set queryset to all task lists (permission checks done at view level)
+        if 'task_list_input' in self.fields:
+            self.fields['task_list_input'].queryset = TaskList.objects.all()
+
 
 class TaskListSerializer(serializers.ModelSerializer):
     """Serializer for TaskList model"""
 
     project_uuid = serializers.UUIDField(source='project.uuid', read_only=True)
+    project_input = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.none(),  # Will be overridden in __init__
+        source='project',
+        write_only=True,
+        pk_field=serializers.UUIDField(),
+        required=False
+    )
     project_title = serializers.ReadOnlyField(source='project.title')
     tasks_count = serializers.SerializerMethodField()
     tasks = TaskSerializer(many=True, read_only=True)
@@ -118,11 +138,17 @@ class TaskListSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskList
         fields = [
-            'uuid', 'project_uuid', 'project_title', 'title', 'description',
+            'uuid', 'project_uuid', 'project_input', 'project_title', 'title', 'description',
             'tasks_count', 'tasks',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['uuid', 'project_uuid', 'created_at', 'updated_at']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set queryset to all projects (permission checks done at view level)
+        if 'project_input' in self.fields:
+            self.fields['project_input'].queryset = Project.objects.all()
 
     def get_tasks_count(self, obj):
         return obj.tasks.count()

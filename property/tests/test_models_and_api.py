@@ -7,8 +7,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from unittest.mock import patch, MagicMock
 import uuid
 
-from property.models import PropertyList, Property, SavedLocation, StateTransitionLog
-from property.serializers import PropertyListSerializer, PropertySerializer, SavedLocationSerializer
+from property.models import Project, PropertyList, Property, SavedLocation, StateTransitionLog
+from property.serializers import ProjectSerializer, PropertyListSerializer, PropertySerializer, SavedLocationSerializer
 
 
 # ==========================
@@ -22,40 +22,45 @@ class PropertyListModelTest(TestCase):
             email='test@test.com',
             password='testpass123'
         )
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
 
     def test_property_list_creation(self):
         """PropertyList created with correct defaults"""
         prop_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='My Properties'
         )
         self.assertEqual(prop_list.owner, self.user)
+        self.assertEqual(prop_list.project, self.project)
         self.assertEqual(prop_list.title, 'My Properties')
-        self.assertEqual(prop_list.state, 'DRAFT')
         self.assertIsNotNone(prop_list.uuid)
         self.assertIsNotNone(prop_list.created_at)
 
     def test_property_list_uuid_unique(self):
         """PropertyList UUIDs are unique"""
-        list1 = PropertyList.objects.create(owner=self.user, title='List 1')
-        list2 = PropertyList.objects.create(owner=self.user, title='List 2')
+        list1 = PropertyList.objects.create(owner=self.user, project=self.project, title='List 1')
+        list2 = PropertyList.objects.create(owner=self.user, project=self.project, title='List 2')
         self.assertNotEqual(list1.uuid, list2.uuid)
 
     def test_property_list_unique_together(self):
         """PropertyList enforces unique owner+title"""
-        PropertyList.objects.create(owner=self.user, title='Same Title')
+        PropertyList.objects.create(owner=self.user, project=self.project, title='Same Title')
 
         with self.assertRaises(Exception):
-            PropertyList.objects.create(owner=self.user, title='Same Title')
+            PropertyList.objects.create(owner=self.user, project=self.project, title='Same Title')
 
     def test_property_list_str(self):
         """PropertyList string representation"""
-        prop_list = PropertyList.objects.create(owner=self.user, title='Test List')
+        prop_list = PropertyList.objects.create(owner=self.user, project=self.project, title='Test List')
         self.assertEqual(str(prop_list), 'Test List (testuser)')
 
     def test_property_list_status_summary(self):
         """PropertyList returns correct status summary"""
-        prop_list = PropertyList.objects.create(owner=self.user, title='Test List')
+        prop_list = PropertyList.objects.create(owner=self.user, project=self.project, title='Test List')
 
         prop1 = Property.objects.create(
             title='Property 1',
@@ -92,8 +97,13 @@ class PropertyModelTest(TestCase):
             email='test@test.com',
             password='testpass123'
         )
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
 
@@ -198,8 +208,13 @@ class SavedLocationModelTest(TestCase):
 class PropertyStateMachineTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='testuser', email='test@test.com')
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
         self.property = Property.objects.create(
@@ -299,25 +314,6 @@ class PropertyStateMachineTest(TestCase):
         self.assertEqual(self.property.state, 'STAGE3_IN_PROGRESS')
 
 
-class PropertyListStateMachineTest(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(username='testuser', email='test@test.com')
-        self.property_list = PropertyList.objects.create(
-            owner=self.user,
-            title='Test List'
-        )
-
-    def test_property_list_initial_state(self):
-        """PropertyList starts in DRAFT state"""
-        self.assertEqual(self.property_list.state, 'DRAFT')
-
-    def test_activate_property_list(self):
-        """Valid transition: DRAFT → ACTIVE"""
-        self.property_list.activate()
-        self.property_list.save()
-        self.assertEqual(self.property_list.state, 'ACTIVE')
-
-
 # ==========================
 # Serializer Tests
 # ==========================
@@ -329,23 +325,38 @@ class PropertyListSerializerTest(TestCase):
             email='test@test.com',
             password='testpass123'
         )
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
 
     def test_property_list_serializer_fields(self):
         """PropertyListSerializer includes correct fields"""
-        prop_list = PropertyList.objects.create(owner=self.user, title='Test List')
+        prop_list = PropertyList.objects.create(
+            owner=self.user,
+            project=self.project,
+            title='Test List'
+        )
         serializer = PropertyListSerializer(prop_list)
 
         data = serializer.data
         self.assertIn('uuid', data)
         self.assertIn('owner', data)
         self.assertIn('title', data)
-        self.assertIn('state', data)
+        self.assertIn('project_title', data)
         self.assertIn('properties_count', data)
         self.assertIn('status_summary', data)
+        self.assertIn('average_price', data)
+        self.assertIn('highest_price', data)
+        self.assertIn('lowest_price', data)
 
     def test_property_list_serializer_read_only_fields(self):
         """PropertyListSerializer marks correct fields as read-only"""
-        prop_list = PropertyList.objects.create(owner=self.user, title='Test List')
+        prop_list = PropertyList.objects.create(
+            owner=self.user,
+            project=self.project,
+            title='Test List'
+        )
         serializer = PropertyListSerializer(prop_list)
 
         # UUID should be read-only
@@ -359,8 +370,13 @@ class PropertySerializerTest(TestCase):
             email='test@test.com',
             password='testpass123'
         )
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
 
@@ -404,24 +420,40 @@ class PropertyListAPITest(APITestCase):
             email='test@test.com',
             password='testpass123'
         )
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.token = RefreshToken.for_user(self.user).access_token
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
 
     def test_create_property_list(self):
-        """POST /api/property/property-lists/ creates new list"""
+        """POST /api/property/property-lists/ creates new list (auto-creates default project)"""
         data = {'title': 'My Properties'}
         response = self.client.post('/api/property/property-lists/', data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['title'], 'My Properties')
         self.assertEqual(response.data['owner'], 'testuser')
-        self.assertEqual(response.data['state'], 'DRAFT')
         self.assertIn('uuid', response.data)
+        self.assertIn('project_title', response.data)
+
+    def test_create_property_list_with_project(self):
+        """POST /api/property/property-lists/ with explicit project"""
+        data = {
+            'title': 'My List',
+            'project_uuid': str(self.project.uuid)
+        }
+        response = self.client.post('/api/property/property-lists/', data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['title'], 'My List')
+        self.assertEqual(response.data['project_title'], 'Test Project')
 
     def test_list_property_lists(self):
         """GET /api/property/property-lists/ returns user's lists"""
-        PropertyList.objects.create(owner=self.user, title='List 1')
-        PropertyList.objects.create(owner=self.user, title='List 2')
+        PropertyList.objects.create(owner=self.user, project=self.project, title='List 1')
+        PropertyList.objects.create(owner=self.user, project=self.project, title='List 2')
 
         response = self.client.get('/api/property/property-lists/')
 
@@ -430,7 +462,11 @@ class PropertyListAPITest(APITestCase):
 
     def test_retrieve_property_list_by_uuid(self):
         """GET /api/property/property-lists/{uuid}/ returns list"""
-        prop_list = PropertyList.objects.create(owner=self.user, title='Test List')
+        prop_list = PropertyList.objects.create(
+            owner=self.user,
+            project=self.project,
+            title='Test List'
+        )
 
         response = self.client.get(f'/api/property/property-lists/{prop_list.uuid}/')
 
@@ -440,7 +476,11 @@ class PropertyListAPITest(APITestCase):
 
     def test_update_property_list(self):
         """PATCH /api/property/property-lists/{uuid}/ updates list"""
-        prop_list = PropertyList.objects.create(owner=self.user, title='Old Title')
+        prop_list = PropertyList.objects.create(
+            owner=self.user,
+            project=self.project,
+            title='Old Title'
+        )
 
         data = {'title': 'New Title'}
         response = self.client.patch(f'/api/property/property-lists/{prop_list.uuid}/', data)
@@ -450,24 +490,16 @@ class PropertyListAPITest(APITestCase):
 
     def test_delete_property_list(self):
         """DELETE /api/property/property-lists/{uuid}/ deletes list"""
-        prop_list = PropertyList.objects.create(owner=self.user, title='Test List')
+        prop_list = PropertyList.objects.create(
+            owner=self.user,
+            project=self.project,
+            title='Test List'
+        )
 
         response = self.client.delete(f'/api/property/property-lists/{prop_list.uuid}/')
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(PropertyList.objects.filter(uuid=prop_list.uuid).exists())
-
-    def test_activate_property_list(self):
-        """POST /api/property/property-lists/{uuid}/activate/ transitions state"""
-        prop_list = PropertyList.objects.create(owner=self.user, title='Test List')
-
-        response = self.client.post(f'/api/property/property-lists/{prop_list.uuid}/activate/')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['state'], 'ACTIVE')
-
-        prop_list.refresh_from_db()
-        self.assertEqual(prop_list.state, 'ACTIVE')
 
     def test_cannot_access_other_user_list(self):
         """User cannot access another user's property lists"""
@@ -476,7 +508,15 @@ class PropertyListAPITest(APITestCase):
             email='other@test.com',
             password='testpass123'
         )
-        other_list = PropertyList.objects.create(owner=other_user, title='Other List')
+        other_project = Project.objects.create(
+            owner=other_user,
+            title='Other Project'
+        )
+        other_list = PropertyList.objects.create(
+            owner=other_user,
+            project=other_project,
+            title='Other List'
+        )
 
         response = self.client.get(f'/api/property/property-lists/{other_list.uuid}/')
 
@@ -493,8 +533,13 @@ class PropertyAPITest(APITestCase):
         self.token = RefreshToken.for_user(self.user).access_token
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
 
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
 
@@ -546,7 +591,11 @@ class PropertyAPITest(APITestCase):
 
     def test_filter_properties_by_list_uuid(self):
         """GET /api/property/properties/?property_list={uuid} filters"""
-        list2 = PropertyList.objects.create(owner=self.user, title='List 2')
+        list2 = PropertyList.objects.create(
+            owner=self.user,
+            project=self.project,
+            title='List 2'
+        )
 
         prop1 = Property.objects.create(
             title='Property in List 1',
