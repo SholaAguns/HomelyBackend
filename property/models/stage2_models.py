@@ -1,12 +1,12 @@
 from django.db import models
-from .stage1_models import PropertyList, Property
+from .stage1_models import Project, Property
 import uuid
 
 
 class ContextOptions(models.Model):
-    """Configuration for which context services to enable for a property list"""
+    """Configuration for which context services to enable for a project"""
 
-    property_list = models.OneToOneField(PropertyList, on_delete=models.CASCADE, related_name='context_options')
+    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name='context_options')
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
     # Service toggles
@@ -35,7 +35,7 @@ class ContextOptions(models.Model):
         db_table = 'context_options'
 
     def __str__(self):
-        return f"Context Options for {self.property_list.title}"
+        return f"Context Options for {self.project.title}"
 
     def get_enabled_services(self):
         """Returns list of enabled service names"""
