@@ -324,22 +324,7 @@ def validate_postcode(postcode: str) -> bool:
 
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """
-    Calculate the great circle distance between two points in kilometers.
 
-    Args:
-        lat1: Latitude of first point
-        lon1: Longitude of first point
-        lat2: Latitude of second point
-        lon2: Longitude of second point
-
-    Returns:
-        Distance in kilometers
-
-    Example:
-        >>> distance = calculate_distance(51.5074, -0.1278, 51.5007, -0.1246)
-        >>> print(f"{distance:.2f} km")
-    """
     # Convert decimal degrees to radians
     lat1, lon1, lat2, lon2 = map(math.radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
 
