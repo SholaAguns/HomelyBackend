@@ -36,6 +36,103 @@ class ProjectViewSet(viewsets.ModelViewSet):
             Q(contributors=user)
         ).distinct()
 
+    @action(detail=True, methods=['get'], url_path='context-options')
+    def context_options(self, request, uuid=None):
+        """
+        GET /api/property/projects/{uuid}/context-options/
+
+        Get or create context options for project (inline setup support).
+        """
+        project = self.get_object()
+
+        # Get or create context options
+        context_options, created = ContextOptions.objects.get_or_create(
+            project=project
+        )
+
+        serializer = ContextOptionsSerializer(context_options)
+        return Response({
+            **serializer.data,
+            'is_configured': any([
+                context_options.enable_crime,
+                context_options.enable_schools,
+                context_options.enable_broadband,
+                context_options.enable_mobile,
+                context_options.enable_poi,
+                context_options.enable_council_tax,
+                context_options.enable_saved_locations
+            ])
+        })
+
+    @context_options.mapping.put
+    @context_options.mapping.patch
+    def update_context_options(self, request, uuid=None):
+        """
+        PUT/PATCH /api/property/projects/{uuid}/context-options/
+
+        Update project context options.
+        """
+        project = self.get_object()
+
+        context_options, created = ContextOptions.objects.get_or_create(
+            project=project
+        )
+
+        serializer = ContextOptionsSerializer(
+            context_options,
+            data=request.data,
+            partial=request.method == 'PATCH'
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def stats(self, request, uuid=None):
+        """
+        GET /api/property/projects/{uuid}/stats/
+
+        Get project statistics.
+        """
+        project = self.get_object()
+
+        # Get all properties across all lists
+        all_properties = Property.objects.filter(
+            property_lists__project=project
+        ).distinct()
+
+        # Get unique areas
+        areas = SearchCriteria.objects.filter(
+            property_lists__project=project
+        ).values_list('area', flat=True).distinct()
+
+        # Calculate stats
+        stats = {
+            'property_lists_count': project.property_lists.count(),
+            'total_properties': all_properties.count(),
+            'areas_count': len(areas),
+            'areas': list(areas),
+            'properties_by_state': {
+                'new': all_properties.filter(state='NEW').count(),
+                'stage2_in_progress': all_properties.filter(state='STAGE2_IN_PROGRESS').count(),
+                'stage2_complete': all_properties.filter(state='STAGE2_COMPLETE').count(),
+                'stage3_in_progress': all_properties.filter(state='STAGE3_IN_PROGRESS').count(),
+                'stage3_complete': all_properties.filter(state='STAGE3_COMPLETE').count(),
+            },
+            'has_context_options': hasattr(project, 'context_options'),
+            'has_rating_criteria': project.rating_criteria is not None
+        }
+
+        # Price stats
+        prices = all_properties.values_list('price', flat=True)
+        if prices:
+            stats['average_price'] = sum(prices) / len(prices)
+            stats['min_price'] = min(prices)
+            stats['max_price'] = max(prices)
+
+        return Response(stats)
+
 
 class TaskListViewSet(viewsets.ModelViewSet):
     """
@@ -101,30 +198,169 @@ class PropertyListViewSet(viewsets.ModelViewSet):
             return PropertyListDetailSerializer
         return PropertyListSerializer
 
+    def create(self, request, *args, **kwargs):
+        """
+        POST /api/property/property-lists/
+
+        Create PropertyList with auto-scraping.
+        """
+        from property.utils.rightmove_validation import validate_rightmove_area, get_area_suggestions
+        from property.utils.title_generation import generate_unique_list_title
+
+        # Extract data
+        project_uuid = request.data.get('project_uuid')
+        search_criteria_data = request.data.get('search_criteria')
+
+        if not project_uuid or not search_criteria_data:
+            return Response({
+                'error': 'project_uuid and search_criteria are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get project
+        try:
+            project = Project.objects.get(uuid=project_uuid)
+        except Project.DoesNotExist:
+            return Response({
+                'error': f'Project {project_uuid} not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Validate user has access to project
+        if project.owner != request.user:
+            # Check if user is contributor
+            if not project.contributors.filter(id=request.user.id).exists():
+                return Response({
+                    'error': 'You do not have permission to add lists to this project'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+        # Validate Rightmove area
+        area = search_criteria_data.get('area')
+        if not area:
+            return Response({
+                'error': 'area is required in search_criteria'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        is_valid, error_msg = validate_rightmove_area(area)
+
+        if not is_valid:
+            suggestions = get_area_suggestions(area)
+            return Response({
+                'error': error_msg,
+                'suggestions': suggestions
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate unique title
+        title = generate_unique_list_title(area, project)
+
+        # Create SearchCriteria
+        search_criteria = SearchCriteria.objects.create(**search_criteria_data)
+
+        # Create PropertyList
+        property_list = PropertyList.objects.create(
+            owner=request.user,
+            project=project,
+            title=title,
+            search_criteria=search_criteria
+        )
+
+        # Create PropertyListTask for tracking
+        task_obj = PropertyListTask.objects.create(
+            property_list=property_list,
+            task_type='SCRAPE_SEARCH',
+            status='QUEUED'
+        )
+
+        # Trigger async scraping
+        max_properties = request.data.get('max_properties', 100)
+        transaction.on_commit(
+            lambda: scrape_rightmove_properties.delay(str(task_obj.uuid), max_properties=max_properties)
+        )
+
+        # Serialize response
+        serializer = self.get_serializer(property_list)
+
+        return Response({
+            **serializer.data,
+            'scraping_task_uuid': str(task_obj.uuid),
+            'scraping_status': 'QUEUED'
+        }, status=status.HTTP_201_CREATED)
+
     @action(detail=True, methods=['post'], url_path='run-stage2-bulk')
     def run_stage2_bulk(self, request, uuid=None):
-        """Trigger Stage 2 for all properties in NEW state"""
+        """
+        POST /api/property/property-lists/{uuid}/run-stage2-bulk/
+
+        Run Stage 2 on all properties in this list.
+        """
         from property.tasks import bulk_retrieve_context_data
 
         property_list = self.get_object()
 
-        # Get all properties in NEW state
-        new_properties = property_list.properties.filter(state='NEW')
-
-        if not new_properties.exists():
+        # Check if project has context options
+        if not hasattr(property_list.project, 'context_options'):
             return Response({
-                'error': 'No properties in NEW state',
-                'message': 'All properties have already started or completed Stage 2'
+                'error': 'Project has no context options configured',
+                'action_required': 'configure_context_options'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Queue bulk task with property_list_id
-        property_ids = list(new_properties.values_list('id', flat=True))
+        # Get eligible properties
+        eligible_properties = property_list.properties.filter(
+            state__in=['NEW', 'STAGE2_COMPLETE']
+        )
+
+        if not eligible_properties.exists():
+            return Response({
+                'message': 'No properties eligible for Stage 2',
+                'eligible_count': 0
+            })
+
+        # Queue bulk task
+        property_ids = list(eligible_properties.values_list('id', flat=True))
         bulk_retrieve_context_data.delay(property_ids, property_list.id)
 
         return Response({
             'status': 'bulk_stage2_queued',
             'property_count': len(property_ids),
             'message': f'Stage 2 queued for {len(property_ids)} properties'
+        })
+
+    @action(detail=True, methods=['post'], url_path='run-stage3-bulk')
+    def run_stage3_bulk(self, request, uuid=None):
+        """
+        POST /api/property/property-lists/{uuid}/run-stage3-bulk/
+
+        Run Stage 3 on all properties in this list.
+        """
+        from property.tasks import bulk_calculate_ratings
+
+        property_list = self.get_object()
+
+        # Check if project has rating criteria
+        if not property_list.project.rating_criteria:
+            return Response({
+                'error': 'Project has no rating criteria configured',
+                'action_required': 'configure_rating_criteria'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get eligible properties
+        eligible_properties = property_list.properties.filter(
+            state='STAGE2_COMPLETE'
+        )
+
+        if not eligible_properties.exists():
+            return Response({
+                'message': 'No properties eligible for Stage 3',
+                'eligible_count': 0
+            })
+
+        # Queue bulk task
+        property_ids = list(eligible_properties.values_list('id', flat=True))
+        rating_criteria_id = property_list.project.rating_criteria.id
+        bulk_calculate_ratings.delay(property_ids, rating_criteria_id)
+
+        return Response({
+            'status': 'bulk_stage3_queued',
+            'property_count': len(property_ids),
+            'message': f'Stage 3 queued for {len(property_ids)} properties'
         })
 
     @extend_schema(

@@ -70,18 +70,27 @@ class ProjectSerializer(serializers.ModelSerializer):
         many=True,
         required=False
     )
+    rating_criteria_name = serializers.ReadOnlyField(source='rating_criteria.name')
+    rating_criteria_source_name = serializers.ReadOnlyField(source='rating_criteria_source.name')
+    has_context_options = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
         fields = [
             'uuid', 'owner', 'title', 'description',
             'viewers', 'contributors', 'property_lists_count',
+            'rating_criteria', 'rating_criteria_name',
+            'rating_criteria_source', 'rating_criteria_source_name',
+            'has_context_options',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['uuid', 'owner', 'created_at', 'updated_at']
 
     def get_property_lists_count(self, obj):
         return obj.property_lists.count()
+
+    def get_has_context_options(self, obj):
+        return hasattr(obj, 'context_options')
 
     def create(self, validated_data):
         validated_data['owner'] = self.context['request'].user
@@ -531,13 +540,15 @@ class PropertyListTaskSerializer(serializers.ModelSerializer):
 class ContextOptionsSerializer(serializers.ModelSerializer):
     """Serializer for ContextOptions model"""
 
-    property_list_uuid = serializers.ReadOnlyField(source='property_list.uuid')
+    project_uuid = serializers.ReadOnlyField(source='project.uuid')
+    project_title = serializers.ReadOnlyField(source='project.title')
 
     class Meta:
         model = ContextOptions
         fields = [
             'uuid',
-            'property_list_uuid',
+            'project_uuid',
+            'project_title',
             'enable_crime',
             'enable_schools',
             'school_types',
@@ -552,7 +563,7 @@ class ContextOptionsSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['uuid', 'property_list_uuid', 'created_at', 'updated_at']
+        read_only_fields = ['uuid', 'project_uuid', 'project_title', 'created_at', 'updated_at']
 
 
 # Context Report Data Serializers

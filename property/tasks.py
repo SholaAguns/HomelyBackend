@@ -15,22 +15,23 @@ def retrieve_context_data(self, property_id, property_list_id=None):
 
     try:
         property_obj = Property.objects.prefetch_related(
-            'property_lists__context_options'
+            'property_lists__project__context_options'
         ).get(id=property_id)
 
         # Determine which services to run
         if property_list_id:
-            # Running from specific list - use that list's context options
+            # Running from specific list - use project's context options
             try:
-                property_list = PropertyList.objects.select_related('context_options').get(id=property_list_id)
-                if not hasattr(property_list, 'context_options'):
-                    raise ValueError(f'Context options not configured for property list {property_list.title}')
-                enabled_services = property_list.context_options.get_enabled_services()
+                property_list = PropertyList.objects.select_related('project__context_options').get(id=property_list_id)
+                project = property_list.project
+                if not hasattr(project, 'context_options'):
+                    raise ValueError(f'Context options not configured for project {project.title}')
+                enabled_services = project.context_options.get_enabled_services()
             except PropertyList.DoesNotExist:
                 raise ValueError(f'Property list {property_list_id} not found')
         else:
-            # Running from individual property - compile from all lists
-            enabled_services = _get_enabled_services_from_all_lists(property_obj)
+            # Running from individual property - get from any list's project
+            enabled_services = _get_enabled_services_from_project(property_obj)
 
         if not enabled_services:
             raise ValueError('No context services enabled')
@@ -575,22 +576,27 @@ def _send_service_update(property_obj, service_name, status, data=None, error=No
         _send_list_websocket_update(property_list.uuid, 'service_update', message_data)
 
 
-def _get_enabled_services_from_all_lists(property_obj):
+def _get_enabled_services_from_project(property_obj):
     """
-    Compile unique set of enabled services from all property lists.
+    Get enabled services from property's project.
+
+    Since context options are now at project level, all lists in same project
+    share the same context options. We just need to get it from any list's project.
 
     Args:
         property_obj: Property instance
 
     Returns:
-        List of unique service names enabled across all lists
+        List of unique service names enabled for the project
     """
     enabled_services = set()
 
-    for property_list in property_obj.property_lists.all():
-        context_options = getattr(property_list, 'context_options', None)
-        if context_options:
-            enabled_services.update(context_options.get_enabled_services())
+    # Get project from any property list
+    property_list = property_obj.property_lists.first()
+    if property_list:
+        project = property_list.project
+        if hasattr(project, 'context_options'):
+            enabled_services.update(project.context_options.get_enabled_services())
 
     return list(enabled_services)
 
