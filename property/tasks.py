@@ -605,8 +605,8 @@ def _get_service_params(property_obj, service_name):
     """
     Get service-specific parameters for fetch_data call.
 
-    For POI service: Compiles poi_types from all property lists
-    For Schools service: Compiles school_types from all property lists
+    For POI service: Compiles poi_types from all projects
+    For Schools service: Compiles school_types from all projects
     For other services: Returns empty dict
 
     Args:
@@ -617,13 +617,14 @@ def _get_service_params(property_obj, service_name):
         Dict of parameters to pass to service.fetch_data()
     """
     if service_name == 'schools':
-        # Compile school types from all property lists
+        # Compile school types from all projects
         school_types_set = set()
 
         for property_list in property_obj.property_lists.all():
-            context_options = getattr(property_list, 'context_options', None)
+            project = property_list.project
+            context_options = getattr(project, 'context_options', None)
             if context_options and context_options.enable_schools:
-                # Add school_types from this list
+                # Add school_types from this project
                 if context_options.school_types:
                     school_types_set.update(context_options.school_types)
 
@@ -632,17 +633,18 @@ def _get_service_params(property_obj, service_name):
         }
 
     if service_name == 'poi':
-        # Compile POI types from all property lists
+        # Compile POI types from all projects
         poi_types_set = set()
         radius = 1600  # Default
 
         for property_list in property_obj.property_lists.all():
-            context_options = getattr(property_list, 'context_options', None)
+            project = property_list.project
+            context_options = getattr(project, 'context_options', None)
             if context_options and context_options.enable_poi:
-                # Add poi_types from this list
+                # Add poi_types from this project
                 if context_options.poi_types:
                     poi_types_set.update(context_options.poi_types)
-                # Use the largest radius from all lists
+                # Use the largest radius from all projects
                 if context_options.poi_search_radius_meters:
                     radius = max(radius, context_options.poi_search_radius_meters)
 
@@ -652,13 +654,14 @@ def _get_service_params(property_obj, service_name):
         }
 
     if service_name == 'saved_locations':
-        # Compile saved location UUIDs from all property lists
+        # Compile saved location UUIDs from all projects
         saved_location_uuids_set = set()
 
         for property_list in property_obj.property_lists.all():
-            context_options = getattr(property_list, 'context_options', None)
+            project = property_list.project
+            context_options = getattr(project, 'context_options', None)
             if context_options and context_options.enable_saved_locations:
-                # Add saved_location_uuids from this list
+                # Add saved_location_uuids from this project
                 if context_options.saved_location_uuids:
                     saved_location_uuids_set.update(context_options.saved_location_uuids)
 
