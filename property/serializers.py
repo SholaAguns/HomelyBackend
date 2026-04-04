@@ -73,6 +73,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     rating_criteria_name = serializers.ReadOnlyField(source='rating_criteria.name')
     rating_criteria_source_name = serializers.ReadOnlyField(source='rating_criteria_source.name')
     has_context_options = serializers.SerializerMethodField()
+    context_options = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -81,7 +82,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'viewers', 'contributors', 'property_lists_count',
             'rating_criteria', 'rating_criteria_name',
             'rating_criteria_source', 'rating_criteria_source_name',
-            'has_context_options',
+            'has_context_options', 'context_options',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['uuid', 'owner', 'created_at', 'updated_at']
@@ -91,6 +92,13 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def get_has_context_options(self, obj):
         return hasattr(obj, 'context_options')
+
+    def get_context_options(self, obj):
+        if hasattr(obj, 'context_options'):
+            # Lazy import to avoid circular dependency since ContextOptionsSerializer is defined later
+            serializer = ContextOptionsSerializer(obj.context_options)
+            return serializer.data
+        return None
 
     def create(self, validated_data):
         validated_data['owner'] = self.context['request'].user
@@ -200,6 +208,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
     """Serializer for PropertyList model"""
 
     owner = serializers.ReadOnlyField(source='owner.username')
+    project = serializers.ReadOnlyField(source='project.uuid')
     project_uuid = serializers.PrimaryKeyRelatedField(
         queryset=Project.objects.all(),
         source='project',
@@ -218,7 +227,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
         model = PropertyList
         fields = [
             'uuid', 'owner', 'title',
-            'project_uuid', 'project_title',
+            'project', 'project_uuid', 'project_title',
             'search_criteria',
             'properties_count', 'status_summary',
             'average_price', 'highest_price', 'lowest_price',
