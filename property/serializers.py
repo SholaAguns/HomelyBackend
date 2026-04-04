@@ -662,6 +662,7 @@ class CrimeReportDataSerializer(serializers.Serializer):
     top_categories = CrimeCategorySerializer(many=True)
     data_source = serializers.CharField()
     postcode_sector = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    monthly_breakdown = serializers.ListField(child=serializers.DictField(), required=False)
 
 
 class FullFibreDataSerializer(serializers.Serializer):

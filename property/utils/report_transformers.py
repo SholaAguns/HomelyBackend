@@ -133,6 +133,10 @@ def transform_crime_data(service_data):
         'postcode_sector': service_data.get('postcode_sector', ''),
     }
 
+    # Include monthly_breakdown if present
+    if 'monthly_breakdown' in service_data:
+        transformed['monthly_breakdown'] = service_data['monthly_breakdown']
+
     # Validate through serializer
     serializer = CrimeReportDataSerializer(data=transformed)
     serializer.is_valid(raise_exception=True)

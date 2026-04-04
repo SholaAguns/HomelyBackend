@@ -77,10 +77,10 @@ class CrimeService(IContextService):
             }
 
         # Fetch crime data for last 12 months
-        crime_data = self._fetch_crimes_by_location(location_id)
+        crime_result = self._fetch_crimes_by_location(location_id)
 
         # Aggregate and analyze
-        analysis = self._analyze_crime_data(crime_data)
+        analysis = self._analyze_crime_data(crime_result['crimes'], crime_result['monthly_breakdown'])
 
         # Add metadata fields
         postcode_sector = property_obj.postcode.replace(' ', '')[:4].upper()
@@ -140,8 +140,9 @@ class CrimeService(IContextService):
             logger.error(f"Failed to get neighbourhood location: {e}")
             return None
 
-    def _fetch_crimes_by_location(self, location_id: str, months_range: int = 13) -> list:
+    def _fetch_crimes_by_location(self, location_id: str, months_range: int = 13) -> Dict[str, Any]:
         all_crimes = []
+        monthly_breakdown = []
 
         # UK Police API allows fetching by month
         # Format: YYYY-MM
@@ -163,8 +164,16 @@ class CrimeService(IContextService):
                 response.raise_for_status()
 
                 crimes = response.json()
+                crime_count = len(crimes) if crimes else 0
+
                 if crimes:
                     all_crimes.extend(crimes)
+
+                monthly_breakdown.append({
+                    'month': date_str,
+                    'crime_count': crime_count,
+                    'status': 'success'
+                })
 
                 time.sleep(0.5)
 
@@ -172,33 +181,68 @@ class CrimeService(IContextService):
                 if e.response.status_code == 404:
                     # No data for this month, continue
                     logger.debug(f"No crime data for {date_str}")
+                    monthly_breakdown.append({
+                        'month': date_str,
+                        'crime_count': None,
+                        'status': 'failed',
+                        'error': 'No data available'
+                    })
                     continue
                 else:
-                    raise
+                    logger.error(f"HTTP error for {date_str}: {e}")
+                    monthly_breakdown.append({
+                        'month': date_str,
+                        'crime_count': None,
+                        'status': 'failed',
+                        'error': f'HTTP {e.response.status_code}'
+                    })
+                    continue
             except requests.exceptions.RequestException as e:
                 logger.error(f"Failed to fetch crimes for {date_str}: {e}")
-                # Continue with other months
+                monthly_breakdown.append({
+                    'month': date_str,
+                    'crime_count': None,
+                    'status': 'failed',
+                    'error': str(e)
+                })
                 continue
 
-        return all_crimes
+        # Calculate success/failure counts
+        successful_months = sum(1 for m in monthly_breakdown if m['status'] == 'success')
+        failed_months = len(monthly_breakdown) - successful_months
 
-    def _analyze_crime_data(self, crimes: list) -> Dict[str, Any]:
+        # Only raise if ALL months failed
+        if successful_months == 0:
+            raise Exception("Failed to retrieve crime data for all months")
+
+        return {
+            'crimes': all_crimes,
+            'monthly_breakdown': monthly_breakdown,
+            'successful_months': successful_months,
+            'failed_months': failed_months
+        }
+
+    def _analyze_crime_data(self, crimes: list, monthly_breakdown: list) -> Dict[str, Any]:
         """
         Analyze crime data and generate statistics.
 
         Args:
             crimes: List of crime records from API
+            monthly_breakdown: List of monthly success/failure records
 
         Returns:
             Dict with crime analysis and rating
         """
+        successful_months = sum(1 for m in monthly_breakdown if m['status'] == 'success')
+
         if not crimes:
             return {
                 'total_crimes': 0,
                 'crime_rating': 'Very Low',
                 'categories': {},
-                'months_analyzed': 12,
-                'average_per_month': 0
+                'months_analyzed': successful_months,
+                'average_per_month': 0,
+                'monthly_breakdown': monthly_breakdown
             }
 
         # Count by category
@@ -209,7 +253,8 @@ class CrimeService(IContextService):
             categories[category_name] = categories.get(category_name, 0) + 1
 
         total_crimes = len(crimes)
-        avg_per_month = total_crimes / 12
+        # Calculate average based on successful months only
+        avg_per_month = total_crimes / successful_months if successful_months > 0 else 0
 
         # Determine rating based on average crimes per month
         # These thresholds are approximate - adjust based on UK statistics
@@ -228,9 +273,10 @@ class CrimeService(IContextService):
             'total_crimes': total_crimes,
             'crime_rating': rating,
             'categories': categories,
-            'months_analyzed': 12,
+            'months_analyzed': successful_months,
             'average_per_month': round(avg_per_month, 1),
-            'top_categories': self._get_top_categories(categories, 5)
+            'top_categories': self._get_top_categories(categories, 5),
+            'monthly_breakdown': monthly_breakdown
         }
 
     def _format_category_name(self, category: str) -> str:
