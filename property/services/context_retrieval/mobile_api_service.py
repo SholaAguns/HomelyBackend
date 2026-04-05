@@ -171,7 +171,7 @@ class MobileApiService(IContextService):
 
         return network_percentages
 
-    def _parse_api_response(self, api_data: list, postcode: str) -> Dict[str, Any]:
+    def _parse_api_response(self, api_data: Dict[str, Any], postcode: str) -> Dict[str, Any]:
         """
         Parse Ofcom API response into unified format.
 
@@ -179,9 +179,10 @@ class MobileApiService(IContextService):
         1. Network count aggregates (to match dataset format)
         2. Per-provider breakdown (API-specific detail)
 
-        API Response Format:
-        [{
+        API Response Format (actual):
+        {
             "PostCode": "SW1A1AA",
+            "DBName": "MobileAvailability-202505160637",
             "Availability": [{
                 "UPRN": 12345,
                 "AddressShortDescription": "10 DOWNING STREET",
@@ -192,18 +193,20 @@ class MobileApiService(IContextService):
                 "EEDataIndoor": 3,
                 ... (similar for H3, TF, VO providers)
             }]
-        }]
+        }
+
+        Note: API documentation incorrectly shows array wrapper - actual response is dict
 
         Returns:
             Unified format matching MobileCoverageReportDataSerializer
         """
-        if not api_data or not isinstance(api_data, list):
-            raise ValueError("Invalid API response: expected array")
+        if not api_data or not isinstance(api_data, dict):
+            raise ValueError(f"Invalid API response: expected dict, got {type(api_data)}")
 
-        if not api_data or 'Availability' not in api_data[0]:
+        if 'Availability' not in api_data:
             raise ValueError("Invalid API response: missing Availability data")
 
-        availability_list = api_data[0]['Availability']
+        availability_list = api_data['Availability']
         if not availability_list:
             raise ValueError(f"No mobile coverage data for postcode {postcode}")
 
