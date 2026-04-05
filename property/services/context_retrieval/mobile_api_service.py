@@ -81,7 +81,13 @@ class MobileApiService(IContextService):
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
 
-        return response.json()
+        api_data = response.json()
+
+        # Debug logging to see actual response structure
+        logger.debug(f"Mobile API Response Type: {type(api_data)}")
+        logger.debug(f"Mobile API Response: {api_data}")
+
+        return api_data
 
     def _calculate_coverage_percentage(self, rating: int) -> float:
         """
@@ -303,7 +309,7 @@ class MobileApiService(IContextService):
         self.ensure_postcode(property_obj)
         self.validate_property_data(property_obj)
 
-        postcode = property_obj.postcode
+        postcode = property_obj.postcode.replace(" ", "")
 
         # Try API first (if keys are configured)
         if self.primary_key or self.secondary_key:

@@ -73,7 +73,13 @@ class BroadbandApiService(IContextService):
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
 
-        return response.json()
+        api_data = response.json()
+
+        # Debug logging to see actual response structure
+        #logger.debug(f"Broadband API Response Type: {type(api_data)}")
+        #logger.debug(f"Broadband API Response: {api_data}")
+
+        return api_data
 
     def _parse_api_response(self, api_data: Dict[str, Any], postcode: str) -> Dict[str, Any]:
         """
