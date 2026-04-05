@@ -170,8 +170,9 @@ def transform_mobile_data(service_data):
     """
     Transform Mobile service response to match MobileCoverageReportDataSerializer
 
-    Ofcom dataset provides aggregate coverage by network count, not per-operator.
-    Frontend now displays aggregate coverage data.
+    Unified format supporting both:
+    - Dataset: network count aggregates (0-4 networks)
+    - API: network count aggregates + per-provider breakdown
     """
     if not service_data:
         return None
@@ -193,12 +194,16 @@ def transform_mobile_data(service_data):
         'granularity': service_data.get('granularity', ''),
     }
 
-    # Optional fields
+    # Optional fields (from dataset or API)
     if 'five_g_coverage_high_confidence' in service_data:
         transformed['five_g_coverage_high_confidence'] = service_data['five_g_coverage_high_confidence']
 
     if 'laua_name' in service_data:
         transformed['laua_name'] = service_data['laua_name']
+
+    # Optional provider breakdown (only from API)
+    if 'providers' in service_data and service_data['providers']:
+        transformed['providers'] = service_data['providers']
 
     # Validate through serializer
     serializer = MobileCoverageReportDataSerializer(data=transformed)

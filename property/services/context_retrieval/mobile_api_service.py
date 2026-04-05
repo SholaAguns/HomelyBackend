@@ -125,9 +125,53 @@ class MobileApiService(IContextService):
 
         return provider_scores
 
+    def _calculate_network_aggregates(self, availability_list: list, metric: str) -> Dict[str, float]:
+        """
+        Calculate network count aggregates from per-address provider ratings.
+
+        Converts provider-level data (EE/H3/TF/VO with ratings 0/3/4) into
+        network count buckets (0/1/2/3/4 networks coverage) to match dataset format.
+
+        Args:
+            availability_list: List of address data from API
+            metric: e.g., "DataOutdoor", "DataIndoor"
+
+        Returns:
+            Dict with network count percentages: all_4_networks, three_networks, etc.
+        """
+        network_counts = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
+
+        for address in availability_list:
+            # Count how many providers have "likely" (4) coverage for this address
+            providers_with_coverage = 0
+            for provider in self.PROVIDERS:
+                field_name = f"{provider}{metric}"
+                rating = address.get(field_name, 0)
+                if rating == 4:  # Only count "likely" coverage
+                    providers_with_coverage += 1
+
+            # Increment the count for this network bucket
+            network_counts[providers_with_coverage] += 1
+
+        # Convert counts to percentages
+        total_addresses = len(availability_list)
+        network_percentages = {
+            'all_4_networks': round((network_counts[4] / total_addresses) * 100, 2) if total_addresses else 0,
+            'three_networks': round((network_counts[3] / total_addresses) * 100, 2) if total_addresses else 0,
+            'two_networks': round((network_counts[2] / total_addresses) * 100, 2) if total_addresses else 0,
+            'one_network': round((network_counts[1] / total_addresses) * 100, 2) if total_addresses else 0,
+            'no_coverage': round((network_counts[0] / total_addresses) * 100, 2) if total_addresses else 0,
+        }
+
+        return network_percentages
+
     def _parse_api_response(self, api_data: list, postcode: str) -> Dict[str, Any]:
         """
-        Parse Ofcom API response into standard format.
+        Parse Ofcom API response into unified format.
+
+        Calculates both:
+        1. Network count aggregates (to match dataset format)
+        2. Per-provider breakdown (API-specific detail)
 
         API Response Format:
         [{
@@ -145,7 +189,7 @@ class MobileApiService(IContextService):
         }]
 
         Returns:
-            Standardized format with coverage scores
+            Unified format matching MobileCoverageReportDataSerializer
         """
         if not api_data or not isinstance(api_data, list):
             raise ValueError("Invalid API response: expected array")
@@ -157,43 +201,58 @@ class MobileApiService(IContextService):
         if not availability_list:
             raise ValueError(f"No mobile coverage data for postcode {postcode}")
 
-        # Aggregate scores for different categories
+        # Calculate network count aggregates (to match dataset format)
+        data_outdoor_agg = self._calculate_network_aggregates(availability_list, 'DataOutdoor')
+        data_indoor_agg = self._calculate_network_aggregates(availability_list, 'DataIndoor')
+
+        # Calculate 4G coverage score (matching dataset service logic)
+        # Weight: outdoor all networks 40%, indoor all networks 30%, outdoor 3+ 20%, indoor 3+ 10%
+        four_g_score = (
+            data_outdoor_agg['all_4_networks'] * 0.4 +
+            data_indoor_agg['all_4_networks'] * 0.3 +
+            data_outdoor_agg['three_networks'] * 0.2 +
+            data_indoor_agg['three_networks'] * 0.1
+        )
+
+        # 5G estimation: API doesn't provide explicit 5G data
+        # Use heuristic: areas with high 4G coverage likely have some 5G
+        # Conservative estimate: 0 for now (can be refined)
+        five_g_score = 0.0
+
+        # Overall score: prioritize 4G (70%), 5G (20%), voice reliability (10%)
+        # For voice, use data coverage as proxy (API doesn't distinguish 4G voice clearly)
+        overall_score = (
+            four_g_score * 0.7 +
+            five_g_score * 0.2 +
+            data_indoor_agg['all_4_networks'] * 0.1
+        )
+
+        # Aggregate provider scores (for optional provider breakdown)
         voice_outdoor = self._aggregate_provider_scores(availability_list, 'VoiceOutdoor')
         voice_indoor = self._aggregate_provider_scores(availability_list, 'VoiceIndoor')
         data_outdoor = self._aggregate_provider_scores(availability_list, 'DataOutdoor')
         data_indoor = self._aggregate_provider_scores(availability_list, 'DataIndoor')
 
-        # Calculate composite scores
-        overall_score = (
-            voice_outdoor['average'] * 0.2 +
-            voice_indoor['average'] * 0.2 +
-            data_outdoor['average'] * 0.3 +
-            data_indoor['average'] * 0.3
-        )
-
         return {
             'postcode': postcode,
 
-            # Composite scores
+            # Composite scores (REQUIRED)
             'scores': {
+                'four_g_coverage': round(four_g_score, 2),
+                'five_g_coverage': round(five_g_score, 2),
                 'overall_coverage': round(overall_score, 2),
-                'voice_coverage': round((voice_outdoor['average'] + voice_indoor['average']) / 2, 2),
-                'data_coverage': round((data_outdoor['average'] + data_indoor['average']) / 2, 2),
             },
 
-            # Voice coverage by provider
-            'voice_coverage': {
-                'outdoor': voice_outdoor,
-                'indoor': voice_indoor,
+            # Network count aggregates (REQUIRED - matches dataset format)
+            'four_g_coverage': {
+                'outdoor': data_outdoor_agg,
+                'indoor': data_indoor_agg,
             },
 
-            # Data coverage by provider
-            'data_coverage': {
-                'outdoor': data_outdoor,
-                'indoor': data_indoor,
-            },
+            # 5G coverage (OPTIONAL - not available from API, set to None)
+            'five_g_coverage_high_confidence': None,
 
-            # Network provider breakdown
+            # Network provider breakdown (OPTIONAL - API-specific detail)
             'providers': {
                 'ee': {
                     'voice_outdoor': voice_outdoor.get('ee', 0),
@@ -241,6 +300,7 @@ class MobileApiService(IContextService):
         Returns:
             Dict with mobile coverage metrics and metadata
         """
+        self.ensure_postcode(property_obj)
         self.validate_property_data(property_obj)
 
         postcode = property_obj.postcode

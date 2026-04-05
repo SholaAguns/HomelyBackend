@@ -129,26 +129,25 @@ class BroadbandApiService(IContextService):
 
         # Map API speeds to our tier structure
         # Bb = Basic (<30 Mbps), Sfbb = Superfast (30-300 Mbps), Ufbb = Ultrafast (>=300 Mbps)
+
+        # Estimate full fibre availability (API doesn't provide take-up data)
+        # Ultrafast (>=300 Mbps) is typically full fibre
+        full_fibre_data = None
+        if max_ufbb_down >= 300:
+            # Estimate 100% availability since API returned ultrafast for this postcode
+            # Note: take_up_pct is unknown from API, set to 0
+            full_fibre_data = {
+                'availability_pct': 100.0,
+                'take_up_pct': 0.0,  # Unknown from API
+            }
+
         return {
             'postcode': postcode,
             'max_download_mbps': float(max_download),
             'max_upload_mbps': float(max_upload),
 
-            # Speed tiers - API provides specific categories
-            'download_speeds': {
-                'basic_broadband': float(max_bb_down),
-                'superfast_broadband': float(max_sfbb_down),
-                'ultrafast_broadband': float(max_ufbb_down),
-            },
-
-            'upload_speeds': {
-                'basic_broadband': float(max_bb_up),
-                'superfast_broadband': float(max_sfbb_up),
-                'ultrafast_broadband': float(max_ufbb_up),
-            },
-
-            # Full fibre availability (Ufbb is typically full fibre)
-            'full_fibre_available': max_ufbb_down >= 300,
+            # Full fibre availability (estimated from ultrafast presence)
+            'full_fibre': full_fibre_data,
 
             # Metadata
             'data_source': 'Ofcom Connected Nations API',
@@ -157,19 +156,8 @@ class BroadbandApiService(IContextService):
         }
 
     def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
-        """
-        Fetch broadband data from Ofcom API with fallback to dataset.
 
-        Process:
-        1. Validate property has postcode
-        2. Try API call with primary key
-        3. If primary fails, try secondary key
-        4. If both API keys fail, fallback to dataset service
-        5. Return formatted data
-
-        Returns:
-            Dict with broadband metrics and metadata
-        """
+        self.ensure_postcode(property_obj)
         self.validate_property_data(property_obj)
 
         postcode = property_obj.postcode

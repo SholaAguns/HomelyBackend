@@ -51,6 +51,7 @@ class MobileDatasetService(IContextService):
         from property.models import MobileCoverage
         from property.utils.geocoding import postcode_to_laua, GeocodingError
 
+        self.ensure_postcode(property_obj)
         self.validate_property_data(property_obj)
 
         postcode = property_obj.postcode

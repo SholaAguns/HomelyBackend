@@ -697,13 +697,20 @@ class CoverageScoresSerializer(serializers.Serializer):
 
 
 class MobileCoverageReportDataSerializer(serializers.Serializer):
-    """Serializer for Mobile coverage report data matching frontend MobileCoverageReportData interface"""
+    """
+    Serializer for Mobile coverage report data matching frontend MobileCoverageReportData interface
+
+    Unified format supporting both dataset (network aggregates) and API (per-provider) sources
+    """
     scores = CoverageScoresSerializer()
     four_g_coverage = serializers.DictField()
     five_g_coverage_high_confidence = serializers.DictField(required=False, allow_null=True)
     data_source = serializers.CharField()
     granularity = serializers.CharField()
     laua_name = serializers.CharField(required=False, allow_null=True)
+
+    # Optional provider-specific data (only present when from API source)
+    providers = serializers.DictField(required=False, allow_null=True)
 
 
 class CouncilTaxReportDataSerializer(serializers.Serializer):
