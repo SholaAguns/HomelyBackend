@@ -5,8 +5,8 @@ from typing import Optional
 from .interface import IContextService
 from .crime_service import CrimeService
 from .school_service import SchoolRatingService
-from .broadband_dataset_service import BroadbandDatasetService
-from .mobile_dataset_service import MobileDatasetService
+from .broadband_api_service import BroadbandApiService
+from .mobile_api_service import MobileApiService
 from .poi_service import POIService
 from .council_tax_service import CouncilTaxService
 from .saved_location_service import SavedLocationService
@@ -28,8 +28,8 @@ def context_service_factory(service_name: str) -> Optional[IContextService]:
     services = {
         'crime': CrimeService,
         'schools': SchoolRatingService,
-        'broadband': BroadbandDatasetService,
-        'mobile': MobileDatasetService,
+        'broadband': BroadbandApiService,  # Uses API with dataset fallback
+        'mobile': MobileApiService,  # Uses API with dataset fallback
         'poi': POIService,
         'council_tax': CouncilTaxService,
         'saved_locations': SavedLocationService,
