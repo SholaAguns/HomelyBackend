@@ -489,15 +489,19 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='run-stage2')
     def run_stage2(self, request, uuid=None):
-        """Trigger Stage 2 context retrieval (NEW → STAGE2_IN_PROGRESS)"""
+        """Trigger Stage 2 context retrieval (NEW → STAGE2_IN_PROGRESS)
+
+        Optional body: { "services": ["crime", "schools"] } to run specific services
+        """
         property_obj = self.get_object()
+        services = request.data.get('services', None)
 
         try:
             property_obj.run_stage2()
             property_obj.save()
 
             # Queue Celery task (uses internal id)
-            retrieve_context_data.delay(property_obj.id)
+            retrieve_context_data.delay(property_obj.id, services=services)
 
             return Response({
                 'status': 'stage2_started',

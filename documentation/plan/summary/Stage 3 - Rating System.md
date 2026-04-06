@@ -23,15 +23,15 @@ Stage 3 evaluates properties based on weighted criteria and assigns numerical sc
 ### System Criteria (7)
 Built-in criteria based on core property fields:
 
-| Criterion | Source Field | Data Type | Scoring Strategy |
-|-----------|-------------|-----------|------------------|
-| Price | property.price | Decimal | Inverted min-max (lower better) |
-| Bedrooms | property.bedrooms | Integer | Min-max (higher better) |
-| Bathrooms | property.bathrooms | Integer | Min-max (higher better) |
-| Council Tax Band | property.council_tax_band | Character | Ordinal mapping (A=100, B=90...) |
-| Crime Rating | context_data['crime'] | String | Ordinal mapping (Low=100, Medium=50...) |
-| EPC Rating | property.epc_rating | Character | Ordinal mapping (A=100, B=90...) |
-| Square Area | property.square_area | Decimal | Min-max (higher better) |
+| Criterion        | Source Field              | Data Type | Scoring Strategy                        |
+| ---------------- | ------------------------- | --------- | --------------------------------------- |
+| Price            | property.price            | Decimal   | Inverted min-max (lower better)         |
+| Bedrooms         | property.bedrooms         | Integer   | Min-max (higher better)                 |
+| Bathrooms        | property.bathrooms        | Integer   | Min-max (higher better)                 |
+| Council Tax Band | property.council_tax_band | Character | Ordinal mapping (A=100, B=90...)        |
+| Crime Rating     | context_data['crime']     | String    | Ordinal mapping (Low=100, Medium=50...) |
+| EPC Rating       | property.epc_rating       | Character | Ordinal mapping (A=100, B=90...)        |
+| Square Area      | property.square_area      | Decimal   | Min-max (higher better)                 |
 
 ### User Criteria (14)
 Configurable criteria based on context data and preferences:

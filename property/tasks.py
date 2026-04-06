@@ -10,7 +10,7 @@ logger = logging.getLogger('property.tasks')
 
 
 @shared_task(bind=True, max_retries=3)
-def retrieve_context_data(self, property_id, property_list_id=None):
+def retrieve_context_data(self, property_id, property_list_id=None, services=None):
     from property.models import Property, ContextData, PropertyList
 
     try:
@@ -19,7 +19,10 @@ def retrieve_context_data(self, property_id, property_list_id=None):
         ).get(id=property_id)
 
         # Determine which services to run
-        if property_list_id:
+        if services:
+            # Use provided services list
+            enabled_services = services
+        elif property_list_id:
             # Running from specific list - use project's context options
             try:
                 property_list = PropertyList.objects.select_related('project__context_options').get(id=property_list_id)
