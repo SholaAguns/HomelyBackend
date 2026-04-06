@@ -17,3 +17,5 @@
 - project settings files in settings folder (base, dev and prod .py files)
 
 - always seek my explicit approval before running any migrations
+
+- always add imports statement at the top of the file

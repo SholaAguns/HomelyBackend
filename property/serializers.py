@@ -70,18 +70,35 @@ class ProjectSerializer(serializers.ModelSerializer):
         many=True,
         required=False
     )
+    rating_criteria_name = serializers.ReadOnlyField(source='rating_criteria.name')
+    rating_criteria_source_name = serializers.ReadOnlyField(source='rating_criteria_source.name')
+    has_context_options = serializers.SerializerMethodField()
+    context_options = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
         fields = [
             'uuid', 'owner', 'title', 'description',
             'viewers', 'contributors', 'property_lists_count',
+            'rating_criteria', 'rating_criteria_name',
+            'rating_criteria_source', 'rating_criteria_source_name',
+            'has_context_options', 'context_options',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['uuid', 'owner', 'created_at', 'updated_at']
 
     def get_property_lists_count(self, obj):
         return obj.property_lists.count()
+
+    def get_has_context_options(self, obj):
+        return hasattr(obj, 'context_options')
+
+    def get_context_options(self, obj):
+        if hasattr(obj, 'context_options'):
+            # Lazy import to avoid circular dependency since ContextOptionsSerializer is defined later
+            serializer = ContextOptionsSerializer(obj.context_options)
+            return serializer.data
+        return None
 
     def create(self, validated_data):
         validated_data['owner'] = self.context['request'].user
@@ -191,6 +208,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
     """Serializer for PropertyList model"""
 
     owner = serializers.ReadOnlyField(source='owner.username')
+    project = serializers.ReadOnlyField(source='project.uuid')
     project_uuid = serializers.PrimaryKeyRelatedField(
         queryset=Project.objects.all(),
         source='project',
@@ -209,7 +227,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
         model = PropertyList
         fields = [
             'uuid', 'owner', 'title',
-            'project_uuid', 'project_title',
+            'project', 'project_uuid', 'project_title',
             'search_criteria',
             'properties_count', 'status_summary',
             'average_price', 'highest_price', 'lowest_price',
@@ -531,13 +549,15 @@ class PropertyListTaskSerializer(serializers.ModelSerializer):
 class ContextOptionsSerializer(serializers.ModelSerializer):
     """Serializer for ContextOptions model"""
 
-    property_list_uuid = serializers.ReadOnlyField(source='property_list.uuid')
+    project_uuid = serializers.ReadOnlyField(source='project.uuid')
+    project_title = serializers.ReadOnlyField(source='project.title')
 
     class Meta:
         model = ContextOptions
         fields = [
             'uuid',
-            'property_list_uuid',
+            'project_uuid',
+            'project_title',
             'enable_crime',
             'enable_schools',
             'school_types',
@@ -552,7 +572,7 @@ class ContextOptionsSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['uuid', 'property_list_uuid', 'created_at', 'updated_at']
+        read_only_fields = ['uuid', 'project_uuid', 'project_title', 'created_at', 'updated_at']
 
 
 # Context Report Data Serializers
@@ -642,6 +662,7 @@ class CrimeReportDataSerializer(serializers.Serializer):
     top_categories = CrimeCategorySerializer(many=True)
     data_source = serializers.CharField()
     postcode_sector = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    monthly_breakdown = serializers.ListField(child=serializers.DictField(), required=False)
 
 
 class FullFibreDataSerializer(serializers.Serializer):
@@ -676,13 +697,20 @@ class CoverageScoresSerializer(serializers.Serializer):
 
 
 class MobileCoverageReportDataSerializer(serializers.Serializer):
-    """Serializer for Mobile coverage report data matching frontend MobileCoverageReportData interface"""
+    """
+    Serializer for Mobile coverage report data matching frontend MobileCoverageReportData interface
+
+    Unified format supporting both dataset (network aggregates) and API (per-provider) sources
+    """
     scores = CoverageScoresSerializer()
     four_g_coverage = serializers.DictField()
     five_g_coverage_high_confidence = serializers.DictField(required=False, allow_null=True)
     data_source = serializers.CharField()
     granularity = serializers.CharField()
     laua_name = serializers.CharField(required=False, allow_null=True)
+
+    # Optional provider-specific data (only present when from API source)
+    providers = serializers.DictField(required=False, allow_null=True)
 
 
 class CouncilTaxReportDataSerializer(serializers.Serializer):

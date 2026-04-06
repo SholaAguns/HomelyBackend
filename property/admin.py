@@ -54,6 +54,10 @@ class ProjectAdmin(admin.ModelAdmin):
         ('Basic Info', {
             'fields': ('uuid', 'title', 'owner', 'description')
         }),
+        ('Configuration', {
+            'fields': ('rating_criteria', 'rating_criteria_source'),
+            'classes': ('collapse',)
+        }),
         ('Collaboration', {
             'fields': ('viewers', 'contributors'),
             'classes': ('collapse',)
@@ -129,7 +133,7 @@ class PropertyListAdmin(admin.ModelAdmin):
             'fields': ('uuid', 'title', 'project', 'owner')
         }),
         ('Configuration', {
-            'fields': ('rating_criteria', 'rating_criteria_source', 'search_criteria')
+            'fields': ('search_criteria',)
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
@@ -237,12 +241,12 @@ class PropertyListTaskAdmin(admin.ModelAdmin):
 
 @admin.register(ContextOptions)
 class ContextOptionsAdmin(admin.ModelAdmin):
-    list_display = ('property_list', 'enable_crime', 'enable_schools', 'enable_broadband', 'enable_mobile', 'enable_council_tax', 'enable_poi', 'enable_saved_locations')
+    list_display = ('project', 'enable_crime', 'enable_schools', 'enable_broadband', 'enable_mobile', 'enable_council_tax', 'enable_poi', 'enable_saved_locations')
     list_filter = ('enable_crime', 'enable_schools', 'enable_broadband', 'enable_mobile', 'enable_council_tax', 'enable_poi', 'enable_saved_locations')
     readonly_fields = ('uuid', 'created_at', 'updated_at')
     fieldsets = (
-        ('Property List', {
-            'fields': ('uuid', 'property_list')
+        ('Project', {
+            'fields': ('uuid', 'project')
         }),
         ('Context Services', {
             'fields': ('enable_crime', 'enable_schools', 'school_types', 'enable_broadband', 'enable_mobile', 'enable_council_tax')

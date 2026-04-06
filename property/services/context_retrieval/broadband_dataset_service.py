@@ -36,21 +36,10 @@ class BroadbandDatasetService(IContextService):
         return self.CACHE_TTL
 
     def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
-        """
-        Fetch broadband coverage data for property's Output Area.
-
-        Process:
-        1. Extract postcode from property
-        2. Map postcode → OA code using Postcodes.io
-        3. Query BroadbandCoverage table for latest data
-        4. Return formatted data
-
-        Returns:
-            Dict with broadband metrics and metadata
-        """
         from property.models import BroadbandCoverage
         from property.utils.geocoding import postcode_to_oa, GeocodingError
 
+        self.ensure_postcode(property_obj)
         self.validate_property_data(property_obj)
 
         postcode = property_obj.postcode
@@ -104,13 +93,13 @@ class BroadbandDatasetService(IContextService):
                 'over_900_mbps': float(coverage.avg_upload_over_900 or 0),
             },
 
-            # Full fibre availability
+            # Full fibre availability (matching serializer format)
             'full_fibre': {
-                'takeup_pct_of_coverage': float(coverage.full_fibre_takeup_pct_of_coverage or 0),
-                'takeup_pct_of_all_premises': float(coverage.full_fibre_takeup_pct_of_all or 0),
+                'availability_pct': float(coverage.full_fibre_takeup_pct_of_coverage or 0),
+                'take_up_pct': float(coverage.full_fibre_takeup_pct_of_all or 0),
             },
 
-            # Usage
+            # Usage (extra detail from dataset)
             'avg_monthly_usage_gb': float(coverage.avg_monthly_usage_gb or 0),
             'avg_monthly_usage_full_fibre_gb': float(coverage.avg_monthly_usage_full_fibre_gb or 0),
 

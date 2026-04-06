@@ -19,6 +19,23 @@ class Project(models.Model):
     viewers = models.ManyToManyField(User, related_name='viewable_projects', blank=True)
     contributors = models.ManyToManyField(User, related_name='editable_projects', blank=True)
 
+    # Rating criteria (moved from PropertyList)
+    rating_criteria = models.ForeignKey(
+        'RatingCriteria',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='projects'
+    )
+    rating_criteria_source = models.ForeignKey(
+        'RatingCriteria',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='derived_projects',
+        help_text='Source criteria if this was created via copy-on-write'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -132,8 +149,6 @@ class PropertyList(models.Model):
     title = models.CharField(max_length=255)
 
     # Optional configurations
-    rating_criteria = models.ForeignKey('RatingCriteria', null=True, blank=True, on_delete=models.SET_NULL, related_name='property_lists')
-    rating_criteria_source = models.ForeignKey('RatingCriteria', null=True, blank=True, on_delete=models.SET_NULL, related_name='derived_lists')
     search_criteria = models.ForeignKey(SearchCriteria, null=True, blank=True, on_delete=models.SET_NULL, related_name='property_lists')
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -142,10 +157,10 @@ class PropertyList(models.Model):
     class Meta:
         db_table = 'property_lists'
         ordering = ['-created_at']
-        unique_together = [['owner', 'title']]
+        unique_together = [['project', 'title']]
 
     def __str__(self):
-        return f"{self.title} ({self.owner.username})"
+        return f"{self.title} ({self.project.title})"
 
     def get_status_summary(self):
         """Returns aggregated status of all properties in list"""
@@ -208,8 +223,8 @@ class Property(models.Model):
     external_url = models.URLField(max_length=500, blank=True)
 
     # Deduplication
-    normalized_address = models.CharField(max_length=500, blank=True)
-    uprn = models.CharField(max_length=50, blank=True)
+    normalized_address = models.CharField(max_length=500, blank=True, db_index=True)
+    uprn = models.CharField(max_length=50, blank=True, db_index=True)
 
     # Stage 3 results
     overall_rating = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
@@ -257,11 +272,13 @@ class Property(models.Model):
 
     def check_all_services_complete(self):
         """Check if all context services have completed or failed"""
-        # Get union of enabled services from all lists this property belongs to
+        # Get enabled services from project
         enabled_services = set()
         for prop_list in self.property_lists.all():
-            if hasattr(prop_list, 'context_options'):
-                enabled_services.update(prop_list.context_options.get_enabled_services())
+            project = prop_list.project
+            if hasattr(project, 'context_options'):
+                enabled_services.update(project.context_options.get_enabled_services())
+                break  # All lists in same project share context_options
 
         if not enabled_services:
             return True

@@ -6,7 +6,7 @@ from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth.models import User
 
-from property.models import Property, PropertyList, School
+from property.models import Property, PropertyList, Project, School
 from property.services.context_retrieval import SchoolRatingService
 
 
@@ -21,8 +21,13 @@ class SchoolRatingServiceTest(TestCase):
             email='test@example.com',
             password='testpass123'
         )
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
 

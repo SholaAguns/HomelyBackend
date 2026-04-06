@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 
-from property.models import Property, PropertyList, PlaceOfInterest
+from property.models import Property, PropertyList, Project, PlaceOfInterest
 
 
 class PlaceOfInterestModelTest(TestCase):
@@ -20,8 +20,13 @@ class PlaceOfInterestModelTest(TestCase):
             email='test@example.com',
             password='testpass123'
         )
+        self.project = Project.objects.create(
+            owner=self.user,
+            title='Test Project'
+        )
         self.property_list = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='Test List'
         )
 

@@ -42,6 +42,7 @@ class GoogleMapsService(IGeoService):
         'pharmacy': ['pharmacy'],
         'train_station': ['train_station'],
         'bus_station': ['bus_station'],
+        'station': ['train_station', 'bus_station'],
         'petrol_station': ['gas_station'],
         'mosque': ['mosque'],
         'church': ['church'],

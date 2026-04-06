@@ -15,22 +15,23 @@ def retrieve_context_data(self, property_id, property_list_id=None):
 
     try:
         property_obj = Property.objects.prefetch_related(
-            'property_lists__context_options'
+            'property_lists__project__context_options'
         ).get(id=property_id)
 
         # Determine which services to run
         if property_list_id:
-            # Running from specific list - use that list's context options
+            # Running from specific list - use project's context options
             try:
-                property_list = PropertyList.objects.select_related('context_options').get(id=property_list_id)
-                if not hasattr(property_list, 'context_options'):
-                    raise ValueError(f'Context options not configured for property list {property_list.title}')
-                enabled_services = property_list.context_options.get_enabled_services()
+                property_list = PropertyList.objects.select_related('project__context_options').get(id=property_list_id)
+                project = property_list.project
+                if not hasattr(project, 'context_options'):
+                    raise ValueError(f'Context options not configured for project {project.title}')
+                enabled_services = project.context_options.get_enabled_services()
             except PropertyList.DoesNotExist:
                 raise ValueError(f'Property list {property_list_id} not found')
         else:
-            # Running from individual property - compile from all lists
-            enabled_services = _get_enabled_services_from_all_lists(property_obj)
+            # Running from individual property - get from any list's project
+            enabled_services = _get_enabled_services_from_project(property_obj)
 
         if not enabled_services:
             raise ValueError('No context services enabled')
@@ -575,22 +576,27 @@ def _send_service_update(property_obj, service_name, status, data=None, error=No
         _send_list_websocket_update(property_list.uuid, 'service_update', message_data)
 
 
-def _get_enabled_services_from_all_lists(property_obj):
+def _get_enabled_services_from_project(property_obj):
     """
-    Compile unique set of enabled services from all property lists.
+    Get enabled services from property's project.
+
+    Since context options are now at project level, all lists in same project
+    share the same context options. We just need to get it from any list's project.
 
     Args:
         property_obj: Property instance
 
     Returns:
-        List of unique service names enabled across all lists
+        List of unique service names enabled for the project
     """
     enabled_services = set()
 
-    for property_list in property_obj.property_lists.all():
-        context_options = getattr(property_list, 'context_options', None)
-        if context_options:
-            enabled_services.update(context_options.get_enabled_services())
+    # Get project from any property list
+    property_list = property_obj.property_lists.first()
+    if property_list:
+        project = property_list.project
+        if hasattr(project, 'context_options'):
+            enabled_services.update(project.context_options.get_enabled_services())
 
     return list(enabled_services)
 
@@ -599,8 +605,8 @@ def _get_service_params(property_obj, service_name):
     """
     Get service-specific parameters for fetch_data call.
 
-    For POI service: Compiles poi_types from all property lists
-    For Schools service: Compiles school_types from all property lists
+    For POI service: Compiles poi_types from all projects
+    For Schools service: Compiles school_types from all projects
     For other services: Returns empty dict
 
     Args:
@@ -611,13 +617,14 @@ def _get_service_params(property_obj, service_name):
         Dict of parameters to pass to service.fetch_data()
     """
     if service_name == 'schools':
-        # Compile school types from all property lists
+        # Compile school types from all projects
         school_types_set = set()
 
         for property_list in property_obj.property_lists.all():
-            context_options = getattr(property_list, 'context_options', None)
+            project = property_list.project
+            context_options = getattr(project, 'context_options', None)
             if context_options and context_options.enable_schools:
-                # Add school_types from this list
+                # Add school_types from this project
                 if context_options.school_types:
                     school_types_set.update(context_options.school_types)
 
@@ -626,17 +633,18 @@ def _get_service_params(property_obj, service_name):
         }
 
     if service_name == 'poi':
-        # Compile POI types from all property lists
+        # Compile POI types from all projects
         poi_types_set = set()
         radius = 1600  # Default
 
         for property_list in property_obj.property_lists.all():
-            context_options = getattr(property_list, 'context_options', None)
+            project = property_list.project
+            context_options = getattr(project, 'context_options', None)
             if context_options and context_options.enable_poi:
-                # Add poi_types from this list
+                # Add poi_types from this project
                 if context_options.poi_types:
                     poi_types_set.update(context_options.poi_types)
-                # Use the largest radius from all lists
+                # Use the largest radius from all projects
                 if context_options.poi_search_radius_meters:
                     radius = max(radius, context_options.poi_search_radius_meters)
 
@@ -646,13 +654,14 @@ def _get_service_params(property_obj, service_name):
         }
 
     if service_name == 'saved_locations':
-        # Compile saved location UUIDs from all property lists
+        # Compile saved location UUIDs from all projects
         saved_location_uuids_set = set()
 
         for property_list in property_obj.property_lists.all():
-            context_options = getattr(property_list, 'context_options', None)
+            project = property_list.project
+            context_options = getattr(project, 'context_options', None)
             if context_options and context_options.enable_saved_locations:
-                # Add saved_location_uuids from this list
+                # Add saved_location_uuids from this project
                 if context_options.saved_location_uuids:
                     saved_location_uuids_set.update(context_options.saved_location_uuids)
 

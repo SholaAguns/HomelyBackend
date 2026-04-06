@@ -56,7 +56,7 @@ class PropertyListModelTest(TestCase):
     def test_property_list_str(self):
         """PropertyList string representation"""
         prop_list = PropertyList.objects.create(owner=self.user, project=self.project, title='Test List')
-        self.assertEqual(str(prop_list), 'Test List (testuser)')
+        self.assertEqual(str(prop_list), 'Test List (Test Project)')
 
     def test_property_list_status_summary(self):
         """PropertyList returns correct status summary"""
