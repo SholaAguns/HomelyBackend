@@ -82,17 +82,18 @@ Based on all documentation, here's a suggested implementation sequence:
 
 **Tasks:**
 1. Implement RatingCriteria configuration UI (all 21 criteria, weights, dealbreakers)
-2. Build criterion scoring strategies:
-   - MinMaxNormalization
-   - InvertedNormalization
-   - OrdinalMapping
-   - BooleanScoring
-   - ThresholdBased
-3. Implement dealbreaker evaluation
-4. Build rating aggregation logic
-5. Create rating calculation Celery task
+2. Build criterion scoring strategies: - done
+   - MinMaxNormalization - done
+   - InvertedNormalization - done
+   - OrdinalMapping - done
+   - BooleanScoring - done
+   - ThresholdBased - done
+3. Implement dealbreaker evaluation - done
+4. Build rating aggregation logic - done
+5. Create rating calculation Celery task - done
 6. Build rating display UI (badges, breakdown modal)
-7. Add manual trigger (individual + bulk)
+7. Add manual trigger (individual + bulk) - done (backend API)
+8. Create API endpoints and serializers - done
 
 **Deliverable:** Users can rate and compare properties.
 

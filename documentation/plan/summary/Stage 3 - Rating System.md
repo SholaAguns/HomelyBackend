@@ -351,7 +351,7 @@ property.save()
 
 ## Rating Criteria Management
 
-### Creating Rating Criteria
+### Creating Rating Criteria ✅ BACKEND API IMPLEMENTED / ⏳ FRONTEND UI TODO
 
 **Two Options:**
 
@@ -374,7 +374,7 @@ User reuses previously created criteria:
 3. Select criteria to use
 4. Property list references criteria via FK (no duplication)
 
-### Reference-with-Copy-on-Write (Decision #1)
+### Reference-with-Copy-on-Write (Decision #1) ✅ BACKEND SUPPORT / ⏳ FRONTEND WORKFLOW TODO
 
 **Sharing Behavior:**
 - Rating criteria are referenced (not duplicated initially)
@@ -423,11 +423,11 @@ def edit_rating_criteria(property_list, new_criteria_data):
 
 ---
 
-## Automatic Re-Rating
+## Automatic Re-Rating ⏳ TODO
 
 **Triggers (Automatic, No User Action Required):**
 
-### 1. Property Field Changes
+### 1. Property Field Changes ⏳ TODO
 When property data changes that affect rating criteria:
 ```python
 FIELD_RATING_DEPENDENCIES = {
@@ -455,7 +455,7 @@ def save(self, *args, **kwargs):
             self.run_stage3()
 ```
 
-### 2. Context Data Updates
+### 2. Context Data Updates ⏳ TODO
 When context services rerun and update data:
 ```python
 # After context service completes
@@ -468,7 +468,7 @@ def on_context_data_complete(property, service_name):
             property.run_stage3()
 ```
 
-### 3. Rating Criteria Modifications
+### 3. Rating Criteria Modifications ⏳ TODO
 When criteria configuration changes:
 ```python
 # After rating criteria edit
@@ -488,9 +488,9 @@ def save(self, *args, **kwargs):
 
 ---
 
-## UI Components
+## UI Components ⏳ TODO (Frontend)
 
-### Property Detail Page - Stage 3 Complete
+### Property Detail Page - Stage 3 Complete ⏳ TODO
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -527,7 +527,7 @@ def save(self, *args, **kwargs):
 └─────────────────────────────────────────────────┘
 ```
 
-### Property Detail Page - Disqualified
+### Property Detail Page - Disqualified ⏳ TODO
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -546,7 +546,7 @@ def save(self, *args, **kwargs):
 └─────────────────────────────────────────────────┘
 ```
 
-### Property List Page - Comparison View
+### Property List Page - Comparison View ⏳ TODO
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -578,7 +578,7 @@ def save(self, *args, **kwargs):
 └─────────────────────────────────────────────────┘
 ```
 
-### Rating Criteria Configuration Form
+### Rating Criteria Configuration Form ⏳ TODO
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -625,41 +625,56 @@ def save(self, *args, **kwargs):
 
 ## API Endpoints
 
-### Stage 3 Triggering
+### Stage 3 Triggering ✅ IMPLEMENTED
 ```
-POST   /api/properties/{id}/run-stage3/           # Trigger Stage 3 for property
-POST   /api/property-lists/{id}/run-stage3-bulk/  # Trigger Stage 3 for all eligible properties
-```
-
-### Rating Criteria Management
-```
-GET    /api/rating-criteria/                      # List all criteria (user's + templates)
-POST   /api/rating-criteria/                      # Create new criteria
-GET    /api/rating-criteria/{id}/                 # Get criteria details
-PUT    /api/rating-criteria/{id}/                 # Update criteria (triggers copy-on-write if shared)
-DELETE /api/rating-criteria/{id}/                 # Delete criteria
+POST   /api/properties/{uuid}/run-stage3/              # ✅ Trigger Stage 3 for property
+POST   /api/projects/{uuid}/run-stage3-bulk/           # ✅ Trigger Stage 3 for all properties in project
 ```
 
-### Rating Results
+**Note:** Project-level bulk (not property-list level) due to rating criteria being at project scope.
+
+### Rating Criteria Management ✅ IMPLEMENTED
 ```
-GET    /api/properties/{id}/rating/               # Get overall rating and breakdown
-GET    /api/properties/{id}/criterion-scores/     # Get individual criterion scores
-GET    /api/property-lists/{id}/comparison/       # Get sorted comparison of all properties
+GET    /api/rating-criteria/                      # ✅ List all user's criteria
+POST   /api/rating-criteria/                      # ✅ Create new criteria
+GET    /api/rating-criteria/{uuid}/               # ✅ Get criteria details
+PUT    /api/rating-criteria/{uuid}/               # ✅ Update criteria
+PATCH  /api/rating-criteria/{uuid}/               # ✅ Partial update criteria
+DELETE /api/rating-criteria/{uuid}/               # ✅ Delete criteria
+POST   /api/rating-criteria/{uuid}/copy/          # ✅ Copy criteria (copy-on-write support)
 ```
 
-### WebSocket Endpoint
+### Rating Results ✅ IMPLEMENTED
 ```
-ws://host/ws/property-list/{list_id}/             # Real-time rating updates
+GET    /api/properties/{uuid}/rating/                  # ✅ Get overall rating and breakdown
+GET    /api/properties/{uuid}/criterion-scores/       # ✅ Get individual criterion scores
+GET    /api/projects/{uuid}/property-comparison/      # ✅ Get sorted comparison (project-level)
+       ?min_rating=80                                  # ✅ Filter by minimum rating
+       &exclude_disqualified=true                      # ✅ Exclude disqualified properties
 ```
+
+**Note:** Comparison at project level (not property-list level) to support cross-list comparison.
+
+### WebSocket Endpoint ✅ IMPLEMENTED
+```
+ws://host/ws/property/{property_uuid}/            # ✅ Real-time rating updates (property channel)
+ws://host/ws/property-list/{list_uuid}/           # ✅ Real-time rating updates (list channel)
+```
+
+**Events:**
+- `rating_progress` - Rating calculation in progress
+- `rating_complete` - Rating calculation finished
+- `rating_failed` - Rating calculation failed
 
 ---
 
-## Data Models
+## Data Models ✅ IMPLEMENTED
 
 ```python
-class RatingCriteria(models.Model):
+class RatingCriteria(models.Model):  # ✅ Implemented in property/models/stage3_models.py
     name = models.CharField(max_length=255)
     owner = models.ForeignKey(User, related_name='rating_criteria')
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -668,7 +683,7 @@ class RatingCriteria(models.Model):
         """Check if any criteria use this context service"""
         return self.criteria.filter(source='context', service_name=service_name).exists()
 
-class Criterion(models.Model):
+class Criterion(models.Model):  # ✅ Implemented in property/models/stage3_models.py
     rating_criteria = models.ForeignKey(RatingCriteria, related_name='criteria')
     name = models.CharField(max_length=255)
 
@@ -689,29 +704,36 @@ class Criterion(models.Model):
     is_dealbreaker = models.BooleanField(default=False)
     dealbreaker_threshold = models.JSONField(null=True)  # {'operator': '>=', 'value': 3}
 
-class PropertyList(models.Model):
+class Project(models.Model):  # ✅ CHANGE: Rating criteria moved to Project level
     # ... other fields
 
-    rating_criteria = models.ForeignKey(RatingCriteria, null=True, blank=True)
+    # ✅ Rating criteria (moved from PropertyList)
+    rating_criteria = models.ForeignKey(RatingCriteria, null=True, blank=True, on_delete=models.SET_NULL, related_name='projects')
     rating_criteria_source = models.ForeignKey(
         RatingCriteria,
         null=True,
         blank=True,
-        related_name='derived_lists'
-    )  # Tracks original if forked
+        on_delete=models.SET_NULL,
+        related_name='derived_projects',
+        help_text='Source criteria if this was created via copy-on-write'
+    )
 
-class Property(models.Model):
+class PropertyList(models.Model):
+    # ... other fields
+    # ⚠️ NOTE: rating_criteria removed - now at Project level
+
+class Property(models.Model):  # ✅ Implemented in property/models/stage1_models.py
     # ... other fields
 
-    # Stage 3 results
-    overall_rating = models.DecimalField(max_digits=5, decimal_places=2, null=True)
-    rating_breakdown = models.JSONField(null=True)
+    # ✅ Stage 3 results
+    overall_rating = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    rating_breakdown = models.JSONField(null=True, blank=True)
     disqualified = models.BooleanField(default=False)
-    disqualification_reason = models.TextField(null=True)
+    disqualification_reason = models.TextField(blank=True)
 
-class CriterionScore(models.Model):
-    property = models.ForeignKey(Property, related_name='criterion_scores')
-    criterion = models.ForeignKey(Criterion)
+class CriterionScore(models.Model):  # ✅ Implemented in property/models/stage3_models.py
+    property = models.ForeignKey(Property, related_name='criterion_scores', on_delete=models.CASCADE)
+    criterion = models.ForeignKey(Criterion, on_delete=models.CASCADE, related_name='scores')
 
     raw_value = models.JSONField()  # Original value (price, boolean, etc.)
     normalized_score = models.DecimalField(max_digits=5, decimal_places=2)  # 0-100
@@ -726,28 +748,153 @@ class CriterionScore(models.Model):
 
 ---
 
-## State Transitions
+## State Transitions ✅ IMPLEMENTED
 
 **Property State Machine (Stage 3 Portion):**
 ```
-Stage2Complete ──────────> Stage3InProgress
+Stage2Complete ──────────> Stage3InProgress  # ✅ run_stage3() transition
                               │
                               │ (rating calculation complete)
                               │
                               ▼
-Stage3Complete <───────── Stage3InProgress
+Stage3Complete <───────── Stage3InProgress  # ✅ complete_stage3() transition
        │                      ▲
        │                      │
-       │ (field/criteria      │ (automatic re-rating)
+       │ (field/criteria      │ (automatic re-rating) ⏳ TODO
        │  change)             │
        │                      │
        └──────────────────────┘
 ```
 
 **Transitions:**
-- `Stage2Complete → Stage3InProgress` - User clicks "Calculate Rating"
-- `Stage3InProgress → Stage3Complete` - Rating calculation finished
-- `Stage3Complete → Stage3InProgress` - Field change or criteria update triggers automatic re-rating
+- ✅ `Stage2Complete → Stage3InProgress` - User clicks "Calculate Rating" via `run_stage3()`
+- ✅ `Stage3Complete → Stage3InProgress` - Re-rating via `run_stage3()`
+- ✅ `Stage3InProgress → Stage3Complete` - Rating calculation finished via `complete_stage3()`
+- ⏳ `Stage3Complete → Stage3InProgress` - Automatic re-rating on field/criteria changes (TODO)
+
+---
+
+## Implementation Status
+
+**Last Updated:** 2026-04-06
+
+### ✅ Completed
+
+#### Core Rating Logic (Phase 1)
+- ✅ `RatingService` class with full calculation pipeline
+- ✅ 5 scoring strategies:
+  - ✅ Min-Max Normalization (higher is better)
+  - ✅ Inverted Min-Max (lower is better)
+  - ✅ Ordinal Mapping (categorical values)
+  - ✅ Boolean Scoring (true/false)
+  - ✅ Threshold-Based (range brackets)
+- ✅ Dealbreaker evaluation (8 operators: >=, >, <=, <, ==, !=, in, not_in)
+- ✅ Raw value extraction (property/context/calculated sources)
+- ✅ Overall rating aggregation (weighted average)
+- ✅ Rating persistence (Property fields + CriterionScore records)
+- ✅ 23 unit tests (all passing)
+
+#### Celery Task Integration (Phase 2)
+- ✅ `calculate_property_rating(property_id)` - Individual property rating
+- ✅ `bulk_calculate_ratings(property_ids)` - Bulk rating with state filtering
+- ✅ `bulk_calculate_project_ratings(project_id)` - Project-level bulk rating
+- ✅ WebSocket notifications (`_send_rating_complete`, `_send_rating_failed`)
+- ✅ Error handling with retry logic (exponential backoff)
+- ✅ State machine integration (STAGE3_IN_PROGRESS → STAGE3_COMPLETE)
+- ✅ 10 task tests (all passing)
+
+#### API Endpoints & Serializers (Phase 3)
+- ✅ **Serializers:**
+  - ✅ `CriterionSerializer` - Individual criterion with validation
+  - ✅ `RatingCriteriaSerializer` - Read-only criteria view
+  - ✅ `RatingCriteriaCreateSerializer` - Create/update with nested criteria
+  - ✅ `CriterionScoreSerializer` - Score results
+  - ✅ `PropertyRatingSerializer` - Complete rating view
+  - ✅ `PropertyComparisonSerializer` - Compact comparison view
+- ✅ **ViewSets:**
+  - ✅ `RatingCriteriaViewSet` - Full CRUD operations
+  - ✅ Copy endpoint: `POST /api/rating-criteria/{uuid}/copy/`
+- ✅ **Property Actions:**
+  - ✅ `POST /api/properties/{uuid}/run-stage3/` - Trigger rating
+  - ✅ `GET /api/properties/{uuid}/rating/` - Get rating results
+  - ✅ `GET /api/properties/{uuid}/criterion-scores/` - Get detailed scores
+- ✅ **Project Actions:**
+  - ✅ `POST /api/projects/{uuid}/run-stage3-bulk/` - Bulk rating
+  - ✅ `GET /api/projects/{uuid}/property-comparison/` - Sorted comparison
+- ✅ URL routing configured
+- ✅ Query param filtering (min_rating, exclude_disqualified)
+
+#### Data Models
+- ✅ `RatingCriteria` model with owner, name, timestamps
+- ✅ `Criterion` model with full configuration (source, strategy, weights, dealbreakers)
+- ✅ `CriterionScore` model for storing individual scores
+- ✅ Project-level rating criteria reference (moved from PropertyList)
+- ✅ Property fields: `overall_rating`, `rating_breakdown`, `disqualified`, `disqualification_reason`
+
+#### State Machine
+- ✅ State transitions defined:
+  - ✅ `run_stage3()`: STAGE2_COMPLETE/STAGE3_COMPLETE → STAGE3_IN_PROGRESS
+  - ✅ `complete_stage3()`: STAGE3_IN_PROGRESS → STAGE3_COMPLETE
+- ✅ State validation in API endpoints
+
+### 🚧 In Progress / TODO
+
+#### Automatic Re-Rating Hooks
+- ⏳ Property field change detection
+- ⏳ Context data update triggers
+- ⏳ Rating criteria modification triggers
+- ⏳ Signal handlers for automatic re-rating
+
+#### Testing
+- ⏳ API endpoint integration tests
+- ⏳ Serializer validation tests
+- ⏳ End-to-end workflow tests
+- ⏳ Permission tests
+
+#### Admin Interface
+- ⏳ RatingCriteriaAdmin configuration
+- ⏳ CriterionInline for nested editing
+- ⏳ CriterionScoreAdmin for viewing results
+- ⏳ Bulk operations support
+
+#### UI Components (Frontend)
+- ⏳ Rating Criteria configuration form
+- ⏳ Property rating display (badges, breakdown modal)
+- ⏳ Property comparison view
+- ⏳ Dealbreaker indication
+- ⏳ Re-rating triggers
+
+#### Copy-on-Write Implementation
+- ✅ Backend copy endpoint exists
+- ⏳ Frontend workflow for editing shared criteria
+- ⏳ Provenance tracking UI
+
+#### Performance Optimization
+- ⏳ Query optimization review
+- ⏳ Caching strategies for ratings
+- ⏳ Pagination for large comparison views
+- ⏳ Bulk operations monitoring
+
+### 📝 Notes
+
+**Project-Level Changes:**
+- Rating criteria now attached to `Project` (not `PropertyList`)
+- All property lists in a project share the same rating criteria
+- Comparison works across all lists in a project
+- Automatic deduplication for properties in multiple lists
+
+**Implementation Files:**
+- Core Logic: `property/services/rating_service.py` (447 lines)
+- Tasks: `property/tasks.py` (calculate_property_rating, bulk tasks)
+- Serializers: `property/serializers.py` (6 new serializers, 174 lines)
+- Views: `property/views.py` (RatingCriteriaViewSet + 4 actions)
+- Tests: `property/tests/test_rating_service.py` (680 lines, 23 tests)
+- Tests: `property/tests/test_stage3_tasks.py` (422 lines, 10 tests)
+
+**Documentation:**
+- Phase 1 Complete: `documentation/claude_responses/stage3_phase1_complete.md`
+- Phase 2 Complete: `documentation/claude_responses/stage3_phase2_complete.md`
+- Phase 3 Complete: `documentation/claude_responses/stage3_phase3_complete.md`
 
 ---
 

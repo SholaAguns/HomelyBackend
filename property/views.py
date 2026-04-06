@@ -12,8 +12,9 @@ logger = logging.getLogger('property.views')
 from property.models.stage1_models import *
 from property.serializers import *
 from property.models.stage2_models import ContextData, ContextOptions
+from property.models.stage3_models import RatingCriteria, Criterion, CriterionScore
 from property.models.models_poi import PlaceOfInterest
-from property.tasks import retrieve_context_data, calculate_property_rating, scrape_rightmove_properties
+from property.tasks import retrieve_context_data, calculate_property_rating, scrape_rightmove_properties, bulk_calculate_project_ratings
 from property.services import property_creation_service_factory
 from django.db.models import Q
 
@@ -132,6 +133,62 @@ class ProjectViewSet(viewsets.ModelViewSet):
             stats['max_price'] = max(prices)
 
         return Response(stats)
+
+    @action(detail=True, methods=['post'], url_path='run-stage3-bulk')
+    def run_stage3_bulk(self, request, uuid=None):
+        """
+        POST /api/projects/{uuid}/run-stage3-bulk/
+
+        Trigger rating calculation for all eligible properties in project.
+        """
+        project = self.get_object()
+
+        if not project.rating_criteria:
+            return Response(
+                {'error': 'No rating criteria configured for project'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Queue bulk task
+        bulk_calculate_project_ratings.delay(project.id)
+
+        return Response({
+            'status': 'bulk_rating_started',
+            'message': 'Rating calculation queued for all properties in project'
+        })
+
+    @action(detail=True, methods=['get'], url_path='property-comparison')
+    def property_comparison(self, request, uuid=None):
+        """
+        GET /api/projects/{uuid}/property-comparison/
+
+        Get sorted comparison of all rated properties in project.
+        """
+        project = self.get_object()
+
+        # Get all rated properties
+        all_properties = Property.objects.filter(
+            property_lists__project=project,
+            state='STAGE3_COMPLETE'
+        ).distinct().order_by('-overall_rating')
+
+        # Optional filtering
+        min_rating = request.query_params.get('min_rating')
+        if min_rating:
+            all_properties = all_properties.filter(overall_rating__gte=float(min_rating))
+
+        exclude_disqualified = request.query_params.get('exclude_disqualified', 'false').lower() == 'true'
+        if exclude_disqualified:
+            all_properties = all_properties.filter(disqualified=False)
+
+        serializer = PropertyComparisonSerializer(all_properties, many=True)
+
+        return Response({
+            'project_id': str(project.uuid),
+            'project_name': project.title,
+            'total_properties': all_properties.count(),
+            'properties': serializer.data
+        })
 
 
 class TaskListViewSet(viewsets.ModelViewSet):
@@ -656,6 +713,48 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @action(detail=True, methods=['get'], url_path='rating')
+    def rating(self, request, uuid=None):
+        """
+        GET /api/properties/{uuid}/rating/
+
+        Get overall rating and breakdown for a property.
+        """
+        property_obj = self.get_object()
+
+        if property_obj.state not in ['STAGE3_COMPLETE']:
+            return Response(
+                {'error': 'Property rating not yet calculated'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = PropertyRatingSerializer(property_obj)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='criterion-scores')
+    def criterion_scores(self, request, uuid=None):
+        """
+        GET /api/properties/{uuid}/criterion-scores/
+
+        Get detailed criterion scores for a property.
+        """
+        property_obj = self.get_object()
+
+        if property_obj.state not in ['STAGE3_COMPLETE']:
+            return Response(
+                {'error': 'Property rating not yet calculated'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        criterion_scores = CriterionScore.objects.filter(property=property_obj).select_related('criterion')
+        serializer = CriterionScoreSerializer(criterion_scores, many=True)
+
+        return Response({
+            'property_id': str(property_obj.uuid),
+            'overall_rating': float(property_obj.overall_rating) if property_obj.overall_rating else None,
+            'criterion_scores': serializer.data
+        })
+
     @action(detail=True, methods=['get'], url_path='broadband')
     def broadband(self, request, uuid=None):
         """Get broadband coverage data for property"""
@@ -953,3 +1052,64 @@ class SchoolViewSet(viewsets.ViewSet):
                 return Response(data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(data, status=status.HTTP_200_OK)
+
+
+class RatingCriteriaViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Rating Criteria CRUD operations.
+
+    Users can only access their own rating criteria.
+    Lookup by UUID for public-facing URLs.
+    """
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'uuid'
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return RatingCriteriaCreateSerializer
+        return RatingCriteriaSerializer
+
+    def get_queryset(self):
+        """Filter to user's own rating criteria"""
+        return RatingCriteria.objects.filter(owner=self.request.user).prefetch_related('criteria')
+
+    def perform_create(self, serializer):
+        """Set owner to current user"""
+        serializer.save(owner=self.request.user)
+
+    @action(detail=True, methods=['post'], url_path='copy')
+    def copy(self, request, uuid=None):
+        """
+        POST /api/rating-criteria/{uuid}/copy/
+
+        Create a copy of rating criteria.
+        Used when user wants to modify shared criteria (copy-on-write).
+        """
+        source_criteria = self.get_object()
+
+        # Create new criteria
+        new_criteria = RatingCriteria.objects.create(
+            owner=request.user,
+            name=f"{source_criteria.name} (Copy)"
+        )
+
+        # Copy all criteria
+        for criterion in source_criteria.criteria.all():
+            Criterion.objects.create(
+                rating_criteria=new_criteria,
+                name=criterion.name,
+                source=criterion.source,
+                field_name=criterion.field_name,
+                service_name=criterion.service_name,
+                data_path=criterion.data_path,
+                scoring_strategy=criterion.scoring_strategy,
+                ordinal_mapping=criterion.ordinal_mapping,
+                thresholds=criterion.thresholds,
+                boolean_true_is_better=criterion.boolean_true_is_better,
+                weight=criterion.weight,
+                is_dealbreaker=criterion.is_dealbreaker,
+                dealbreaker_threshold=criterion.dealbreaker_threshold
+            )
+
+        serializer = RatingCriteriaSerializer(new_criteria)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

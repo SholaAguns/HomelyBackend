@@ -6,6 +6,7 @@ import re
 from decimal import Decimal
 from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, Project, TaskList, Task
 from property.models.stage2_models import ContextOptions
+from property.models.stage3_models import RatingCriteria, Criterion, CriterionScore
 from property.models.models_poi import PlaceOfInterest
 from property.utils.geocoding import geocode_postcode
 
@@ -742,3 +743,165 @@ class SavedLocationsReportDataSerializer(serializers.Serializer):
     distances = SavedLocationDistanceSerializer(many=True)
     total_locations = serializers.IntegerField()
     closest_location = SavedLocationDistanceSerializer(allow_null=True, required=False)
+
+
+# ============================================================================
+# Stage 3: Rating System Serializers
+# ============================================================================
+
+class CriterionSerializer(serializers.ModelSerializer):
+    """Serializer for individual rating criterion"""
+
+    class Meta:
+        model = Criterion
+        fields = [
+            'id', 'name', 'source', 'field_name', 'service_name', 'data_path',
+            'scoring_strategy', 'ordinal_mapping', 'thresholds', 'boolean_true_is_better',
+            'weight', 'is_dealbreaker', 'dealbreaker_threshold',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_weight(self, value):
+        """Validate weight is one of allowed values"""
+        allowed = [Decimal('0.0'), Decimal('0.5'), Decimal('1.0'), Decimal('1.5')]
+        if value not in allowed:
+            raise serializers.ValidationError(
+                "Weight must be one of: 0.0 (Not Important), 0.5 (Nice to Have), 1.0 (Important), 1.5 (Very Important)"
+            )
+        return value
+
+    def validate(self, data):
+        """Cross-field validation"""
+        # Validate source-specific fields
+        if data.get('source') == 'property':
+            if not data.get('field_name'):
+                raise serializers.ValidationError({
+                    'field_name': 'field_name is required when source is "property"'
+                })
+        elif data.get('source') == 'context':
+            if not data.get('service_name'):
+                raise serializers.ValidationError({
+                    'service_name': 'service_name is required when source is "context"'
+                })
+
+        # Validate scoring strategy requirements
+        if data.get('scoring_strategy') == 'ordinal':
+            if not data.get('ordinal_mapping'):
+                raise serializers.ValidationError({
+                    'ordinal_mapping': 'ordinal_mapping is required when scoring_strategy is "ordinal"'
+                })
+        elif data.get('scoring_strategy') == 'threshold':
+            if not data.get('thresholds'):
+                raise serializers.ValidationError({
+                    'thresholds': 'thresholds is required when scoring_strategy is "threshold"'
+                })
+
+        return data
+
+
+class RatingCriteriaSerializer(serializers.ModelSerializer):
+    """Serializer for rating criteria with nested criteria"""
+
+    owner = serializers.ReadOnlyField(source='owner.username')
+    criteria = CriterionSerializer(many=True, read_only=True)
+    criteria_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RatingCriteria
+        fields = [
+            'uuid', 'name', 'owner', 'criteria', 'criteria_count',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['uuid', 'owner', 'created_at', 'updated_at']
+
+    def get_criteria_count(self, obj):
+        return obj.criteria.count()
+
+
+class RatingCriteriaCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating rating criteria with nested criteria"""
+
+    criteria = CriterionSerializer(many=True)
+
+    class Meta:
+        model = RatingCriteria
+        fields = ['name', 'criteria']
+
+    def create(self, validated_data):
+        criteria_data = validated_data.pop('criteria')
+        rating_criteria = RatingCriteria.objects.create(**validated_data)
+
+        # Create criteria
+        for criterion_data in criteria_data:
+            Criterion.objects.create(rating_criteria=rating_criteria, **criterion_data)
+
+        return rating_criteria
+
+    def update(self, instance, validated_data):
+        criteria_data = validated_data.pop('criteria', None)
+
+        # Update rating criteria fields
+        instance.name = validated_data.get('name', instance.name)
+        instance.save()
+
+        # Update criteria if provided
+        if criteria_data is not None:
+            # Delete existing criteria
+            instance.criteria.all().delete()
+
+            # Create new criteria
+            for criterion_data in criteria_data:
+                Criterion.objects.create(rating_criteria=instance, **criterion_data)
+
+        return instance
+
+
+class CriterionScoreSerializer(serializers.ModelSerializer):
+    """Serializer for criterion score results"""
+
+    criterion_name = serializers.ReadOnlyField(source='criterion.name')
+    criterion_weight = serializers.ReadOnlyField(source='criterion.weight')
+
+    class Meta:
+        model = CriterionScore
+        fields = [
+            'id', 'criterion', 'criterion_name', 'criterion_weight',
+            'raw_value', 'normalized_score', 'weighted_score',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class PropertyRatingSerializer(serializers.Serializer):
+    """Serializer for property rating results"""
+
+    property_id = serializers.UUIDField(source='uuid')
+    overall_rating = serializers.DecimalField(max_digits=5, decimal_places=2, allow_null=True)
+    rating_breakdown = serializers.JSONField(allow_null=True)
+    disqualified = serializers.BooleanField()
+    disqualification_reason = serializers.CharField(allow_blank=True)
+    criterion_scores = CriterionScoreSerializer(many=True, read_only=True)
+
+    # Include basic property info for context
+    title = serializers.CharField()
+    address_line_1 = serializers.CharField()
+    postcode = serializers.CharField()
+    price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    state = serializers.CharField()
+
+
+class PropertyComparisonSerializer(serializers.Serializer):
+    """Serializer for property comparison view (compact)"""
+
+    property_id = serializers.UUIDField(source='uuid')
+    title = serializers.CharField()
+    address_line_1 = serializers.CharField()
+    postcode = serializers.CharField()
+    price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    bedrooms = serializers.IntegerField(allow_null=True)
+    bathrooms = serializers.IntegerField(allow_null=True)
+    overall_rating = serializers.DecimalField(max_digits=5, decimal_places=2, allow_null=True)
+    disqualified = serializers.BooleanField()
+    disqualification_reason = serializers.CharField(allow_blank=True)
+    state = serializers.CharField()

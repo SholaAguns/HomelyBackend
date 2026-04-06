@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from property.views import (
     ProjectViewSet, TaskListViewSet, TaskViewSet,
-    PropertyListViewSet, PropertyViewSet, SavedLocationViewSet, SchoolViewSet
+    PropertyListViewSet, PropertyViewSet, SavedLocationViewSet, SchoolViewSet,
+    RatingCriteriaViewSet
 )
 from property.admin_views import (
     SchoolAdminViewSet, upload_broadband_data, upload_mobile_data,
@@ -20,6 +21,7 @@ router.register(r'tasks', TaskViewSet, basename='task')
 router.register(r'property-lists', PropertyListViewSet, basename='propertylist')
 router.register(r'properties', PropertyViewSet, basename='property')
 router.register(r'saved-locations', SavedLocationViewSet, basename='savedlocation')
+router.register(r'rating-criteria', RatingCriteriaViewSet, basename='ratingcriteria')
 router.register(r'admin/schools', SchoolAdminViewSet, basename='admin-schools')
 
 # Admin CRUD routes

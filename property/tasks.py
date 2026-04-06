@@ -193,34 +193,81 @@ def run_service_task(self, property_id, service_name):
 @shared_task(bind=True, max_retries=3)
 def calculate_property_rating(self, property_id):
     """
-    Celery task to calculate property rating.
+    Celery task to calculate property rating (Stage 3).
 
-    This implements Stage 3 rating calculation.
-    Evaluates all rating criteria and aggregates scores.
-    Sends WebSocket updates when complete.
+    Workflow:
+    1. Verify property is in valid state
+    2. Call rating service to calculate scores
+    3. Persist results to database
+    4. Send WebSocket update
+    5. Transition to Stage3Complete
+
+    Implements automatic retry with exponential backoff for transient errors.
     """
     from property.models import Property
+    from property.services.rating_service import calculate_and_persist_rating
 
     try:
         property_obj = Property.objects.get(id=property_id)
 
+        # Verify property is in correct state
+        if property_obj.state not in ['STAGE3_IN_PROGRESS']:
+            raise ValueError(f'Cannot calculate rating from state {property_obj.state}')
+
+        logger.info(f'Starting rating calculation for property {property_id}')
+
         # Send initial progress update
         _send_websocket_update(
             property_obj.uuid,
-            'progress_update',
-            {'message': 'Starting rating calculation', 'progress': 0}
+            'rating_progress',
+            {'message': 'Calculating rating...', 'progress': 50}
         )
 
-        # TODO: Implement rating calculation in Phase 5
-        # For now, just acknowledge task started
+        # Calculate and persist rating
+        result = calculate_and_persist_rating(property_id)
 
-        return f'Rating calculation started for property {property_id}'
+        logger.info(f'Rating calculation complete for property {property_id}: {result["overall_rating"]}')
+
+        # Refresh property object to get updated rating fields
+        property_obj.refresh_from_db()
+
+        # Transition to Stage3Complete
+        property_obj.complete_stage3()
+        property_obj.save()
+
+        # Send completion update
+        _send_rating_complete(property_obj, result)
+
+        return f'Rating calculation complete for property {property_id}: {result["overall_rating"]}'
 
     except Property.DoesNotExist:
-        raise ValueError(f'Property {property_id} does not exist')
+        logger.error(f'Property {property_id} does not exist')
+        raise
+    except ValueError as e:
+        # Configuration errors - don't retry
+        logger.error(f'Rating calculation failed for property {property_id}: {e}')
+        # Mark property state appropriately
+        try:
+            property_obj = Property.objects.get(id=property_id)
+            _send_rating_failed(property_obj, str(e))
+        except:
+            pass
+        raise
     except Exception as exc:
-        # Retry on failure
-        raise self.retry(exc=exc, countdown=60)
+        logger.error(f'Rating calculation failed for property {property_id}: {exc}')
+        # Retry on unexpected errors
+        if self.request.retries < self.max_retries:
+            countdown = 60 * (2 ** self.request.retries)  # Exponential backoff
+            logger.info(f'Retrying rating calculation in {countdown}s (attempt {self.request.retries + 1})')
+            raise self.retry(exc=exc, countdown=countdown)
+        else:
+            # Max retries exceeded
+            try:
+                property_obj = Property.objects.get(id=property_id)
+                _send_rating_failed(property_obj, str(exc))
+            except:
+                pass
+            raise
 
 
 @shared_task
@@ -240,15 +287,72 @@ def bulk_retrieve_context_data(property_ids, property_list_id=None):
 
 
 @shared_task
-def bulk_calculate_ratings(property_ids):
+def bulk_calculate_ratings(property_ids, project_id=None):
     """
     Bulk task to calculate ratings for multiple properties.
     Queues individual tasks for each property.
-    """
-    for property_id in property_ids:
-        calculate_property_rating.delay(property_id)
 
-    return f'Queued rating calculation for {len(property_ids)} properties'
+    Args:
+        property_ids: List of property IDs to rate
+        project_id: Optional project ID (for project-level bulk operations)
+    """
+    from property.models import Property
+
+    # Filter to only properties in valid states
+    valid_properties = Property.objects.filter(
+        id__in=property_ids,
+        state__in=['STAGE2_COMPLETE', 'STAGE3_COMPLETE']
+    )
+
+    queued_count = 0
+    for property_obj in valid_properties:
+        # Transition to Stage3InProgress
+        try:
+            property_obj.run_stage3()
+            property_obj.save()
+            calculate_property_rating.delay(property_obj.id)
+            queued_count += 1
+        except Exception as e:
+            logger.error(f'Failed to queue rating for property {property_obj.id}: {e}')
+            continue
+
+    logger.info(f'Queued rating calculation for {queued_count}/{len(property_ids)} properties')
+    return f'Queued rating calculation for {queued_count} properties'
+
+
+@shared_task
+def bulk_calculate_project_ratings(project_id):
+    """
+    Calculate ratings for all properties in a project.
+
+    Args:
+        project_id: Project ID
+    """
+    from property.models import Project, Property
+
+    try:
+        project = Project.objects.get(id=project_id)
+
+        # Get all properties in this project
+        property_ids = []
+        for property_list in project.property_lists.all():
+            property_ids.extend(
+                property_list.properties
+                .filter(state__in=['STAGE2_COMPLETE', 'STAGE3_COMPLETE'])
+                .values_list('id', flat=True)
+            )
+
+        # Remove duplicates
+        property_ids = list(set(property_ids))
+
+        # Queue bulk task
+        bulk_calculate_ratings.delay(property_ids, project_id=project_id)
+
+        return f'Queued rating calculation for {len(property_ids)} properties in project {project.title}'
+
+    except Project.DoesNotExist:
+        logger.error(f'Project {project_id} does not exist')
+        raise ValueError(f'Project {project_id} does not exist')
 
 
 @shared_task(bind=True, max_retries=0)
@@ -710,3 +814,56 @@ def _check_stage2_completion(property_obj):
         # Also send to all property list channels that contain this property
         for property_list in property_obj.property_lists.all():
             _send_list_websocket_update(property_list.uuid, 'stage2_complete', completion_data)
+
+
+def _send_rating_complete(property_obj, result):
+    """
+    Send WebSocket update when rating calculation completes.
+
+    Args:
+        property_obj: Property instance
+        result: Rating calculation result dict
+    """
+    message_data = {
+        'property_id': str(property_obj.uuid),
+        'property_state': property_obj.state,
+        'overall_rating': result['overall_rating'],
+        'rating_breakdown': result['breakdown'],
+        'disqualified': result['disqualified'],
+        'disqualification_reason': result.get('disqualification_reason'),
+        'message': 'Rating calculation complete'
+    }
+
+    # Send to property channel
+    _send_websocket_update(property_obj.uuid, 'rating_complete', message_data)
+
+    # Also send to all property list channels that contain this property
+    for property_list in property_obj.property_lists.all():
+        _send_list_websocket_update(property_list.uuid, 'rating_complete', message_data)
+
+    logger.info(f'Sent rating_complete WebSocket update for property {property_obj.id}')
+
+
+def _send_rating_failed(property_obj, error_message):
+    """
+    Send WebSocket update when rating calculation fails.
+
+    Args:
+        property_obj: Property instance
+        error_message: Error description
+    """
+    message_data = {
+        'property_id': str(property_obj.uuid),
+        'property_state': property_obj.state,
+        'error': error_message,
+        'message': 'Rating calculation failed'
+    }
+
+    # Send to property channel
+    _send_websocket_update(property_obj.uuid, 'rating_failed', message_data)
+
+    # Also send to all property list channels that contain this property
+    for property_list in property_obj.property_lists.all():
+        _send_list_websocket_update(property_list.uuid, 'rating_failed', message_data)
+
+    logger.info(f'Sent rating_failed WebSocket update for property {property_obj.id}')
