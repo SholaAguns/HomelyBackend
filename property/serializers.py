@@ -71,7 +71,20 @@ class ProjectSerializer(serializers.ModelSerializer):
         many=True,
         required=False
     )
+    # Use UUID for rating_criteria (consistent with RatingCriteriaViewSet lookup)
+    rating_criteria = serializers.SlugRelatedField(
+        slug_field='uuid',
+        queryset=RatingCriteria.objects.all(),
+        allow_null=True,
+        required=False
+    )
     rating_criteria_name = serializers.ReadOnlyField(source='rating_criteria.name')
+    rating_criteria_source = serializers.SlugRelatedField(
+        slug_field='uuid',
+        queryset=RatingCriteria.objects.all(),
+        allow_null=True,
+        required=False
+    )
     rating_criteria_source_name = serializers.ReadOnlyField(source='rating_criteria_source.name')
     has_context_options = serializers.SerializerMethodField()
     context_options = serializers.SerializerMethodField()
@@ -100,6 +113,16 @@ class ProjectSerializer(serializers.ModelSerializer):
             serializer = ContextOptionsSerializer(obj.context_options)
             return serializer.data
         return None
+
+    def validate_rating_criteria(self, value):
+        """Validate that user owns the rating criteria"""
+        if value and self.context.get('request'):
+            user = self.context['request'].user
+            if value.owner != user:
+                raise serializers.ValidationError(
+                    "You can only use rating criteria that you own"
+                )
+        return value
 
     def create(self, validated_data):
         validated_data['owner'] = self.context['request'].user

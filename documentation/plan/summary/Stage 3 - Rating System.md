@@ -644,6 +644,15 @@ DELETE /api/rating-criteria/{uuid}/               # ✅ Delete criteria
 POST   /api/rating-criteria/{uuid}/copy/          # ✅ Copy criteria (copy-on-write support)
 ```
 
+### Project Rating Criteria Configuration ✅ IMPLEMENTED
+```
+GET    /api/projects/{uuid}/rating-criteria/      # ✅ Get current rating criteria for project
+PUT    /api/projects/{uuid}/rating-criteria/      # ✅ Set rating criteria for project (by UUID)
+PATCH  /api/projects/{uuid}/rating-criteria/      # ✅ Set rating criteria for project (by UUID)
+```
+
+**Alternative:** Can also set via project update endpoints using `rating_criteria` field with UUID.
+
 ### Rating Results ✅ IMPLEMENTED
 ```
 GET    /api/properties/{uuid}/rating/                  # ✅ Get overall rating and breakdown
@@ -821,8 +830,11 @@ Stage3Complete <───────── Stage3InProgress  # ✅ complete_sta
 - ✅ **Project Actions:**
   - ✅ `POST /api/projects/{uuid}/run-stage3-bulk/` - Bulk rating
   - ✅ `GET /api/projects/{uuid}/property-comparison/` - Sorted comparison
+  - ✅ `GET/PUT/PATCH /api/projects/{uuid}/rating-criteria/` - Get/set rating criteria
 - ✅ URL routing configured
 - ✅ Query param filtering (min_rating, exclude_disqualified)
+- ✅ UUID consistency (ProjectSerializer uses UUID for rating_criteria field)
+- ✅ Ownership validation (users can only use their own rating criteria)
 
 #### Data Models
 - ✅ `RatingCriteria` model with owner, name, timestamps

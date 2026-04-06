@@ -134,6 +134,66 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return Response(stats)
 
+    @action(detail=True, methods=['get', 'put', 'patch'], url_path='rating-criteria')
+    def rating_criteria_config(self, request, uuid=None):
+        """
+        GET /api/projects/{uuid}/rating-criteria/
+        PUT/PATCH /api/projects/{uuid}/rating-criteria/
+
+        Get or set rating criteria for project.
+        """
+        project = self.get_object()
+
+        if request.method == 'GET':
+            if not project.rating_criteria:
+                return Response({
+                    'rating_criteria': None,
+                    'rating_criteria_name': None,
+                    'is_configured': False
+                })
+
+            serializer = RatingCriteriaSerializer(project.rating_criteria)
+            return Response({
+                'rating_criteria': serializer.data,
+                'rating_criteria_name': project.rating_criteria.name,
+                'is_configured': True
+            })
+
+        # PUT/PATCH - Set rating criteria
+        rating_criteria_uuid = request.data.get('rating_criteria_uuid')
+
+        if not rating_criteria_uuid:
+            return Response(
+                {'error': 'rating_criteria_uuid is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            rating_criteria = RatingCriteria.objects.get(
+                uuid=rating_criteria_uuid,
+                owner=request.user
+            )
+        except RatingCriteria.DoesNotExist:
+            return Response(
+                {'error': 'Rating criteria not found or you do not have access'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if criteria is being shared (copy-on-write decision)
+        if request.data.get('force_copy', False) and project.rating_criteria:
+            # Track source for provenance
+            project.rating_criteria_source = project.rating_criteria
+
+        project.rating_criteria = rating_criteria
+        project.save()
+
+        return Response({
+            'status': 'success',
+            'message': 'Rating criteria set successfully',
+            'rating_criteria_uuid': str(rating_criteria.uuid),
+            'rating_criteria_name': rating_criteria.name
+        })
+
     @action(detail=True, methods=['post'], url_path='run-stage3-bulk')
     def run_stage3_bulk(self, request, uuid=None):
         """
