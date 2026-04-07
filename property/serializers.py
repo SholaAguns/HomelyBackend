@@ -78,14 +78,14 @@ class ProjectSerializer(serializers.ModelSerializer):
         allow_null=True,
         required=False
     )
-    rating_criteria_name = serializers.ReadOnlyField(source='rating_criteria.name')
+    rating_criteria_name = serializers.SerializerMethodField()
     rating_criteria_source = serializers.SlugRelatedField(
         slug_field='uuid',
         queryset=RatingCriteria.objects.all(),
         allow_null=True,
         required=False
     )
-    rating_criteria_source_name = serializers.ReadOnlyField(source='rating_criteria_source.name')
+    rating_criteria_source_name = serializers.SerializerMethodField()
     has_context_options = serializers.SerializerMethodField()
     context_options = serializers.SerializerMethodField()
 
@@ -103,6 +103,12 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def get_property_lists_count(self, obj):
         return obj.property_lists.count()
+
+    def get_rating_criteria_name(self, obj):
+        return obj.rating_criteria.name if obj.rating_criteria else None
+
+    def get_rating_criteria_source_name(self, obj):
+        return obj.rating_criteria_source.name if obj.rating_criteria_source else None
 
     def get_has_context_options(self, obj):
         return hasattr(obj, 'context_options')
