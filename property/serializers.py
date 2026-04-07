@@ -342,6 +342,7 @@ class PropertySerializer(serializers.ModelSerializer):
     state_display = serializers.CharField(source='get_state_display', read_only=True)
     images = PropertyImageSerializer(many=True, read_only=True)
     primary_image = serializers.SerializerMethodField()
+    overall_rating = serializers.FloatField(allow_null=True, read_only=True)
 
     class Meta:
         model = Property
@@ -906,7 +907,7 @@ class PropertyRatingSerializer(serializers.Serializer):
     """Serializer for property rating results"""
 
     property_id = serializers.UUIDField(source='uuid')
-    overall_rating = serializers.DecimalField(max_digits=5, decimal_places=2, allow_null=True)
+    overall_rating = serializers.FloatField(allow_null=True)
     rating_breakdown = serializers.JSONField(allow_null=True)
     disqualified = serializers.BooleanField()
     disqualification_reason = serializers.CharField(allow_blank=True)
@@ -930,7 +931,7 @@ class PropertyComparisonSerializer(serializers.Serializer):
     price = serializers.DecimalField(max_digits=12, decimal_places=2)
     bedrooms = serializers.IntegerField(allow_null=True)
     bathrooms = serializers.IntegerField(allow_null=True)
-    overall_rating = serializers.DecimalField(max_digits=5, decimal_places=2, allow_null=True)
+    overall_rating = serializers.FloatField(allow_null=True)
     disqualified = serializers.BooleanField()
     disqualification_reason = serializers.CharField(allow_blank=True)
     state = serializers.CharField()

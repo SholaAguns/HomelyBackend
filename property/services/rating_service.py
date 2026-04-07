@@ -97,8 +97,8 @@ class RatingService:
                 # Always include in breakdown regardless of weight
                 breakdown[criterion.name] = {
                     'raw_value': raw_value_json,
-                    'normalized': float(normalized_score),
-                    'weighted': float(weighted_score),
+                    'normalized_score': float(normalized_score),
+                    'weighted_score': float(weighted_score),
                     'weight': float(weight_decimal)
                 }
                 logger.debug(f"✅ RATING: Criterion '{criterion.name}' calculated successfully")
@@ -475,8 +475,8 @@ def calculate_and_persist_rating(property_id: int) -> Dict:
                 criterion=criterion,
                 defaults={
                     'raw_value': raw_val,
-                    'normalized_score': Decimal(str(crit_data['normalized'])),
-                    'weighted_score': Decimal(str(crit_data['weighted']))
+                    'normalized_score': Decimal(str(crit_data['normalized_score'])),
+                    'weighted_score': Decimal(str(crit_data['weighted_score']))
                 }
             )
             criterion_count += 1

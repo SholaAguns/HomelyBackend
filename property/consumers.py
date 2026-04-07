@@ -130,6 +130,14 @@ class PropertyUpdateConsumer(AsyncJsonWebsocketConsumer):
             'data': event['data']
         })
 
+    async def rating_complete(self, event):
+        """Send rating completion notification."""
+        logger.info(f"FORWARDING RATING COMPLETE TO CLIENT")
+        await self.send_json({
+            'type': 'rating_complete',
+            'data': event['data']
+        })
+
     # Property list scrape handlers
     async def scrape_progress(self, event):
         """Send scrape progress update to WebSocket."""
