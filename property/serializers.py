@@ -786,7 +786,7 @@ class CriterionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'source', 'field_name', 'service_name', 'data_path',
             'scoring_strategy', 'ordinal_mapping', 'thresholds', 'boolean_true_is_better',
-            'weight', 'is_dealbreaker', 'dealbreaker_threshold',
+            'enabled', 'weight', 'is_dealbreaker', 'dealbreaker_threshold',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

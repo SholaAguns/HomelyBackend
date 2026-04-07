@@ -54,13 +54,14 @@ class RatingService:
             return Decimal('0.00'), {}, True, reason
         logger.debug("✅ RATING: Passed all dealbreakers")
 
-        # Step 2-5: Calculate rating for all criteria
+        # Step 2-5: Calculate rating for all enabled criteria
         weighted_scores = []
         weights = []
         breakdown = {}
 
-        criteria_list = list(self.rating_criteria.criteria.filter(weight__gt=0))
-        logger.debug(f"🎯 RATING: Processing {len(criteria_list)} criteria with weight > 0")
+        # Process only enabled criteria
+        criteria_list = list(self.rating_criteria.criteria.filter(enabled=True))
+        logger.debug(f"🎯 RATING: Processing {len(criteria_list)} enabled criteria")
 
         for criterion in criteria_list:
             try:
@@ -79,8 +80,13 @@ class RatingService:
                 weighted_score = normalized_score * weight_decimal
                 logger.debug(f"  → Weighted score: {weighted_score} (normalized {normalized_score} × weight {weight_decimal})")
 
-                weighted_scores.append(float(weighted_score))
-                weights.append(float(weight_decimal))
+                # Only include in weighted calculation if weight > 0
+                if weight_decimal > 0:
+                    weighted_scores.append(float(weighted_score))
+                    weights.append(float(weight_decimal))
+                    logger.debug(f"  → Added to weighted calculation (weight > 0)")
+                else:
+                    logger.debug(f"  → Skipped weighted calculation (weight = 0)")
 
                 # Convert raw_value to JSON-serializable format
                 if isinstance(raw_value, Decimal):
@@ -88,6 +94,7 @@ class RatingService:
                 else:
                     raw_value_json = raw_value
 
+                # Always include in breakdown regardless of weight
                 breakdown[criterion.name] = {
                     'raw_value': raw_value_json,
                     'normalized': float(normalized_score),
@@ -125,8 +132,8 @@ class RatingService:
         Returns:
             Tuple of (passed, failure_reason)
         """
-        dealbreaker_criteria = self.rating_criteria.criteria.filter(is_dealbreaker=True)
-        logger.debug(f"🚫 DEALBREAKER: Found {dealbreaker_criteria.count()} dealbreaker criteria")
+        dealbreaker_criteria = self.rating_criteria.criteria.filter(enabled=True, is_dealbreaker=True)
+        logger.debug(f"🚫 DEALBREAKER: Found {dealbreaker_criteria.count()} enabled dealbreaker criteria")
 
         for criterion in dealbreaker_criteria:
             try:
@@ -453,10 +460,10 @@ def calculate_and_persist_rating(property_id: int) -> Dict:
     property_obj.save()
     logger.debug(f"💾 PERSIST: Property saved")
 
-    # Persist individual criterion scores
+    # Persist individual criterion scores for all enabled criteria
     logger.debug(f"💾 PERSIST: Saving individual criterion scores...")
     criterion_count = 0
-    for criterion in project.rating_criteria.criteria.filter(weight__gt=0):
+    for criterion in project.rating_criteria.criteria.filter(enabled=True):
         if criterion.name in breakdown:
             crit_data = breakdown[criterion.name]
 
@@ -473,6 +480,7 @@ def calculate_and_persist_rating(property_id: int) -> Dict:
                 }
             )
             criterion_count += 1
+            logger.debug(f"  → Saved score for '{criterion.name}' (weight: {criterion.weight})")
 
     logger.debug(f"💾 PERSIST: Saved {criterion_count} criterion scores")
     logger.info(f"✅ PERSIST: Rating calculation and persistence complete for property {property_obj.uuid}")

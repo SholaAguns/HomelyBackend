@@ -59,6 +59,9 @@ class Criterion(models.Model):
     thresholds = models.JSONField(null=True, blank=True)
     boolean_true_is_better = models.BooleanField(default=True)
 
+    # Enabled state
+    enabled = models.BooleanField(default=True)
+
     # Weight and dealbreaker
     weight = models.DecimalField(max_digits=3, decimal_places=1, default=1.0)
     is_dealbreaker = models.BooleanField(default=False)
