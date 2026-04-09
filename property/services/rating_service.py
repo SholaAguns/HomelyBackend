@@ -6,6 +6,13 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 from django.db.models import QuerySet
 import logging
+from property.utils.scoring_strategies import (
+    score_min_max,
+    score_inverted_min_max,
+    score_ordinal,
+    score_boolean,
+    score_threshold
+)
 
 logger = logging.getLogger(__name__)
 
@@ -291,139 +298,110 @@ class RatingService:
         return meters
 
     def score_criterion(self, value: Any, criterion) -> Decimal:
-        """
-        Apply scoring strategy to normalize value to 0-100
+        # Determine criterion type from field_name or name
+        field = (criterion.field_name or criterion.name).lower()
 
-        Args:
-            value: Raw value
-            criterion: Criterion with scoring_strategy
+        logger.debug(f"🎯 SCORE: Determining scoring method for field '{field}'")
 
-        Returns:
-            Normalized score (0-100)
-        """
+        # Route to criterion-specific scoring functions
+        if 'price' in field:
+            return self._score_price(value, criterion)
+        elif 'bathroom' in field:
+            return self._score_bathrooms(value, criterion)
+        elif 'bedroom' in field:
+            return self._score_bedrooms(value, criterion)
+        elif 'distance' in field:
+            return self._score_distance(value, criterion)
+        else:
+            # Fallback to strategy-based scoring for unknown criteria
+            return self._score_by_strategy(value, criterion)
+
+    def _get_min_max_values(self, criterion) -> Tuple[float, float]:
+        values = []
+        for prop in self.all_properties:
+            try:
+                prop_value = RatingService(prop, self.rating_criteria).extract_raw_value(criterion)
+                if prop_value is not None:
+                    values.append(float(prop_value))
+            except:
+                continue
+
+        if not values:
+            return (0.0, 0.0)
+
+        return (min(values), max(values))
+
+    def _score_price(self, value: Any, criterion) -> Decimal:
+        logger.debug(f"💰 PRICE: Scoring criterion '{criterion.name}'")
+        min_val, max_val = self._get_min_max_values(criterion)
+
+        if not min_val and not max_val:
+            logger.debug(f"💰 PRICE: No values found, returning 100")
+            return Decimal('100.00')
+
+        logger.debug(f"💰 PRICE: Range - min: {min_val}, max: {max_val}, current: {value}")
+        return score_inverted_min_max(float(value), min_val, max_val)
+
+    def _score_bathrooms(self, value: Any, criterion) -> Decimal:
+        logger.debug(f"🚿 BATHROOMS: Scoring criterion '{criterion.name}'")
+        min_val, max_val = self._get_min_max_values(criterion)
+
+        if not min_val and not max_val:
+            logger.debug(f"🚿 BATHROOMS: No values found, returning 100")
+            return Decimal('100.00')
+
+        logger.debug(f"🚿 BATHROOMS: Range - min: {min_val}, max: {max_val}, current: {value}")
+        return score_min_max(float(value), min_val, max_val)
+
+    def _score_bedrooms(self, value: Any, criterion) -> Decimal:
+        logger.debug(f"🛏️ BEDROOMS: Scoring criterion '{criterion.name}'")
+        min_val, max_val = self._get_min_max_values(criterion)
+
+        if not min_val and not max_val:
+            logger.debug(f"🛏️ BEDROOMS: No values found, returning 100")
+            return Decimal('100.00')
+
+        logger.debug(f"🛏️ BEDROOMS: Range - min: {min_val}, max: {max_val}, current: {value}")
+        return score_min_max(float(value), min_val, max_val)
+
+    def _score_distance(self, value: Any, criterion) -> Decimal:
+        logger.debug(f"📍 DISTANCE: Scoring criterion '{criterion.name}'")
+        min_val, max_val = self._get_min_max_values(criterion)
+
+        if not min_val and not max_val:
+            logger.debug(f"📍 DISTANCE: No values found, returning 100")
+            return Decimal('100.00')
+
+        logger.debug(f"📍 DISTANCE: Range - min: {min_val}, max: {max_val}, current: {value}")
+        return score_inverted_min_max(float(value), min_val, max_val)
+
+    def _score_by_strategy(self, value: Any, criterion) -> Decimal:
         strategy = criterion.scoring_strategy
+        logger.debug(f"⚙️ STRATEGY: Using {strategy} strategy for '{criterion.name}'")
 
         if strategy == 'min_max':
-            return self._score_min_max(value, criterion)
+            min_val, max_val = self._get_min_max_values(criterion)
+            if not min_val and not max_val:
+                return Decimal('100.00')
+            return score_min_max(float(value), min_val, max_val)
+
         elif strategy == 'inverted':
-            return self._score_inverted_min_max(value, criterion)
+            min_val, max_val = self._get_min_max_values(criterion)
+            if not min_val and not max_val:
+                return Decimal('100.00')
+            return score_inverted_min_max(float(value), min_val, max_val)
+
         elif strategy == 'ordinal':
-            return self._score_ordinal(value, criterion)
+            return score_ordinal(value, criterion.ordinal_mapping)
+
         elif strategy == 'boolean':
-            return self._score_boolean(value, criterion)
+            return score_boolean(value, criterion.boolean_true_is_better)
+
         elif strategy == 'threshold':
-            return self._score_threshold(value, criterion)
+            return score_threshold(float(value), criterion.thresholds)
+
         else:
             raise ValueError(f"Unknown scoring strategy: {strategy}")
-
-    def _score_min_max(self, value: Any, criterion) -> Decimal:
-        """
-        Min-max normalization: higher values get higher scores
-        Score = (value - min) / (max - min) * 100
-        """
-        logger.debug(f"📈 MIN_MAX: Scoring criterion '{criterion.name}'")
-        values = []
-        for prop in self.all_properties:
-            try:
-                prop_value = RatingService(prop, self.rating_criteria).extract_raw_value(criterion)
-                if prop_value is not None:
-                    values.append(float(prop_value))
-            except:
-                continue
-
-        if not values:
-            logger.debug(f"📈 MIN_MAX: No values found, returning 100")
-            return Decimal('100.00')
-
-        min_val = min(values)
-        max_val = max(values)
-        logger.debug(f"📈 MIN_MAX: Range - min: {min_val}, max: {max_val}, current: {value}")
-
-        if max_val == min_val:
-            logger.debug(f"📈 MIN_MAX: All values equal, returning 100")
-            return Decimal('100.00')
-
-        normalized = (float(value) - min_val) / (max_val - min_val) * 100
-        logger.debug(f"📈 MIN_MAX: Normalized score = {normalized}")
-        return Decimal(str(round(normalized, 2)))
-
-    def _score_inverted_min_max(self, value: Any, criterion) -> Decimal:
-        """
-        Inverted min-max: lower values get higher scores
-        Score = (max - value) / (max - min) * 100
-        """
-        logger.debug(f"📉 INVERTED: Scoring criterion '{criterion.name}'")
-        values = []
-        for prop in self.all_properties:
-            try:
-                prop_value = RatingService(prop, self.rating_criteria).extract_raw_value(criterion)
-                if prop_value is not None:
-                    values.append(float(prop_value))
-            except:
-                continue
-
-        if not values:
-            logger.debug(f"📉 INVERTED: No values found, returning 100")
-            return Decimal('100.00')
-
-        min_val = min(values)
-        max_val = max(values)
-        logger.debug(f"📉 INVERTED: Range - min: {min_val}, max: {max_val}, current: {value}")
-
-        if max_val == min_val:
-            logger.debug(f"📉 INVERTED: All values equal, returning 100")
-            return Decimal('100.00')
-
-        normalized = (max_val - float(value)) / (max_val - min_val) * 100
-        logger.debug(f"📉 INVERTED: Normalized score = {normalized}")
-        return Decimal(str(round(normalized, 2)))
-
-    def _score_ordinal(self, value: Any, criterion) -> Decimal:
-        """
-        Ordinal mapping: categorical values to predefined scores
-        Uses ordinal_mapping dict from criterion config
-        """
-        logger.debug(f"🏷️ ORDINAL: Scoring criterion '{criterion.name}'")
-        if not criterion.ordinal_mapping:
-            raise ValueError(f"Missing ordinal_mapping for criterion: {criterion.name}")
-
-        logger.debug(f"🏷️ ORDINAL: Looking up value '{value}' in mapping: {criterion.ordinal_mapping}")
-        score = criterion.ordinal_mapping.get(str(value), 0)
-        logger.debug(f"🏷️ ORDINAL: Mapped score = {score}")
-        return Decimal(str(score))
-
-    def _score_boolean(self, value: Any, criterion) -> Decimal:
-        """
-        Boolean scoring: True/False to 100/0
-        Respects boolean_true_is_better setting
-        """
-        logger.debug(f"✓/✗ BOOLEAN: Scoring criterion '{criterion.name}'")
-        logger.debug(f"✓/✗ BOOLEAN: Value = {value}, true_is_better = {criterion.boolean_true_is_better}")
-
-        if criterion.boolean_true_is_better:
-            score = Decimal('100.00') if value else Decimal('0.00')
-        else:
-            score = Decimal('0.00') if value else Decimal('100.00')
-
-        logger.debug(f"✓/✗ BOOLEAN: Score = {score}")
-        return score
-
-    def _score_threshold(self, value: Any, criterion) -> Decimal:
-        """
-        Threshold-based scoring: score based on range brackets
-        Uses thresholds list: [(threshold, score), ...]
-        """
-        if not criterion.thresholds:
-            raise ValueError(f"Missing thresholds for criterion: {criterion.name}")
-
-        # Sort thresholds descending
-        sorted_thresholds = sorted(criterion.thresholds, key=lambda x: x[0], reverse=True)
-
-        for threshold, score in sorted_thresholds:
-            if float(value) >= threshold:
-                return Decimal(str(score))
-
-        return Decimal('0.00')
 
 
 def calculate_and_persist_rating(property_id: int) -> Dict:
