@@ -311,6 +311,8 @@ class RatingService:
             return self._score_bedrooms(value, criterion)
         elif 'distance' in field:
             return self._score_distance(value, criterion)
+        elif 'council' in field or 'tax' in field:
+            return self._score_council_tax(value, criterion)
         else:
             # Fallback to strategy-based scoring for unknown criteria
             return self._score_by_strategy(value, criterion)
@@ -426,6 +428,25 @@ class RatingService:
         # If distance is greater than all thresholds (20km+)
         logger.debug(f"📍 DISTANCE: {distance_km} km > 20 km, score = 0")
         return Decimal('0.00')
+
+    def _score_council_tax(self, value: Any, criterion) -> Decimal:
+        """Score council tax band - lower band = higher score. A=100, B=85, C=70, D=55, E=40, F=25, G=10, H=0"""
+        logger.debug(f"🏛️ COUNCIL_TAX: Scoring criterion '{criterion.name}'")
+
+        ordinal_mapping = {
+            'A': 100,
+            'B': 85,
+            'C': 70,
+            'D': 55,
+            'E': 40,
+            'F': 25,
+            'G': 10,
+            'H': 0,
+        }
+
+        band = str(value).upper()
+        logger.debug(f"🏛️ COUNCIL_TAX: Band = {band}")
+        return score_ordinal(band, ordinal_mapping)
 
     def _score_by_strategy(self, value: Any, criterion) -> Decimal:
         strategy = criterion.scoring_strategy
