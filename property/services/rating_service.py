@@ -74,12 +74,9 @@ class RatingService:
             try:
                 logger.debug(f"📊 RATING: Processing criterion '{criterion.name}' (weight: {criterion.weight}, strategy: {criterion.scoring_strategy})")
 
-                # Step 2: Extract raw value
-                raw_value = self.extract_raw_value(criterion)
+                # Step 2 & 3: Extract raw value and score (normalize)
+                raw_value, normalized_score = self.score_criterion(criterion)
                 logger.debug(f"  → Raw value: {raw_value} (type: {type(raw_value).__name__})")
-
-                # Step 3: Score (normalize)
-                normalized_score = self.score_criterion(raw_value, criterion)
                 logger.debug(f"  → Normalized score: {normalized_score}")
 
                 # Step 4: Apply weight
@@ -274,32 +271,29 @@ class RatingService:
             logger.error(f"📍 DISTANCE: SavedLocation context data not found")
             raise ValueError("SavedLocation context data not found. Ensure Stage 2 has been completed.")
 
-    def score_criterion(self, value: Any, criterion) -> Decimal:
-        # Determine criterion type from field_name or name
+    def score_criterion(self, criterion) -> Tuple[Any, Decimal]:
         field = (criterion.field_name or criterion.name).lower()
 
         logger.debug(f"🎯 SCORE: Determining scoring method for field '{field}'")
 
-        # Route to criterion-specific scoring functions
         if 'price' in field:
-            return self._score_price(value, criterion)
+            return self._score_price(criterion)
         elif 'bathroom' in field:
-            return self._score_bathrooms(value, criterion)
+            return self._score_bathrooms(criterion)
         elif 'bedroom' in field:
-            return self._score_bedrooms(value, criterion)
+            return self._score_bedrooms(criterion)
         elif 'distance' in field:
-            return self._score_distance(value, criterion)
+            return self._score_distance(criterion)
         elif 'council' in field or 'tax' in field:
-            return self._score_council_tax(value, criterion)
+            return self._score_council_tax(criterion)
         elif 'crime' in field:
-            return self._score_crime(value, criterion)
+            return self._score_crime(criterion)
         elif 'mobile' in field:
-            return self._score_mobile(value, criterion)
+            return self._score_mobile(criterion)
         elif 'broadband' in field:
-            return self._score_broadband(value, criterion)
+            return self._score_broadband(criterion)
         else:
-            # Fallback to strategy-based scoring for unknown criteria
-            return self._score_by_strategy(value, criterion)
+            return self._score_by_strategy(criterion)
 
     def _get_min_max_values(self, criterion) -> Tuple[float, float]:
         values = []
@@ -316,11 +310,11 @@ class RatingService:
 
         return (min(values), max(values))
 
-    def _score_price(self, value: Any, criterion) -> Decimal:
-        """Score price - lower is better. Uses search criteria range if available."""
+    def _score_price(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"💰 PRICE: Scoring criterion '{criterion.name}'")
 
-        # Try to get price range from search criteria
+        value = self.extract_raw_value(criterion)
+
         min_val = None
         max_val = None
 
@@ -335,87 +329,88 @@ class RatingService:
             if min_val or max_val:
                 logger.debug(f"💰 PRICE: Using search criteria range - min: {min_val}, max: {max_val}")
 
-        # Fallback to calculating from all properties
         if min_val is None and max_val is None:
             logger.debug(f"💰 PRICE: Search criteria not available, calculating from properties")
             min_val, max_val = self._get_min_max_values(criterion)
 
         if not min_val and not max_val:
             logger.debug(f"💰 PRICE: No values found, returning 100")
-            return Decimal('100.00')
+            return value, Decimal('100.00')
 
-        # If only one bound is set, use it with the current value
         if min_val is None:
             min_val = 0.0
         if max_val is None:
             max_val = float(value)
 
         logger.debug(f"💰 PRICE: Final range - min: {min_val}, max: {max_val}, current: {value}")
-        return score_inverted_min_max(float(value), min_val, max_val)
+        score = score_inverted_min_max(float(value), min_val, max_val)
+        return value, score
 
-    def _score_bathrooms(self, value: Any, criterion) -> Decimal:
+    def _score_bathrooms(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"🚿 BATHROOMS: Scoring criterion '{criterion.name}'")
 
-        # Define threshold brackets
+        value = self.extract_raw_value(criterion)
+
         thresholds = [
-            (4, 100.0),  # 4+ bathrooms = 100
-            (3, 75.0),   # 3 bathrooms = 75
-            (2, 50.0),   # 2 bathrooms = 50
-            (1, 25.0),   # 1 bathroom = 25
-            (0, 0.0),    # 0 bathrooms = 0
+            (4, 100.0),
+            (3, 75.0),
+            (2, 50.0),
+            (1, 25.0),
+            (0, 0.0),
         ]
 
         logger.debug(f"🚿 BATHROOMS: Value = {value}, using threshold scoring")
-        return score_threshold(float(value), thresholds)
+        score = score_threshold(float(value), thresholds)
+        return value, score
 
-    def _score_bedrooms(self, value: Any, criterion) -> Decimal:
+    def _score_bedrooms(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"🛏️ BEDROOMS: Scoring criterion '{criterion.name}'")
 
-        # Define threshold brackets
+        value = self.extract_raw_value(criterion)
+
         thresholds = [
-            (4, 100.0),  # 4+ bedrooms = 100
-            (3, 75.0),   # 3 bedrooms = 75
-            (2, 50.0),   # 2 bedrooms = 50
-            (1, 25.0),   # 1 bedroom = 25
-            (0, 0.0),    # 0 bedrooms = 0
+            (4, 100.0),
+            (3, 75.0),
+            (2, 50.0),
+            (1, 25.0),
+            (0, 0.0),
         ]
 
         logger.debug(f"🛏️ BEDROOMS: Value = {value}, using threshold scoring")
-        return score_threshold(float(value), thresholds)
+        score = score_threshold(float(value), thresholds)
+        return value, score
 
-    def _score_distance(self, value: Any, criterion) -> Decimal:
+    def _score_distance(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"📍 DISTANCE: Scoring criterion '{criterion.name}'")
 
-        # Define threshold brackets (distance in km)
+        value = self.extract_raw_value(criterion)
+
         thresholds = [
-            (1, 100.0),   # Within 1km = 100
-            (3, 80.0),    # Within 3km = 80
-            (5, 60.0),    # Within 5km = 60
-            (10, 40.0),   # Within 10km = 40
-            (15, 20.0),   # Within 15km = 20
-            (20, 10.0),   # Within 20km = 10
-            (0, 0.0),     # 20km+ = 0
+            (1, 100.0),
+            (3, 80.0),
+            (5, 60.0),
+            (10, 40.0),
+            (15, 20.0),
+            (20, 10.0),
+            (0, 0.0),
         ]
 
         logger.debug(f"📍 DISTANCE: Value = {value} km, using threshold scoring")
 
-        # Invert the logic: score_threshold gives score for value >= threshold
-        # But we want closer (lower) distances to score higher
-        # So we need to find which band the value falls into
         distance_km = float(value)
 
-        for threshold, score in thresholds:
+        for threshold, sc in thresholds:
             if distance_km <= threshold:
-                logger.debug(f"📍 DISTANCE: {distance_km} km <= {threshold} km, score = {score}")
-                return Decimal(str(score))
+                logger.debug(f"📍 DISTANCE: {distance_km} km <= {threshold} km, score = {sc}")
+                return value, Decimal(str(sc))
 
-        # If distance is greater than all thresholds (20km+)
         logger.debug(f"📍 DISTANCE: {distance_km} km > 20 km, score = 0")
-        return Decimal('0.00')
+        return value, Decimal('0.00')
 
-    def _score_council_tax(self, value: Any, criterion) -> Decimal:
-        """Score council tax band - lower band = higher score. A=100, B=85, C=70, D=55, E=40, F=25, G=10, H=0"""
+    def _score_council_tax(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"🏛️ COUNCIL_TAX: Scoring criterion '{criterion.name}'")
+
+        value = self.extract_raw_value(criterion)
 
         ordinal_mapping = {
             'A': 100,
@@ -430,10 +425,13 @@ class RatingService:
 
         band = str(value).upper()
         logger.debug(f"🏛️ COUNCIL_TAX: Band = {band}")
-        return score_ordinal(band, ordinal_mapping)
+        score = score_ordinal(band, ordinal_mapping)
+        return value, score
 
-    def _score_crime(self, value: Any, criterion) -> Decimal:
+    def _score_crime(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"🚨 CRIME: Scoring criterion '{criterion.name}'")
+
+        value = self.extract_raw_value(criterion)
 
         ordinal_mapping = {
             'Very Low': 100,
@@ -446,52 +444,66 @@ class RatingService:
 
         rating = str(value)
         logger.debug(f"🚨 CRIME: Rating = {rating}")
-        return score_ordinal(rating, ordinal_mapping)
+        score = score_ordinal(rating, ordinal_mapping)
+        return value, score
 
-    def _score_mobile(self, value: Any, criterion) -> Decimal:
+    def _score_mobile(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"📱 MOBILE: Scoring criterion '{criterion.name}'")
-        logger.debug(f"📱 MOBILE: Overall coverage score = {value}")
-        return Decimal(str(round(float(value), 2)))
 
-    def _score_broadband(self, value: Any, criterion) -> Decimal:
-        """Score broadband speed (Mbps) - higher = better. Thresholds: 300+=100, 100+=75, 30+=50, 10+=25, <10=0"""
+        value = self.extract_raw_value(criterion)
+
+        logger.debug(f"📱 MOBILE: Overall coverage score = {value}")
+        score = Decimal(str(round(float(value), 2)))
+        return value, score
+
+    def _score_broadband(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"🌐 BROADBAND: Scoring criterion '{criterion.name}'")
 
+        value = self.extract_raw_value(criterion)
+
         thresholds = [
-            (300, 100.0),  # 300+ Mbps = 100
-            (100, 75.0),   # 100+ Mbps = 75
-            (30, 50.0),    # 30+ Mbps = 50
-            (10, 25.0),    # 10+ Mbps = 25
-            (0, 0.0),      # <10 Mbps = 0
+            (300, 100.0),
+            (100, 75.0),
+            (30, 50.0),
+            (10, 25.0),
+            (0, 0.0),
         ]
 
         logger.debug(f"🌐 BROADBAND: Value = {value} Mbps, using threshold scoring")
-        return score_threshold(float(value), thresholds)
+        score = score_threshold(float(value), thresholds)
+        return value, score
 
-    def _score_by_strategy(self, value: Any, criterion) -> Decimal:
+    def _score_by_strategy(self, criterion) -> Tuple[Any, Decimal]:
+        value = self.extract_raw_value(criterion)
+
         strategy = criterion.scoring_strategy
         logger.debug(f"⚙️ STRATEGY: Using {strategy} strategy for '{criterion.name}'")
 
         if strategy == 'min_max':
             min_val, max_val = self._get_min_max_values(criterion)
             if not min_val and not max_val:
-                return Decimal('100.00')
-            return score_min_max(float(value), min_val, max_val)
+                return value, Decimal('100.00')
+            score = score_min_max(float(value), min_val, max_val)
+            return value, score
 
         elif strategy == 'inverted':
             min_val, max_val = self._get_min_max_values(criterion)
             if not min_val and not max_val:
-                return Decimal('100.00')
-            return score_inverted_min_max(float(value), min_val, max_val)
+                return value, Decimal('100.00')
+            score = score_inverted_min_max(float(value), min_val, max_val)
+            return value, score
 
         elif strategy == 'ordinal':
-            return score_ordinal(value, criterion.ordinal_mapping)
+            score = score_ordinal(value, criterion.ordinal_mapping)
+            return value, score
 
         elif strategy == 'boolean':
-            return score_boolean(value, criterion.boolean_true_is_better)
+            score = score_boolean(value, criterion.boolean_true_is_better)
+            return value, score
 
         elif strategy == 'threshold':
-            return score_threshold(float(value), criterion.thresholds)
+            score = score_threshold(float(value), criterion.thresholds)
+            return value, score
 
         else:
             raise ValueError(f"Unknown scoring strategy: {strategy}")
