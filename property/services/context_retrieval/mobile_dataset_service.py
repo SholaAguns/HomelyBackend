@@ -36,18 +36,6 @@ class MobileDatasetService(IContextService):
         return self.CACHE_TTL
 
     def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
-        """
-        Fetch mobile coverage data for property's Local Authority.
-
-        Process:
-        1. Extract postcode from property
-        2. Map postcode → LAUA code using Postcodes.io
-        3. Query MobileCoverage table for latest data
-        4. Return formatted data with composite scores
-
-        Returns:
-            Dict with mobile coverage metrics and scores
-        """
         from property.models import MobileCoverage
         from property.utils.geocoding import postcode_to_laua, GeocodingError
 

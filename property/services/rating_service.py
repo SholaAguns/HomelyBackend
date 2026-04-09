@@ -133,12 +133,6 @@ class RatingService:
         return overall_rating, breakdown, False, None
 
     def evaluate_dealbreakers(self) -> Tuple[bool, Optional[str]]:
-        """
-        Evaluate all dealbreaker criteria
-
-        Returns:
-            Tuple of (passed, failure_reason)
-        """
         dealbreaker_criteria = self.rating_criteria.criteria.filter(enabled=True, is_dealbreaker=True)
         logger.debug(f"🚫 DEALBREAKER: Found {dealbreaker_criteria.count()} enabled dealbreaker criteria")
 
@@ -167,13 +161,6 @@ class RatingService:
         return True, None
 
     def _meets_dealbreaker_threshold(self, value: Any, criterion) -> bool:
-        """
-        Check if value meets dealbreaker threshold
-
-        Args:
-            value: Raw value to check
-            criterion: Criterion with dealbreaker_threshold config
-        """
         if not criterion.dealbreaker_threshold:
             return True
 
@@ -202,15 +189,6 @@ class RatingService:
         return True
 
     def extract_raw_value(self, criterion) -> Any:
-        """
-        Extract raw value based on criterion source
-
-        Args:
-            criterion: Criterion instance with source configuration
-
-        Returns:
-            Raw value from property, context, or calculated source
-        """
         if criterion.source == 'property':
             return self._extract_from_property(criterion)
         elif criterion.source == 'context':
@@ -313,6 +291,12 @@ class RatingService:
             return self._score_distance(value, criterion)
         elif 'council' in field or 'tax' in field:
             return self._score_council_tax(value, criterion)
+        elif 'crime' in field:
+            return self._score_crime(value, criterion)
+        elif 'mobile' in field:
+            return self._score_mobile(value, criterion)
+        elif 'broadband' in field:
+            return self._score_broadband(value, criterion)
         else:
             # Fallback to strategy-based scoring for unknown criteria
             return self._score_by_strategy(value, criterion)
@@ -447,6 +431,42 @@ class RatingService:
         band = str(value).upper()
         logger.debug(f"🏛️ COUNCIL_TAX: Band = {band}")
         return score_ordinal(band, ordinal_mapping)
+
+    def _score_crime(self, value: Any, criterion) -> Decimal:
+        logger.debug(f"🚨 CRIME: Scoring criterion '{criterion.name}'")
+
+        ordinal_mapping = {
+            'Very Low': 100,
+            'Low': 75,
+            'Moderate': 50,
+            'High': 25,
+            'Very High': 0,
+            'Unknown': 50,
+        }
+
+        rating = str(value)
+        logger.debug(f"🚨 CRIME: Rating = {rating}")
+        return score_ordinal(rating, ordinal_mapping)
+
+    def _score_mobile(self, value: Any, criterion) -> Decimal:
+        logger.debug(f"📱 MOBILE: Scoring criterion '{criterion.name}'")
+        logger.debug(f"📱 MOBILE: Overall coverage score = {value}")
+        return Decimal(str(round(float(value), 2)))
+
+    def _score_broadband(self, value: Any, criterion) -> Decimal:
+        """Score broadband speed (Mbps) - higher = better. Thresholds: 300+=100, 100+=75, 30+=50, 10+=25, <10=0"""
+        logger.debug(f"🌐 BROADBAND: Scoring criterion '{criterion.name}'")
+
+        thresholds = [
+            (300, 100.0),  # 300+ Mbps = 100
+            (100, 75.0),   # 100+ Mbps = 75
+            (30, 50.0),    # 30+ Mbps = 50
+            (10, 25.0),    # 10+ Mbps = 25
+            (0, 0.0),      # <10 Mbps = 0
+        ]
+
+        logger.debug(f"🌐 BROADBAND: Value = {value} Mbps, using threshold scoring")
+        return score_threshold(float(value), thresholds)
 
     def _score_by_strategy(self, value: Any, criterion) -> Decimal:
         strategy = criterion.scoring_strategy

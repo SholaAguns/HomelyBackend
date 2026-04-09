@@ -172,34 +172,6 @@ class MobileApiService(IContextService):
         return network_percentages
 
     def _parse_api_response(self, api_data: Dict[str, Any], postcode: str) -> Dict[str, Any]:
-        """
-        Parse Ofcom API response into unified format.
-
-        Calculates both:
-        1. Network count aggregates (to match dataset format)
-        2. Per-provider breakdown (API-specific detail)
-
-        API Response Format (actual):
-        {
-            "PostCode": "SW1A1AA",
-            "DBName": "MobileAvailability-202505160637",
-            "Availability": [{
-                "UPRN": 12345,
-                "AddressShortDescription": "10 DOWNING STREET",
-                "PostCode": "SW1A1AA",
-                "EEVoiceOutdoor": 4,
-                "EEVoiceIndoor": 4,
-                "EEDataOutdoor": 4,
-                "EEDataIndoor": 3,
-                ... (similar for H3, TF, VO providers)
-            }]
-        }
-
-        Note: API documentation incorrectly shows array wrapper - actual response is dict
-
-        Returns:
-            Unified format matching MobileCoverageReportDataSerializer
-        """
         if not api_data or not isinstance(api_data, dict):
             raise ValueError(f"Invalid API response: expected dict, got {type(api_data)}")
 
@@ -296,19 +268,6 @@ class MobileApiService(IContextService):
         }
 
     def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
-        """
-        Fetch mobile coverage data from Ofcom API with fallback to dataset.
-
-        Process:
-        1. Validate property has postcode
-        2. Try API call with primary key
-        3. If primary fails, try secondary key
-        4. If both API keys fail, fallback to dataset service
-        5. Return formatted data
-
-        Returns:
-            Dict with mobile coverage metrics and metadata
-        """
         self.ensure_postcode(property_obj)
         self.validate_property_data(property_obj)
 

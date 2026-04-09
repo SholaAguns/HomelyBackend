@@ -223,16 +223,6 @@ class CrimeService(IContextService):
         }
 
     def _analyze_crime_data(self, crimes: list, monthly_breakdown: list) -> Dict[str, Any]:
-        """
-        Analyze crime data and generate statistics.
-
-        Args:
-            crimes: List of crime records from API
-            monthly_breakdown: List of monthly success/failure records
-
-        Returns:
-            Dict with crime analysis and rating
-        """
         successful_months = sum(1 for m in monthly_breakdown if m['status'] == 'success')
 
         if not crimes:
