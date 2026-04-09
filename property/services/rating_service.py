@@ -262,40 +262,39 @@ class RatingService:
         """Extract calculated value (e.g., distance to saved location)"""
         # For now, only support distance to saved location
         if 'distance' in criterion.name.lower():
-            return self._calculate_distance_to_saved_location(criterion)
+            return self._get_distance_from_context(criterion)
 
         raise ValueError(f"Unsupported calculated criterion: {criterion.name}")
 
-    def _calculate_distance_to_saved_location(self, criterion) -> float:
-        """Calculate distance from property to saved location"""
-        from math import radians, cos, sin, asin, sqrt
-
-        # Extract target location from criterion config (stored in dealbreaker_threshold as metadata)
+    def _get_distance_from_context(self, criterion) -> float:
         if not criterion.dealbreaker_threshold or 'saved_location_id' not in criterion.dealbreaker_threshold:
-            raise ValueError("Missing saved_location_id for distance calculation")
+            raise ValueError("Missing saved_location_id for distance criterion")
 
-        from property.models import SavedLocation
-        saved_location = SavedLocation.objects.get(
-            id=criterion.dealbreaker_threshold['saved_location_id']
-        )
+        target_location_id = criterion.dealbreaker_threshold['saved_location_id']
+        logger.debug(f"📍 DISTANCE: Retrieving distance for saved_location_id={target_location_id}")
 
-        # Haversine formula
-        if not all([self.property.latitude, self.property.longitude,
-                   saved_location.latitude, saved_location.longitude]):
-            raise ValueError("Missing coordinates for distance calculation")
+        # Get saved_locations ContextData
+        from property.models import ContextData
+        try:
+            context_data = self.property.context_data.get(service_name='saved_locations')
 
-        lat1, lon1 = float(self.property.latitude), float(self.property.longitude)
-        lat2, lon2 = float(saved_location.latitude), float(saved_location.longitude)
+            if context_data.status != 'COMPLETE':
+                raise ValueError(f"SavedLocation context data not available: {context_data.status}")
 
-        lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
+            # Find distance for this location in the data
+            distances = context_data.data.get('distances', [])
+            for distance_data in distances:
+                if distance_data['location_id'] == target_location_id:
+                    distance_km = distance_data['distance_km']
+                    logger.debug(f"📍 DISTANCE: Found distance = {distance_km} km")
+                    return distance_km
 
-        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-        c = 2 * asin(sqrt(a))
-        meters = 6371000 * c  # Earth radius in meters
+            # If location not found in context data
+            raise ValueError(f"Distance to saved_location_id={target_location_id} not found in context data")
 
-        return meters
+        except ContextData.DoesNotExist:
+            logger.error(f"📍 DISTANCE: SavedLocation context data not found")
+            raise ValueError("SavedLocation context data not found. Ensure Stage 2 has been completed.")
 
     def score_criterion(self, value: Any, criterion) -> Decimal:
         # Determine criterion type from field_name or name
@@ -332,48 +331,101 @@ class RatingService:
         return (min(values), max(values))
 
     def _score_price(self, value: Any, criterion) -> Decimal:
+        """Score price - lower is better. Uses search criteria range if available."""
         logger.debug(f"💰 PRICE: Scoring criterion '{criterion.name}'")
-        min_val, max_val = self._get_min_max_values(criterion)
+
+        # Try to get price range from search criteria
+        min_val = None
+        max_val = None
+
+        property_list = self.property.property_lists.first()
+        if property_list and property_list.search_criteria:
+            search_criteria = property_list.search_criteria
+            if search_criteria.price_min:
+                min_val = float(search_criteria.price_min)
+            if search_criteria.price_max:
+                max_val = float(search_criteria.price_max)
+
+            if min_val or max_val:
+                logger.debug(f"💰 PRICE: Using search criteria range - min: {min_val}, max: {max_val}")
+
+        # Fallback to calculating from all properties
+        if min_val is None and max_val is None:
+            logger.debug(f"💰 PRICE: Search criteria not available, calculating from properties")
+            min_val, max_val = self._get_min_max_values(criterion)
 
         if not min_val and not max_val:
             logger.debug(f"💰 PRICE: No values found, returning 100")
             return Decimal('100.00')
 
-        logger.debug(f"💰 PRICE: Range - min: {min_val}, max: {max_val}, current: {value}")
+        # If only one bound is set, use it with the current value
+        if min_val is None:
+            min_val = 0.0
+        if max_val is None:
+            max_val = float(value)
+
+        logger.debug(f"💰 PRICE: Final range - min: {min_val}, max: {max_val}, current: {value}")
         return score_inverted_min_max(float(value), min_val, max_val)
 
     def _score_bathrooms(self, value: Any, criterion) -> Decimal:
         logger.debug(f"🚿 BATHROOMS: Scoring criterion '{criterion.name}'")
-        min_val, max_val = self._get_min_max_values(criterion)
 
-        if not min_val and not max_val:
-            logger.debug(f"🚿 BATHROOMS: No values found, returning 100")
-            return Decimal('100.00')
+        # Define threshold brackets
+        thresholds = [
+            (4, 100.0),  # 4+ bathrooms = 100
+            (3, 75.0),   # 3 bathrooms = 75
+            (2, 50.0),   # 2 bathrooms = 50
+            (1, 25.0),   # 1 bathroom = 25
+            (0, 0.0),    # 0 bathrooms = 0
+        ]
 
-        logger.debug(f"🚿 BATHROOMS: Range - min: {min_val}, max: {max_val}, current: {value}")
-        return score_min_max(float(value), min_val, max_val)
+        logger.debug(f"🚿 BATHROOMS: Value = {value}, using threshold scoring")
+        return score_threshold(float(value), thresholds)
 
     def _score_bedrooms(self, value: Any, criterion) -> Decimal:
         logger.debug(f"🛏️ BEDROOMS: Scoring criterion '{criterion.name}'")
-        min_val, max_val = self._get_min_max_values(criterion)
 
-        if not min_val and not max_val:
-            logger.debug(f"🛏️ BEDROOMS: No values found, returning 100")
-            return Decimal('100.00')
+        # Define threshold brackets
+        thresholds = [
+            (4, 100.0),  # 4+ bedrooms = 100
+            (3, 75.0),   # 3 bedrooms = 75
+            (2, 50.0),   # 2 bedrooms = 50
+            (1, 25.0),   # 1 bedroom = 25
+            (0, 0.0),    # 0 bedrooms = 0
+        ]
 
-        logger.debug(f"🛏️ BEDROOMS: Range - min: {min_val}, max: {max_val}, current: {value}")
-        return score_min_max(float(value), min_val, max_val)
+        logger.debug(f"🛏️ BEDROOMS: Value = {value}, using threshold scoring")
+        return score_threshold(float(value), thresholds)
 
     def _score_distance(self, value: Any, criterion) -> Decimal:
         logger.debug(f"📍 DISTANCE: Scoring criterion '{criterion.name}'")
-        min_val, max_val = self._get_min_max_values(criterion)
 
-        if not min_val and not max_val:
-            logger.debug(f"📍 DISTANCE: No values found, returning 100")
-            return Decimal('100.00')
+        # Define threshold brackets (distance in km)
+        thresholds = [
+            (1, 100.0),   # Within 1km = 100
+            (3, 80.0),    # Within 3km = 80
+            (5, 60.0),    # Within 5km = 60
+            (10, 40.0),   # Within 10km = 40
+            (15, 20.0),   # Within 15km = 20
+            (20, 10.0),   # Within 20km = 10
+            (0, 0.0),     # 20km+ = 0
+        ]
 
-        logger.debug(f"📍 DISTANCE: Range - min: {min_val}, max: {max_val}, current: {value}")
-        return score_inverted_min_max(float(value), min_val, max_val)
+        logger.debug(f"📍 DISTANCE: Value = {value} km, using threshold scoring")
+
+        # Invert the logic: score_threshold gives score for value >= threshold
+        # But we want closer (lower) distances to score higher
+        # So we need to find which band the value falls into
+        distance_km = float(value)
+
+        for threshold, score in thresholds:
+            if distance_km <= threshold:
+                logger.debug(f"📍 DISTANCE: {distance_km} km <= {threshold} km, score = {score}")
+                return Decimal(str(score))
+
+        # If distance is greater than all thresholds (20km+)
+        logger.debug(f"📍 DISTANCE: {distance_km} km > 20 km, score = 0")
+        return Decimal('0.00')
 
     def _score_by_strategy(self, value: Any, criterion) -> Decimal:
         strategy = criterion.scoring_strategy

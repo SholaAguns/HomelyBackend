@@ -19,3 +19,5 @@
 - always seek my explicit approval before running any migrations
 
 - always add imports statement at the top of the file
+
+- do not leave multiline comments unless requested
