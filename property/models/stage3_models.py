@@ -24,7 +24,7 @@ class RatingCriteria(models.Model):
 
     def uses_service(self, service_name):
         """Check if any criteria use this context service"""
-        return self.criteria.filter(source='context', service_name=service_name).exists()
+        return self.criteria.filter(source='context', field_name=service_name).exists()
 
 
 class Criterion(models.Model):
@@ -50,7 +50,6 @@ class Criterion(models.Model):
     # Source configuration
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
     field_name = models.CharField(max_length=100, blank=True)
-    service_name = models.CharField(max_length=50, blank=True)
     data_path = models.CharField(max_length=255, blank=True)
 
     # Scoring configuration
@@ -63,7 +62,7 @@ class Criterion(models.Model):
     enabled = models.BooleanField(default=True)
 
     # Weight and dealbreaker
-    weight = models.DecimalField(max_digits=3, decimal_places=1, default=1.0)
+    weight = models.DecimalField(max_digits=3, decimal_places=2, default=1.0)
     is_dealbreaker = models.BooleanField(default=False)
     dealbreaker_threshold = models.JSONField(null=True, blank=True)
 

@@ -207,17 +207,17 @@ class RatingService:
 
     def _extract_from_context(self, criterion) -> Any:
         """Extract value from context data"""
-        logger.debug(f"📍 EXTRACT: Getting context data from service '{criterion.service_name}'")
-        if not criterion.service_name:
-            raise ValueError(f"Missing service_name for context source: {criterion.name}")
+        logger.debug(f"📍 EXTRACT: Getting context data from field '{criterion.field_name}'")
+        if not criterion.field_name:
+            raise ValueError(f"Missing field_name for context source: {criterion.name}")
 
         from property.models import ContextData
         try:
-            context_data = self.property.context_data.get(service_name=criterion.service_name)
+            context_data = self.property.context_data.get(service_name=criterion.field_name)
             logger.debug(f"📍 EXTRACT: Context data status: {context_data.status}")
 
             if context_data.status != 'COMPLETE':
-                raise ValueError(f"Context data not available: {criterion.service_name}")
+                raise ValueError(f"Context data not available: {criterion.field_name}")
 
             # Navigate JSON path
             data = context_data.data
@@ -230,8 +230,8 @@ class RatingService:
             return data
 
         except ContextData.DoesNotExist:
-            logger.error(f"📍 EXTRACT: Context data not found for service: {criterion.service_name}")
-            raise ValueError(f"Context data not found: {criterion.service_name}")
+            logger.error(f"📍 EXTRACT: Context data not found for field: {criterion.field_name}")
+            raise ValueError(f"Context data not found: {criterion.field_name}")
 
     def _extract_calculated(self, criterion) -> Any:
         """Extract calculated value (e.g., distance to saved location)"""

@@ -312,7 +312,7 @@ class CriterionAdmin(admin.ModelAdmin):
             'fields': ('rating_criteria', 'name')
         }),
         ('Source', {
-            'fields': ('source', 'field_name', 'service_name', 'data_path')
+            'fields': ('source', 'field_name', 'data_path')
         }),
         ('Scoring', {
             'fields': ('scoring_strategy', 'ordinal_mapping', 'thresholds', 'boolean_true_is_better')

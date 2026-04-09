@@ -785,7 +785,7 @@ class CriterionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Criterion
         fields = [
-            'id', 'name', 'source', 'field_name', 'service_name', 'data_path',
+            'id', 'name', 'source', 'field_name', 'data_path',
             'scoring_strategy', 'ordinal_mapping', 'thresholds', 'boolean_true_is_better',
             'enabled', 'weight', 'is_dealbreaker', 'dealbreaker_threshold',
             'created_at', 'updated_at'
@@ -794,25 +794,20 @@ class CriterionSerializer(serializers.ModelSerializer):
 
     def validate_weight(self, value):
         """Validate weight is one of allowed values"""
-        allowed = [Decimal('0.0'), Decimal('0.5'), Decimal('1.0'), Decimal('1.5')]
+        allowed = [Decimal('0.25'), Decimal('0.5'), Decimal('1.0'), Decimal('1.5')]
         if value not in allowed:
             raise serializers.ValidationError(
-                "Weight must be one of: 0.0 (Not Important), 0.5 (Nice to Have), 1.0 (Important), 1.5 (Very Important)"
+                "Weight must be one of: 0.25 (Not Important), 0.5 (Nice to Have), 1.0 (Important), 1.5 (Very Important)"
             )
         return value
 
     def validate(self, data):
         """Cross-field validation"""
         # Validate source-specific fields
-        if data.get('source') == 'property':
+        if data.get('source') in ['property', 'context']:
             if not data.get('field_name'):
                 raise serializers.ValidationError({
-                    'field_name': 'field_name is required when source is "property"'
-                })
-        elif data.get('source') == 'context':
-            if not data.get('service_name'):
-                raise serializers.ValidationError({
-                    'service_name': 'service_name is required when source is "context"'
+                    'field_name': 'field_name is required when source is "property" or "context"'
                 })
 
         # Validate scoring strategy requirements

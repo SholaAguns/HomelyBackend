@@ -205,7 +205,7 @@ class OrdinalScoringTests(RatingServiceTestCase):
             rating_criteria=self.rating_criteria,
             name='Crime Rating',
             source='context',
-            service_name='crime',
+            field_name='crime',
             data_path='rating',
             scoring_strategy='ordinal',
             ordinal_mapping={'Low': 100, 'Medium': 50, 'High': 0},
@@ -465,7 +465,7 @@ class RawValueExtractionTests(RatingServiceTestCase):
         # Create context data
         ContextData.objects.create(
             property=self.property1,
-            service_name='crime',
+            field_name='crime',
             status='COMPLETE',
             data={'rating': 'Low', 'score': 25}
         )
@@ -474,7 +474,7 @@ class RawValueExtractionTests(RatingServiceTestCase):
             rating_criteria=self.rating_criteria,
             name='Crime Rating',
             source='context',
-            service_name='crime',
+            field_name='crime',
             data_path='rating',
             scoring_strategy='ordinal',
             weight=Decimal('1.0')
@@ -489,7 +489,7 @@ class RawValueExtractionTests(RatingServiceTestCase):
         """Test extracting nested value from context data"""
         ContextData.objects.create(
             property=self.property1,
-            service_name='broadband',
+            field_name='broadband',
             status='COMPLETE',
             data={'speeds': {'max': 100, 'avg': 75}}
         )
@@ -498,7 +498,7 @@ class RawValueExtractionTests(RatingServiceTestCase):
             rating_criteria=self.rating_criteria,
             name='Broadband Speed',
             source='context',
-            service_name='broadband',
+            field_name='broadband',
             data_path='speeds.max',
             scoring_strategy='min_max',
             weight=Decimal('1.0')
@@ -515,7 +515,7 @@ class RawValueExtractionTests(RatingServiceTestCase):
             rating_criteria=self.rating_criteria,
             name='Crime Rating',
             source='context',
-            service_name='crime',
+            field_name='crime',
             data_path='rating',
             scoring_strategy='ordinal',
             weight=Decimal('1.0')
