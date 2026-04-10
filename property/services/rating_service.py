@@ -219,11 +219,13 @@ class RatingService:
             if context_data.status != 'COMPLETE':
                 raise ValueError(f"Context data not available: {criterion.field_name}")
 
+            data_path = self._get_context_value_data_path(criterion.field_name)
+
             # Navigate JSON path
             data = context_data.data
-            if criterion.data_path:
-                logger.debug(f"📍 EXTRACT: Navigating path: {criterion.data_path}")
-                for key in criterion.data_path.split('.'):
+            if data_path:
+                logger.debug(f"📍 EXTRACT: Navigating path: {data_path}")
+                for key in data_path.split('.'):
                     data = data[key]
 
             logger.debug(f"📍 EXTRACT: Retrieved value: {data}")
@@ -240,6 +242,19 @@ class RatingService:
             return self._get_distance_from_context(criterion)
 
         raise ValueError(f"Unsupported calculated criterion: {criterion.name}")
+
+    def _get_context_value_data_path(self, field_name):
+        match field_name:
+            case "crime":
+                return "crime_rating"
+            case "mobile":
+                return "scores.overall_coverage"
+            case "broadband":
+                return "max_download_mbps"
+            case "council_tax":
+                return "band"
+            case _:
+                return None
 
     def _get_distance_from_context(self, criterion) -> float:
         if not criterion.dealbreaker_threshold or 'saved_location_id' not in criterion.dealbreaker_threshold:
