@@ -785,8 +785,7 @@ class CriterionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Criterion
         fields = [
-            'id', 'name', 'source', 'field_name', 'data_path',
-            'scoring_strategy', 'ordinal_mapping', 'thresholds', 'boolean_true_is_better',
+            'id', 'name', 'source', 'field_name',
             'enabled', 'weight', 'is_dealbreaker', 'dealbreaker_threshold',
             'created_at', 'updated_at'
         ]
@@ -808,18 +807,6 @@ class CriterionSerializer(serializers.ModelSerializer):
             if not data.get('field_name'):
                 raise serializers.ValidationError({
                     'field_name': 'field_name is required when source is "property" or "context"'
-                })
-
-        # Validate scoring strategy requirements
-        if data.get('scoring_strategy') == 'ordinal':
-            if not data.get('ordinal_mapping'):
-                raise serializers.ValidationError({
-                    'ordinal_mapping': 'ordinal_mapping is required when scoring_strategy is "ordinal"'
-                })
-        elif data.get('scoring_strategy') == 'threshold':
-            if not data.get('thresholds'):
-                raise serializers.ValidationError({
-                    'thresholds': 'thresholds is required when scoring_strategy is "threshold"'
                 })
 
         return data

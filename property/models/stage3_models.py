@@ -32,17 +32,9 @@ class Criterion(models.Model):
 
     SOURCE_CHOICES = [
         ('property', 'Property Field'),
-        ('context', 'Context Data'),
-        ('calculated', 'Calculated Value'),
+        ('context', 'Context Report Data'),
     ]
 
-    STRATEGY_CHOICES = [
-        ('min_max', 'Min-Max Normalization'),
-        ('inverted', 'Inverted Min-Max'),
-        ('ordinal', 'Ordinal Mapping'),
-        ('boolean', 'Boolean'),
-        ('threshold', 'Threshold-Based'),
-    ]
 
     rating_criteria = models.ForeignKey(RatingCriteria, on_delete=models.CASCADE, related_name='criteria')
     name = models.CharField(max_length=255)
@@ -50,13 +42,9 @@ class Criterion(models.Model):
     # Source configuration
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
     field_name = models.CharField(max_length=100, blank=True)
-    data_path = models.CharField(max_length=255, blank=True)
 
-    # Scoring configuration
-    scoring_strategy = models.CharField(max_length=50, choices=STRATEGY_CHOICES)
-    ordinal_mapping = models.JSONField(null=True, blank=True)
-    thresholds = models.JSONField(null=True, blank=True)
-    boolean_true_is_better = models.BooleanField(default=True)
+    saved_location_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True, null=True, blank=True)
+    poi_type = models.CharField(max_length=100, blank=True, null=True)
 
     # Enabled state
     enabled = models.BooleanField(default=True)

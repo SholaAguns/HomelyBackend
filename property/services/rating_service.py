@@ -188,7 +188,7 @@ class RatingService:
     def extract_raw_value(self, criterion) -> Any:
         if criterion.source == 'property':
             return self._extract_from_property(criterion)
-        elif criterion.source == 'context':
+        elif criterion.source == 'context_report':
             return self._extract_from_context(criterion)
         elif criterion.source == 'calculated':
             return self._extract_calculated(criterion)
