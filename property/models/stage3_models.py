@@ -43,8 +43,8 @@ class Criterion(models.Model):
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
     field_name = models.CharField(max_length=100, blank=True)
 
-    saved_location_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True, null=True, blank=True)
-    poi_type = models.CharField(max_length=100, blank=True, null=True)
+    saved_location_uuid = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True, null=True, blank=True)
+    poi_category = models.CharField(max_length=100, blank=True, null=True)
 
     # Enabled state
     enabled = models.BooleanField(default=True)
@@ -60,7 +60,7 @@ class Criterion(models.Model):
     class Meta:
         db_table = 'criteria'
         ordering = ['rating_criteria', 'name']
-        unique_together = [['saved_location_id', 'rating_criteria'], ['rating_criteria', 'poi_type']]
+        unique_together = [['saved_location_uuid', 'rating_criteria'], ['rating_criteria', 'poi_type']]
 
     def __str__(self):
         return f"{self.name} ({self.rating_criteria.name})"

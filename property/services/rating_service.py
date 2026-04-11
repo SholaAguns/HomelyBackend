@@ -185,15 +185,6 @@ class RatingService:
 
         return True
 
-    def extract_raw_value(self, criterion) -> Any:
-        if criterion.source == 'property':
-            return self._extract_from_property(criterion)
-        elif criterion.source == 'context_report':
-            return self._extract_from_context(criterion)
-        elif criterion.source == 'calculated':
-            return self._extract_calculated(criterion)
-        else:
-            raise ValueError(f"Unknown source type: {criterion.source}")
 
     def _extract_from_property(self, criterion) -> Any:
         """Extract value from property field"""
@@ -205,7 +196,7 @@ class RatingService:
         logger.debug(f"🏠 EXTRACT: Retrieved value: {value}")
         return value
 
-    def _extract_from_context(self, criterion) -> Any:
+    def _extract_from_context_report(self, criterion, data_path) -> Any:
         """Extract value from context data"""
         logger.debug(f"📍 EXTRACT: Getting context data from field '{criterion.field_name}'")
         if not criterion.field_name:
@@ -219,7 +210,6 @@ class RatingService:
             if context_data.status != 'COMPLETE':
                 raise ValueError(f"Context data not available: {criterion.field_name}")
 
-            data_path = self._get_context_value_data_path(criterion.field_name)
 
             # Navigate JSON path
             data = context_data.data
@@ -235,56 +225,6 @@ class RatingService:
             logger.error(f"📍 EXTRACT: Context data not found for field: {criterion.field_name}")
             raise ValueError(f"Context data not found: {criterion.field_name}")
 
-    def _extract_calculated(self, criterion) -> Any:
-        """Extract calculated value (e.g., distance to saved location)"""
-        # For now, only support distance to saved location
-        if 'distance' in criterion.name.lower():
-            return self._get_distance_from_context(criterion)
-
-        raise ValueError(f"Unsupported calculated criterion: {criterion.name}")
-
-    def _get_context_value_data_path(self, field_name):
-        match field_name:
-            case "crime":
-                return "crime_rating"
-            case "mobile":
-                return "scores.overall_coverage"
-            case "broadband":
-                return "max_download_mbps"
-            case "council_tax":
-                return "band"
-            case _:
-                return None
-
-    def _get_distance_from_context(self, criterion) -> float:
-        if not criterion.dealbreaker_threshold or 'saved_location_id' not in criterion.dealbreaker_threshold:
-            raise ValueError("Missing saved_location_id for distance criterion")
-
-        target_location_id = criterion.dealbreaker_threshold['saved_location_id']
-        logger.debug(f"📍 DISTANCE: Retrieving distance for saved_location_id={target_location_id}")
-
-        # Get saved_locations ContextData
-        from property.models import ContextData
-        try:
-            context_data = self.property.context_data.get(service_name='saved_locations')
-
-            if context_data.status != 'COMPLETE':
-                raise ValueError(f"SavedLocation context data not available: {context_data.status}")
-
-            # Find distance for this location in the data
-            distances = context_data.data.get('distances', [])
-            for distance_data in distances:
-                if distance_data['location_id'] == target_location_id:
-                    distance_km = distance_data['distance_km']
-                    logger.debug(f"📍 DISTANCE: Found distance = {distance_km} km")
-                    return distance_km
-
-            # If location not found in context data
-            raise ValueError(f"Distance to saved_location_id={target_location_id} not found in context data")
-
-        except ContextData.DoesNotExist:
-            logger.error(f"📍 DISTANCE: SavedLocation context data not found")
-            raise ValueError("SavedLocation context data not found. Ensure Stage 2 has been completed.")
 
     def score_criterion(self, criterion) -> Tuple[Any, Decimal]:
         field = (criterion.field_name or criterion.name).lower()
@@ -297,8 +237,10 @@ class RatingService:
             return self._score_bathrooms(criterion)
         elif 'bedroom' in field:
             return self._score_bedrooms(criterion)
-        elif 'distance' in field:
-            return self._score_distance(criterion)
+        elif 'saved_locations' in field:
+            return self._score_saved_location_distance(criterion)
+        elif 'poi' in field:
+            return self._score_poi_distance(criterion)
         elif 'council' in field or 'tax' in field:
             return self._score_council_tax(criterion)
         elif 'crime' in field:
@@ -308,7 +250,7 @@ class RatingService:
         elif 'broadband' in field:
             return self._score_broadband(criterion)
         else:
-            return self._score_by_strategy(criterion)
+            raise ValueError(f"No scoring function for criterion with name: {field}")
 
     def _get_min_max_values(self, criterion) -> Tuple[float, float]:
         values = []
@@ -328,7 +270,7 @@ class RatingService:
     def _score_price(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"💰 PRICE: Scoring criterion '{criterion.name}'")
 
-        value = self.extract_raw_value(criterion)
+        value = self._extract_from_property(criterion)
 
         min_val = None
         max_val = None
@@ -364,7 +306,7 @@ class RatingService:
     def _score_bathrooms(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"🚿 BATHROOMS: Scoring criterion '{criterion.name}'")
 
-        value = self.extract_raw_value(criterion)
+        value = self._extract_from_property(criterion)
 
         thresholds = [
             (4, 100.0),
@@ -381,7 +323,7 @@ class RatingService:
     def _score_bedrooms(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"🛏️ BEDROOMS: Scoring criterion '{criterion.name}'")
 
-        value = self.extract_raw_value(criterion)
+        value = self._extract_from_property(criterion)
 
         thresholds = [
             (4, 100.0),
@@ -395,10 +337,70 @@ class RatingService:
         score = score_threshold(float(value), thresholds)
         return value, score
 
-    def _score_distance(self, criterion) -> Tuple[Any, Decimal]:
+    def _score_saved_location_distance(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"📍 DISTANCE: Scoring criterion '{criterion.name}'")
 
-        value = self.extract_raw_value(criterion)
+        if not criterion.saved_location_uuid or criterion.poi_type:
+            raise ValueError("Mising saved_location_id required for distance rating")
+
+        target_location_id = criterion.saved_location_uuid
+
+        # Get saved_locations ContextData
+        from property.models import ContextData
+        try:
+            context_data = self.property.context_data.get(service_name='saved_locations')
+
+            if context_data.status != 'COMPLETE':
+                raise ValueError(f"SavedLocation context data not available: {context_data.status}")
+
+            # Find distance for this location in the data
+            distances = context_data.data.get('distances', [])
+            for distance_data in distances:
+                if distance_data['location_id'] == target_location_id:
+                    distance_km = distance_data['distance_km']
+                    logger.debug(f"📍 DISTANCE: Found distance = {distance_km} km")
+                    return self._score_distance(distance_km)
+
+            # If location not found in context data
+            raise ValueError(f"Distance to saved_location_id={target_location_id} not found in context data")
+
+        except ContextData.DoesNotExist:
+            logger.error(f"📍 DISTANCE: SavedLocation context data not found")
+            raise ValueError("SavedLocation context data not found. Ensure Stage 2 has been completed.")
+
+
+    def _score_poi_distance(self, criterion) -> Tuple[Any, Decimal]:
+        logger.debug(f"📍 DISTANCE: Scoring criterion '{criterion.name}'")
+        if not criterion.saved_location_uuid or criterion.poi_type:
+            raise ValueError("Missing poi_type required for POI distance rating")
+
+        # Get saved_locations ContextData
+        from property.models import ContextData
+        try:
+            context_data = self.property.context_data.get(service_name='poi')
+
+            if context_data.status != 'COMPLETE':
+                raise ValueError(f"POI context data not available: {context_data.status}")
+
+            # Find distance for this poi location in the data
+            places_by_category = context_data.data.get('by_category', [])
+            places = places_by_category[criterion.poi_type]
+
+            if not places:
+                raise ValueError(f"Distance to place of interest={criterion.poi_type} for property {self.property.uuid}  not found in context data")
+
+            nearest_place = min(places, key=lambda p: p['straight_distance_km'] or float('inf'))
+
+            distance_km = nearest_place['straight_distance_km']
+
+            return self._score_distance(distance_km)
+
+        except ContextData.DoesNotExist:
+            logger.error(f"📍 DISTANCE: SavedLocation context data not found")
+            raise ValueError("SavedLocation context data not found. Ensure Stage 2 has been completed.")
+
+    @staticmethod
+    def _score_distance(value) -> Tuple[Any, Decimal]:
 
         thresholds = [
             (1, 100.0),
@@ -425,7 +427,7 @@ class RatingService:
     def _score_council_tax(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"🏛️ COUNCIL_TAX: Scoring criterion '{criterion.name}'")
 
-        value = self.extract_raw_value(criterion)
+        value = self._extract_from_context_report(criterion, 'band')
 
         ordinal_mapping = {
             'A': 100,
@@ -446,7 +448,7 @@ class RatingService:
     def _score_crime(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"🚨 CRIME: Scoring criterion '{criterion.name}'")
 
-        value = self.extract_raw_value(criterion)
+        value = self._extract_from_context_report(criterion, 'crime_rating')
 
         ordinal_mapping = {
             'Very Low': 100,
@@ -465,7 +467,7 @@ class RatingService:
     def _score_mobile(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"📱 MOBILE: Scoring criterion '{criterion.name}'")
 
-        value = self.extract_raw_value(criterion)
+        value = self._extract_from_context_report(criterion, "scores.overall_coverage")
 
         logger.debug(f"📱 MOBILE: Overall coverage score = {value}")
         score = Decimal(str(round(float(value), 2)))
@@ -474,7 +476,7 @@ class RatingService:
     def _score_broadband(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"🌐 BROADBAND: Scoring criterion '{criterion.name}'")
 
-        value = self.extract_raw_value(criterion)
+        value = self._extract_from_context_report(criterion, "max_download_mbps")
 
         thresholds = [
             (300, 100.0),
@@ -488,40 +490,6 @@ class RatingService:
         score = score_threshold(float(value), thresholds)
         return value, score
 
-    def _score_by_strategy(self, criterion) -> Tuple[Any, Decimal]:
-        value = self.extract_raw_value(criterion)
-
-        strategy = criterion.scoring_strategy
-        logger.debug(f"⚙️ STRATEGY: Using {strategy} strategy for '{criterion.name}'")
-
-        if strategy == 'min_max':
-            min_val, max_val = self._get_min_max_values(criterion)
-            if not min_val and not max_val:
-                return value, Decimal('100.00')
-            score = score_min_max(float(value), min_val, max_val)
-            return value, score
-
-        elif strategy == 'inverted':
-            min_val, max_val = self._get_min_max_values(criterion)
-            if not min_val and not max_val:
-                return value, Decimal('100.00')
-            score = score_inverted_min_max(float(value), min_val, max_val)
-            return value, score
-
-        elif strategy == 'ordinal':
-            score = score_ordinal(value, criterion.ordinal_mapping)
-            return value, score
-
-        elif strategy == 'boolean':
-            score = score_boolean(value, criterion.boolean_true_is_better)
-            return value, score
-
-        elif strategy == 'threshold':
-            score = score_threshold(float(value), criterion.thresholds)
-            return value, score
-
-        else:
-            raise ValueError(f"Unknown scoring strategy: {strategy}")
 
 
 def calculate_and_persist_rating(property_id: int) -> Dict:
@@ -530,7 +498,6 @@ def calculate_and_persist_rating(property_id: int) -> Dict:
     logger.info(f"💾 PERSIST: Starting rating calculation and persistence for property_id={property_id}")
 
     property_obj = Property.objects.get(id=property_id)
-    logger.debug(f"💾 PERSIST: Property: {property_obj.uuid} - {property_obj.title}")
 
     # Get rating criteria from project
     project = property_obj.property_lists.first().project
@@ -550,7 +517,6 @@ def calculate_and_persist_rating(property_id: int) -> Dict:
     logger.info(f"💾 PERSIST: Calculation complete - Overall: {overall_rating}, Disqualified: {disqualified}")
 
     # Persist results
-    logger.debug(f"💾 PERSIST: Saving results to property...")
     property_obj.overall_rating = overall_rating
     property_obj.rating_breakdown = breakdown
     property_obj.disqualified = disqualified
