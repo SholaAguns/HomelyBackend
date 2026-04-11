@@ -356,7 +356,8 @@ class RatingService:
             # Find distance for this location in the data
             distances = context_data.data.get('distances', [])
             for distance_data in distances:
-                if distance_data['location_id'] == target_location_id:
+                logger.debug(f"📍 DISTANCE: Checking distance data with name {distance_data['location_name']} and uuid {distance_data['location_uuid']}")
+                if distance_data['location_uuid'] == target_location_id:
                     distance_km = distance_data['distance_km']
                     logger.debug(f"📍 DISTANCE: Found distance = {distance_km} km")
                     return self._score_distance(distance_km)

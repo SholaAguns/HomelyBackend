@@ -43,7 +43,7 @@ class Criterion(models.Model):
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
     field_name = models.CharField(max_length=100, blank=True)
 
-    saved_location_uuid = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True, null=True, blank=True)
+    saved_location_uuid = models.UUIDField(db_index=True, null=True, blank=True)
     poi_category = models.CharField(max_length=100, blank=True, null=True)
 
     # Enabled state
