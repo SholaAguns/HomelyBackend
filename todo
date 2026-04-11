@@ -1,0 +1,26 @@
+P0:
+- Fix Rating POI
+- Sharing project with other users
+- favourites
+- authentication and login/logout issues
+- Improve Property data extraction
+
+P1:
+- look into Zoopla service
+- error handling /logging
+- Review all caching strategies
+- should schools, mobile and broadband be included in rating?
+- Admin dashboard
+- Retest all context reports
+- prices types - per week, per month
+
+P2:
+- populate schools, mobile and broadband db offline data
+- split up rating services into separate files
+- get rid of report_transformers.py
+- Keep criterion score when deleting criterion?
+
+
+P3:
+- Energy Efficiency, EPC Rating, Square Area, Garden, Child Suitable, Furnished Status, Parking, Lease Length
+
