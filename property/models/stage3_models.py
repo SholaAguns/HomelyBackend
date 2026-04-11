@@ -60,7 +60,7 @@ class Criterion(models.Model):
     class Meta:
         db_table = 'criteria'
         ordering = ['rating_criteria', 'name']
-        unique_together = [['saved_location_uuid', 'rating_criteria'], ['rating_criteria', 'poi_type']]
+        unique_together = [['saved_location_uuid', 'rating_criteria'], ['rating_criteria', 'poi_category']]
 
     def __str__(self):
         return f"{self.name} ({self.rating_criteria.name})"

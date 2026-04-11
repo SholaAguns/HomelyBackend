@@ -785,7 +785,7 @@ class CriterionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Criterion
         fields = [
-            'id', 'name', 'source', 'field_name',
+            'id', 'name', 'source', 'field_name', 'saved_location_uuid', 'poi_category',
             'enabled', 'weight', 'is_dealbreaker', 'dealbreaker_threshold',
             'created_at', 'updated_at'
         ]
