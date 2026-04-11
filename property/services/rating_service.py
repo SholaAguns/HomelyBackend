@@ -72,7 +72,7 @@ class RatingService:
 
         for criterion in criteria_list:
             try:
-                logger.debug(f"📊 RATING: Processing criterion '{criterion.name}' (weight: {criterion.weight}, strategy: {criterion.scoring_strategy})")
+                logger.debug(f"📊 RATING: Processing criterion '{criterion.name}' (weight: {criterion.weight})")
 
                 # Step 2 & 3: Extract raw value and score (normalize)
                 raw_value, normalized_score = self.score_criterion(criterion)
@@ -340,7 +340,7 @@ class RatingService:
     def _score_saved_location_distance(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"📍 DISTANCE: Scoring criterion '{criterion.name}'")
 
-        if not criterion.saved_location_uuid or criterion.poi_type:
+        if not criterion.saved_location_uuid:
             raise ValueError("Mising saved_location_id required for distance rating")
 
         target_location_id = criterion.saved_location_uuid
@@ -371,8 +371,8 @@ class RatingService:
 
     def _score_poi_distance(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"📍 DISTANCE: Scoring criterion '{criterion.name}'")
-        if not criterion.saved_location_uuid or criterion.poi_type:
-            raise ValueError("Missing poi_type required for POI distance rating")
+        if not criterion.poi_category:
+            raise ValueError("Missing poi_category required for POI distance rating")
 
         # Get saved_locations ContextData
         from property.models import ContextData
@@ -384,10 +384,10 @@ class RatingService:
 
             # Find distance for this poi location in the data
             places_by_category = context_data.data.get('by_category', [])
-            places = places_by_category[criterion.poi_type]
+            places = places_by_category[criterion.poi_category]
 
             if not places:
-                raise ValueError(f"Distance to place of interest={criterion.poi_type} for property {self.property.uuid}  not found in context data")
+                raise ValueError(f"Distance to place of interest={criterion.poi_category} for property {self.property.uuid}  not found in context data")
 
             nearest_place = min(places, key=lambda p: p['straight_distance_km'] or float('inf'))
 

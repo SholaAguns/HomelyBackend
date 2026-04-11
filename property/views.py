@@ -1160,11 +1160,8 @@ class RatingCriteriaViewSet(viewsets.ModelViewSet):
                 name=criterion.name,
                 source=criterion.source,
                 field_name=criterion.field_name,
-                data_path=criterion.data_path,
-                scoring_strategy=criterion.scoring_strategy,
-                ordinal_mapping=criterion.ordinal_mapping,
-                thresholds=criterion.thresholds,
-                boolean_true_is_better=criterion.boolean_true_is_better,
+                saved_location_uuid=criterion.saved_location_uuid,
+                poi_category=criterion.poi_category,
                 weight=criterion.weight,
                 is_dealbreaker=criterion.is_dealbreaker,
                 dealbreaker_threshold=criterion.dealbreaker_threshold
