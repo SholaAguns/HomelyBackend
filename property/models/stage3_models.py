@@ -32,7 +32,7 @@ class Criterion(models.Model):
 
     SOURCE_CHOICES = [
         ('property', 'Property Field'),
-        ('context', 'Context Report Data'),
+        ('context_report', 'Context Report Data'),
     ]
 
 
