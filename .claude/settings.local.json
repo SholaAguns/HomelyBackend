@@ -20,7 +20,9 @@
       "Bash(xargs grep:*)",
       "Bash(ls:*)",
       "Bash(taskkill //F //IM python.exe)",
-      "Bash(pkill -9 python)"
+      "Bash(pkill -9 python)",
+      "Bash(python manage.py test property.tests.test_rating_service --keepdb)",
+      "Read(//tmp/**)"
     ]
   }
 }
