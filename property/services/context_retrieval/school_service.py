@@ -29,6 +29,8 @@ class SchoolRatingService(IContextService):
         return 'schools'
 
     def validate_property_data(self, property_obj) -> bool:
+        if not property_obj.postcode:
+            raise ValueError("Property must have postcode for school search")
         if not property_obj.latitude or not property_obj.longitude:
             raise ValueError("Property must have latitude/longitude for school search")
 
@@ -37,14 +39,13 @@ class SchoolRatingService(IContextService):
     def get_cache_key(self, property_obj) -> str:
         """Cache by postcode"""
         if property_obj.postcode:
-            postcode_sector = property_obj.postcode.replace(' ', '')[:4].upper()
-            cache_key = f"crime:{postcode_sector}"
-            logger.debug(f"Crime Service: returning cache key with postcode {cache_key}")
+            cache_key = f"schools:{property_obj.postcode}"
+            logger.debug(f"School Service: returning cache key with postcode {cache_key}")
             return cache_key
         lat = round(property_obj.latitude, 4)
         lon = round(property_obj.longitude, 4)
-        cache_key = f"crime:{lat}-{lon}"
-        logger.debug(f"Crime Service: returning cache key with coordinates {cache_key}")
+        cache_key = f"schools:{lat}-{lon}"
+        logger.debug(f"School Service: returning cache key with coordinates {cache_key}")
         return cache_key
 
     def get_cache_ttl(self) -> int:

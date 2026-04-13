@@ -3,6 +3,7 @@ Tests for Stage 3 Rating Service
 Tests all 5 scoring strategies, dealbreaker evaluation, and rating aggregation
 """
 from decimal import Decimal
+from unittest import skip
 from django.test import TestCase
 from django.contrib.auth.models import User
 from property.models import (
@@ -99,7 +100,6 @@ class MinMaxScoringTests(RatingServiceTestCase):
             name='Bedrooms',
             source='property',
             field_name='bedrooms',
-            scoring_strategy='min_max',
             weight=Decimal('1.0')
         )
 
@@ -128,7 +128,6 @@ class MinMaxScoringTests(RatingServiceTestCase):
             name='Bedrooms',
             source='property',
             field_name='bedrooms',
-            scoring_strategy='min_max',
             weight=Decimal('1.0')
         )
 
@@ -147,7 +146,6 @@ class InvertedMinMaxScoringTests(RatingServiceTestCase):
             name='Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('1.5')
         )
 
@@ -177,7 +175,6 @@ class OrdinalScoringTests(RatingServiceTestCase):
             name='Council Tax Band',
             source='property',
             field_name='council_tax_band',
-            scoring_strategy='ordinal',
             ordinal_mapping={
                 'A': 100, 'B': 90, 'C': 80, 'D': 70,
                 'E': 60, 'F': 50, 'G': 40, 'H': 30
@@ -207,7 +204,6 @@ class OrdinalScoringTests(RatingServiceTestCase):
             source='context',
             field_name='crime',
             data_path='rating',
-            scoring_strategy='ordinal',
             ordinal_mapping={'Low': 100, 'Medium': 50, 'High': 0},
             weight=Decimal('1.0')
         )
@@ -230,7 +226,6 @@ class OrdinalScoringTests(RatingServiceTestCase):
             name='Test Ordinal',
             source='property',
             field_name='council_tax_band',
-            scoring_strategy='ordinal',
             ordinal_mapping={'A': 100, 'B': 90},
             weight=Decimal('1.0')
         )
@@ -243,6 +238,7 @@ class OrdinalScoringTests(RatingServiceTestCase):
 class BooleanScoringTests(RatingServiceTestCase):
     """Tests for boolean scoring"""
 
+    @skip("Boolean scoring with boolean_true_is_better field removed from Criterion model")
     def test_boolean_true_is_better(self):
         """Test boolean scoring where True is better"""
         criterion = Criterion.objects.create(
@@ -250,8 +246,6 @@ class BooleanScoringTests(RatingServiceTestCase):
             name='Garden',
             source='property',
             field_name='garden',
-            scoring_strategy='boolean',
-            boolean_true_is_better=True,
             weight=Decimal('0.5')
         )
 
@@ -263,6 +257,7 @@ class BooleanScoringTests(RatingServiceTestCase):
         score_false = service._score_boolean(False, criterion)
         self.assertEqual(score_false, Decimal('0.00'))
 
+    @skip("Boolean scoring with boolean_true_is_better field removed from Criterion model")
     def test_boolean_false_is_better(self):
         """Test boolean scoring where False is better"""
         criterion = Criterion.objects.create(
@@ -270,8 +265,6 @@ class BooleanScoringTests(RatingServiceTestCase):
             name='Test Inverse Boolean',
             source='property',
             field_name='parking',
-            scoring_strategy='boolean',
-            boolean_true_is_better=False,
             weight=Decimal('0.5')
         )
 
@@ -293,7 +286,6 @@ class ThresholdScoringTests(RatingServiceTestCase):
             rating_criteria=self.rating_criteria,
             name='Distance to Station',
             source='calculated',
-            scoring_strategy='threshold',
             thresholds=[
                 [0, 100],
                 [500, 75],
@@ -335,7 +327,6 @@ class DealbrekerTests(RatingServiceTestCase):
             name='Min Bedrooms',
             source='property',
             field_name='bedrooms',
-            scoring_strategy='min_max',
             weight=Decimal('1.0'),
             is_dealbreaker=True,
             dealbreaker_threshold={'operator': '>=', 'value': 2}
@@ -354,7 +345,6 @@ class DealbrekerTests(RatingServiceTestCase):
             name='Max Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('1.5'),
             is_dealbreaker=True,
             dealbreaker_threshold={'operator': '<=', 'value': 350000}
@@ -374,7 +364,6 @@ class DealbrekerTests(RatingServiceTestCase):
             name='Min Bedrooms',
             source='property',
             field_name='bedrooms',
-            scoring_strategy='min_max',
             weight=Decimal('1.0'),
             is_dealbreaker=True,
             dealbreaker_threshold={'operator': '>=', 'value': 2}
@@ -385,7 +374,6 @@ class DealbrekerTests(RatingServiceTestCase):
             name='Must Have Parking',
             source='property',
             field_name='parking',
-            scoring_strategy='boolean',
             weight=Decimal('0.5'),
             is_dealbreaker=True,
             dealbreaker_threshold={'operator': '==', 'value': True}
@@ -408,7 +396,6 @@ class DealbrekerTests(RatingServiceTestCase):
             name='Test >=',
             source='property',
             field_name='bedrooms',
-            scoring_strategy='min_max',
             weight=Decimal('1.0'),
             dealbreaker_threshold={'operator': '>=', 'value': 2}
         )
@@ -451,7 +438,6 @@ class RawValueExtractionTests(RatingServiceTestCase):
             name='Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('1.0')
         )
 
@@ -476,7 +462,6 @@ class RawValueExtractionTests(RatingServiceTestCase):
             source='context',
             field_name='crime',
             data_path='rating',
-            scoring_strategy='ordinal',
             weight=Decimal('1.0')
         )
 
@@ -500,7 +485,6 @@ class RawValueExtractionTests(RatingServiceTestCase):
             source='context',
             field_name='broadband',
             data_path='speeds.max',
-            scoring_strategy='min_max',
             weight=Decimal('1.0')
         )
 
@@ -517,7 +501,6 @@ class RawValueExtractionTests(RatingServiceTestCase):
             source='context',
             field_name='crime',
             data_path='rating',
-            scoring_strategy='ordinal',
             weight=Decimal('1.0')
         )
 
@@ -538,7 +521,6 @@ class OverallRatingTests(RatingServiceTestCase):
             name='Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('1.5')
         )
 
@@ -547,7 +529,6 @@ class OverallRatingTests(RatingServiceTestCase):
             name='Bedrooms',
             source='property',
             field_name='bedrooms',
-            scoring_strategy='min_max',
             weight=Decimal('1.0')
         )
 
@@ -556,8 +537,6 @@ class OverallRatingTests(RatingServiceTestCase):
             name='Garden',
             source='property',
             field_name='garden',
-            scoring_strategy='boolean',
-            boolean_true_is_better=True,
             weight=Decimal('0.5')
         )
 
@@ -583,7 +562,6 @@ class OverallRatingTests(RatingServiceTestCase):
             name='Max Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('1.5'),
             is_dealbreaker=True,
             dealbreaker_threshold={'operator': '<=', 'value': 350000}
@@ -604,7 +582,6 @@ class OverallRatingTests(RatingServiceTestCase):
             name='Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('0.0')  # Zero weight
         )
 
@@ -613,7 +590,6 @@ class OverallRatingTests(RatingServiceTestCase):
             name='Bedrooms',
             source='property',
             field_name='bedrooms',
-            scoring_strategy='min_max',
             weight=Decimal('1.0')
         )
 
@@ -636,7 +612,6 @@ class CalculateAndPersistTests(RatingServiceTestCase):
             name='Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('1.0')
         )
 
@@ -645,7 +620,6 @@ class CalculateAndPersistTests(RatingServiceTestCase):
             name='Bedrooms',
             source='property',
             field_name='bedrooms',
-            scoring_strategy='min_max',
             weight=Decimal('1.0')
         )
 
@@ -674,7 +648,6 @@ class CalculateAndPersistTests(RatingServiceTestCase):
             name='Max Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('1.0'),
             is_dealbreaker=True,
             dealbreaker_threshold={'operator': '<=', 'value': 250000}

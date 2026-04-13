@@ -47,7 +47,6 @@ class CalculatePropertyRatingTaskTest(TestCase):
             name='Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('1.0')
         )
 
@@ -148,7 +147,6 @@ class BulkCalculateRatingsTaskTest(TestCase):
             name='Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('1.0')
         )
 
@@ -269,7 +267,6 @@ class BulkCalculateProjectRatingsTaskTest(TestCase):
             name='Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('1.0')
         )
 
@@ -362,7 +359,6 @@ class RatingTaskIntegrationTest(TestCase):
             name='Price',
             source='property',
             field_name='price',
-            scoring_strategy='inverted',
             weight=Decimal('1.5')
         )
 
@@ -371,7 +367,6 @@ class RatingTaskIntegrationTest(TestCase):
             name='Bedrooms',
             source='property',
             field_name='bedrooms',
-            scoring_strategy='min_max',
             weight=Decimal('1.0')
         )
 

@@ -180,7 +180,9 @@ class SavedLocationModelTest(TestCase):
         location = SavedLocation.objects.create(
             user=self.user,
             name='Work Office',
-            address='10 Downing Street, London',
+            postcode='SW1A 2AA',
+            address_line_1='10 Downing Street',
+            city='London',
             latitude=51.5034,
             longitude=-0.1276
         )
@@ -194,7 +196,9 @@ class SavedLocationModelTest(TestCase):
         location = SavedLocation.objects.create(
             user=self.user,
             name='Work',
-            address='London',
+            postcode='SW1A 1AA',
+            address_line_1='London Office',
+            city='London',
             latitude=51.5,
             longitude=-0.1
         )
@@ -749,7 +753,9 @@ class SavedLocationAPITest(APITestCase):
         """POST /api/property/saved-locations/ creates location"""
         data = {
             'name': 'Work Office',
-            'address': '10 Downing Street, London',
+            'postcode': 'SW1A 2AA',
+            'address_line_1': '10 Downing Street',
+            'city': 'London',
             'latitude': '51.5034',
             'longitude': '-0.1276'
         }
@@ -764,14 +770,18 @@ class SavedLocationAPITest(APITestCase):
         SavedLocation.objects.create(
             user=self.user,
             name='Location 1',
-            address='Address 1',
+            postcode='SW1A 1AA',
+            address_line_1='Address 1',
+            city='London',
             latitude=51.5,
             longitude=-0.1
         )
         SavedLocation.objects.create(
             user=self.user,
             name='Location 2',
-            address='Address 2',
+            postcode='SW1A 2BB',
+            address_line_1='Address 2',
+            city='London',
             latitude=51.6,
             longitude=-0.2
         )
