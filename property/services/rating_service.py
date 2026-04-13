@@ -226,6 +226,16 @@ class RatingService:
             raise ValueError(f"Context data not found: {criterion.field_name}")
 
 
+    def extract_raw_value(self, criterion) -> Any:
+        """Extract raw value for a criterion without scoring"""
+        if criterion.source == 'property':
+            return self._extract_from_property(criterion)
+        elif criterion.source == 'context_report':
+            # For context data, need to know the path - use field_name as path
+            return self._extract_from_context_report(criterion, criterion.field_name)
+        else:
+            raise ValueError(f"Unsupported criterion source: {criterion.source}")
+
     def score_criterion(self, criterion) -> Tuple[Any, Decimal]:
         field = (criterion.field_name or criterion.name).lower()
 
