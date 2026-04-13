@@ -432,26 +432,37 @@ class PropertyListAPITest(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
 
     def test_create_property_list(self):
-        """POST /api/property/property-lists/ creates new list (auto-creates default project)"""
-        data = {'title': 'My Properties'}
-        response = self.client.post('/api/property/property-lists/', data)
+        """POST /api/property/property-lists/ creates new list with search criteria"""
+        data = {
+            'project_uuid': str(self.project.uuid),
+            'search_criteria': {
+                'area': 'London',
+                'bedrooms_min': 2,
+                'price_max': 500000
+            }
+        }
+        response = self.client.post('/api/property/property-lists/', data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['title'], 'My Properties')
+        self.assertIn('title', response.data)  # Title is auto-generated
         self.assertEqual(response.data['owner'], 'testuser')
         self.assertIn('uuid', response.data)
         self.assertIn('project_title', response.data)
 
     def test_create_property_list_with_project(self):
-        """POST /api/property/property-lists/ with explicit project"""
+        """POST /api/property/property-lists/ with explicit project and search criteria"""
         data = {
-            'title': 'My List',
-            'project_uuid': str(self.project.uuid)
+            'project_uuid': str(self.project.uuid),
+            'search_criteria': {
+                'area': 'Manchester',
+                'bedrooms_min': 1,
+                'price_max': 300000
+            }
         }
         response = self.client.post('/api/property/property-lists/', data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['title'], 'My List')
+        self.assertIn('title', response.data)  # Title is auto-generated
         self.assertEqual(response.data['project_title'], 'Test Project')
 
     def test_list_property_lists(self):

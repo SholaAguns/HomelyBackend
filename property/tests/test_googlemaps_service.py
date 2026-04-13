@@ -4,6 +4,7 @@ Tests for GoogleMapsService
 from unittest.mock import Mock, patch, MagicMock
 from decimal import Decimal
 from django.test import TestCase, override_settings
+import requests
 
 from property.services.context_retrieval.googlemaps_service import GoogleMapsService
 
@@ -40,7 +41,7 @@ class GoogleMapsServiceTest(TestCase):
         )
 
     @patch('property.services.context_retrieval.googlemaps_service.requests.get')
-    @patch('property.services.context_retrieval.googlemaps_service.LocationService.calculate_distance')
+    @patch('property.services.context_retrieval.googlemaps_service.calculate_distance')
     def test_search_nearby_places_success(self, mock_distance, mock_get):
         """Test successful nearby places search"""
         # Mock distance calculation
@@ -160,7 +161,7 @@ class GoogleMapsServiceTest(TestCase):
         # Return same response for both train_station and bus_station
         mock_get.return_value = mock_response
 
-        with patch('property.services.context_retrieval.googlemaps_service.LocationService.calculate_distance', return_value=0.3):
+        with patch('property.services.context_retrieval.googlemaps_service.calculate_distance', return_value=0.3):
             with patch.object(self.service, '_get_place_details', return_value=(None, None)):
                 with patch.object(self.service, 'get_route_info', return_value=(None, None)):
                     results = self.service.search_nearby_places(
@@ -254,7 +255,7 @@ class GoogleMapsServiceTest(TestCase):
     @patch('property.services.context_retrieval.googlemaps_service.requests.get')
     def test_get_place_details_api_error(self, mock_get):
         """Test place details gracefully handles API errors"""
-        mock_get.side_effect = Exception('API Error')
+        mock_get.side_effect = requests.exceptions.RequestException('API Error')
 
         # Should not raise, just return None
         website, phone = self.service._get_place_details('ChIJ_test')

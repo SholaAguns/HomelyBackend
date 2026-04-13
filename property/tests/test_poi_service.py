@@ -208,8 +208,7 @@ class POIServiceTest(TestCase):
         self.assertIn('school', result['poi_types'])
         self.assertNotIn('hospital', result['poi_types'])
 
-    @patch.object(POIService, 'geo_service')
-    def test_search_poi_type_cache_hit(self, mock_geo_service):
+    def test_search_poi_type_cache_hit(self):
         """Test _search_poi_type returns cached data"""
         # Set up cache
         cache_key = 'poi:school:51.507:-0.128'
@@ -222,72 +221,74 @@ class POIServiceTest(TestCase):
         ]
         cache.set(cache_key, cached_data, 3600)
 
-        # Call search
-        result = self.service._search_poi_type(
-            self.property,
-            'school',
-            1600
-        )
+        # Mock geo_service to ensure it's not called
+        with patch.object(self.service.geo_service, 'search_nearby_places') as mock_search:
+            # Call search
+            result = self.service._search_poi_type(
+                self.property,
+                'school',
+                1600
+            )
 
-        # Should return cached data without calling API
-        self.assertEqual(result, cached_data)
-        mock_geo_service.search_nearby_places.assert_not_called()
+            # Should return cached data without calling API
+            self.assertEqual(result, cached_data)
+            mock_search.assert_not_called()
 
-    @patch.object(POIService, 'geo_service')
     @patch.object(POIService, '_store_poi_data')
-    def test_search_poi_type_cache_miss(self, mock_store, mock_geo_service):
+    def test_search_poi_type_cache_miss(self, mock_store):
         """Test _search_poi_type fetches from API on cache miss"""
-        # Mock API response
-        mock_geo_service.search_nearby_places.return_value = [
-            {
-                'place_id': 'ChIJ_new',
-                'name': 'New School',
-                'vicinity': '456 New St',
-                'geometry': {'location': {'lat': 51.508, 'lng': -0.129}},
-                'straight_dist': 0.35,
-                'website': 'https://newschool.com',
-                'phone_number': '+44 20 1111 2222',
-                'driving_dist': 0.45,
-                'driving_time': 2.0,
-                'walking_dist': 0.40,
-                'walking_time': 5.0,
-                'gmaps_url': 'https://maps.google.com/?cid=new'
-            }
-        ]
+        # Mock API response on the instance's geo_service
+        with patch.object(self.service.geo_service, 'search_nearby_places') as mock_search:
+            mock_search.return_value = [
+                {
+                    'place_id': 'ChIJ_new',
+                    'name': 'New School',
+                    'vicinity': '456 New St',
+                    'geometry': {'location': {'lat': 51.508, 'lng': -0.129}},
+                    'straight_dist': 0.35,
+                    'website': 'https://newschool.com',
+                    'phone_number': '+44 20 1111 2222',
+                    'driving_dist': 0.45,
+                    'driving_time': 2.0,
+                    'walking_dist': 0.40,
+                    'walking_time': 5.0,
+                    'gmaps_url': 'https://maps.google.com/?cid=new'
+                }
+            ]
 
-        # Call search
-        result = self.service._search_poi_type(
-            self.property,
-            'school',
-            1600
-        )
+            # Call search
+            result = self.service._search_poi_type(
+                self.property,
+                'school',
+                1600
+            )
 
-        # Should call API
-        mock_geo_service.search_nearby_places.assert_called_once()
-        # Should store in DB
-        mock_store.assert_called_once()
-        # Should return formatted results
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]['place_id'], 'ChIJ_new')
+            # Should call API
+            mock_search.assert_called_once()
+            # Should store in DB
+            mock_store.assert_called_once()
+            # Should return formatted results
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]['place_id'], 'ChIJ_new')
 
-        # Check cache was updated
-        cache_key = 'poi:school:51.507:-0.128'
-        cached = cache.get(cache_key)
-        self.assertIsNotNone(cached)
-        self.assertEqual(cached[0]['place_id'], 'ChIJ_new')
+            # Check cache was updated
+            cache_key = 'poi:school:51.507:-0.128'
+            cached = cache.get(cache_key)
+            self.assertIsNotNone(cached)
+            self.assertEqual(cached[0]['place_id'], 'ChIJ_new')
 
-    @patch.object(POIService, 'geo_service')
-    def test_search_poi_type_no_results(self, mock_geo_service):
+    def test_search_poi_type_no_results(self):
         """Test _search_poi_type handles empty results"""
-        mock_geo_service.search_nearby_places.return_value = []
+        with patch.object(self.service.geo_service, 'search_nearby_places') as mock_search:
+            mock_search.return_value = []
 
-        result = self.service._search_poi_type(
-            self.property,
-            'airport',
-            1600
-        )
+            result = self.service._search_poi_type(
+                self.property,
+                'airport',
+                1600
+            )
 
-        self.assertEqual(result, [])
+            self.assertEqual(result, [])
 
     def test_store_poi_data(self):
         """Test _store_poi_data creates PlaceOfInterest records"""
