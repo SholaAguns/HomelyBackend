@@ -659,7 +659,7 @@ class PropertyAPITest(APITestCase):
 
     @patch('property.tasks.retrieve_context_data.delay')
     def test_run_stage2(self, mock_task):
-        """POST /api/property/properties/{uuid}/run_stage2/ triggers Stage 2"""
+        """POST /api/property/properties/{uuid}/run-stage2/ triggers Stage 2"""
         prop = Property.objects.create(
             title='Test Property',
             address_line_1='123 Test St',
@@ -670,7 +670,7 @@ class PropertyAPITest(APITestCase):
         )
         prop.property_lists.add(self.property_list)
 
-        response = self.client.post(f'/api/property/properties/{prop.uuid}/run_stage2/')
+        response = self.client.post(f'/api/property/properties/{prop.uuid}/run-stage2/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['state'], 'STAGE2_IN_PROGRESS')
@@ -679,7 +679,7 @@ class PropertyAPITest(APITestCase):
         self.assertEqual(prop.state, 'STAGE2_IN_PROGRESS')
 
         # Verify Celery task queued
-        mock_task.assert_called_once_with(prop.id)
+        mock_task.assert_called_once_with(prop.id, services=None)
 
     @patch('property.tasks.calculate_property_rating.delay')
     def test_run_stage3(self, mock_task):
