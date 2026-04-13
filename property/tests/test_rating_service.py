@@ -175,6 +175,334 @@ class PriceScoringTests(RatingServiceTestCase):
         self.assertEqual(score, Decimal('0.00'))  # Highest price = worst score
 
 
+class CouncilTaxScoringTests(RatingServiceTestCase):
+    """Tests for _score_council_tax() - ordinal band scoring from context data"""
+
+    def test_council_tax_scoring(self):
+        """Test council tax scoring extracts band from context and scores correctly"""
+        from property.models import ContextData
+
+        # Create context data for property1
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='council_tax',
+            status='COMPLETE',
+            data={'band': 'B', 'annual_amount': 1500}
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Council Tax',
+            source='context_report',
+            field_name='council_tax',
+            weight=Decimal('1.0')
+        )
+
+        service = RatingService(self.property1, self.rating_criteria)
+        raw_value, score = service._score_council_tax(criterion)
+
+        self.assertEqual(raw_value, 'B')
+        self.assertEqual(score, Decimal('85'))  # Band B = 85
+
+    def test_council_tax_different_bands(self):
+        """Test different council tax bands score correctly"""
+        from property.models import ContextData
+
+        # Test Band A (best)
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='council_tax',
+            status='COMPLETE',
+            data={'band': 'A'}
+        )
+
+        # Test Band H (worst)
+        ContextData.objects.create(
+            property=self.property2,
+            service_name='council_tax',
+            status='COMPLETE',
+            data={'band': 'H'}
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Council Tax',
+            source='context_report',
+            field_name='council_tax',
+            weight=Decimal('1.0')
+        )
+
+        # Band A should score 100
+        service = RatingService(self.property1, self.rating_criteria)
+        _, score_a = service._score_council_tax(criterion)
+        self.assertEqual(score_a, Decimal('100'))
+
+        # Band H should score 0
+        service = RatingService(self.property2, self.rating_criteria)
+        _, score_h = service._score_council_tax(criterion)
+        self.assertEqual(score_h, Decimal('0'))
+
+
+class CrimeScoringTests(RatingServiceTestCase):
+    """Tests for _score_crime() - ordinal crime rating scoring from context data"""
+
+    def test_crime_scoring(self):
+        """Test crime scoring extracts rating from context and scores correctly"""
+        from property.models import ContextData
+
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='crime',
+            status='COMPLETE',
+            data={'crime_rating': 'Low', 'total_crimes': 50}
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Crime Rating',
+            source='context_report',
+            field_name='crime',
+            weight=Decimal('1.0')
+        )
+
+        service = RatingService(self.property1, self.rating_criteria)
+        raw_value, score = service._score_crime(criterion)
+
+        self.assertEqual(raw_value, 'Low')
+        self.assertEqual(score, Decimal('75'))  # Low = 75
+
+    def test_crime_rating_levels(self):
+        """Test different crime rating levels score correctly"""
+        from property.models import ContextData
+
+        # Very Low (best)
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='crime',
+            status='COMPLETE',
+            data={'crime_rating': 'Very Low'}
+        )
+
+        # Very High (worst)
+        ContextData.objects.create(
+            property=self.property2,
+            service_name='crime',
+            status='COMPLETE',
+            data={'crime_rating': 'Very High'}
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Crime',
+            source='context_report',
+            field_name='crime',
+            weight=Decimal('1.0')
+        )
+
+        # Very Low should score 100
+        service = RatingService(self.property1, self.rating_criteria)
+        _, score_low = service._score_crime(criterion)
+        self.assertEqual(score_low, Decimal('100'))
+
+        # Very High should score 0
+        service = RatingService(self.property2, self.rating_criteria)
+        _, score_high = service._score_crime(criterion)
+        self.assertEqual(score_high, Decimal('0'))
+
+
+class MobileScoringTests(RatingServiceTestCase):
+    """Tests for _score_mobile() - mobile coverage scoring from context data"""
+
+    def test_mobile_coverage_scoring(self):
+        """Test mobile coverage scoring extracts overall_coverage from context"""
+        from property.models import ContextData
+
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='mobile',
+            status='COMPLETE',
+            data={'scores': {'overall_coverage': 85.5}}
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Mobile Coverage',
+            source='context_report',
+            field_name='mobile',
+            weight=Decimal('1.0')
+        )
+
+        service = RatingService(self.property1, self.rating_criteria)
+        raw_value, score = service._score_mobile(criterion)
+
+        self.assertEqual(raw_value, 85.5)
+        self.assertEqual(score, Decimal('85.50'))  # Score is the coverage value itself
+
+
+class BroadbandScoringTests(RatingServiceTestCase):
+    """Tests for _score_broadband() - threshold-based broadband speed scoring"""
+
+    def test_broadband_speed_scoring(self):
+        """Test broadband speed scoring uses thresholds correctly"""
+        from property.models import ContextData
+
+        # Test with 150 Mbps (should score 75)
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='broadband',
+            status='COMPLETE',
+            data={'max_download_mbps': 150}
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Broadband Speed',
+            source='context_report',
+            field_name='broadband',
+            weight=Decimal('1.0')
+        )
+
+        service = RatingService(self.property1, self.rating_criteria)
+        raw_value, score = service._score_broadband(criterion)
+
+        self.assertEqual(raw_value, 150)
+        self.assertEqual(score, Decimal('75.0'))  # 100-300 Mbps = 75
+
+    def test_broadband_speed_thresholds(self):
+        """Test broadband scoring threshold ranges"""
+        from property.models import ContextData
+
+        # Test 350 Mbps (>300, should score 100)
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='broadband',
+            status='COMPLETE',
+            data={'max_download_mbps': 350}
+        )
+
+        # Test 50 Mbps (30-100 range, should score 50)
+        ContextData.objects.create(
+            property=self.property2,
+            service_name='broadband',
+            status='COMPLETE',
+            data={'max_download_mbps': 50}
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Broadband',
+            source='context_report',
+            field_name='broadband',
+            weight=Decimal('1.0')
+        )
+
+        # 350 Mbps should score 100
+        service = RatingService(self.property1, self.rating_criteria)
+        _, score_high = service._score_broadband(criterion)
+        self.assertEqual(score_high, Decimal('100.0'))
+
+        # 50 Mbps should score 50
+        service = RatingService(self.property2, self.rating_criteria)
+        _, score_mid = service._score_broadband(criterion)
+        self.assertEqual(score_mid, Decimal('50.0'))
+
+
+class SavedLocationDistanceScoringTests(RatingServiceTestCase):
+    """Tests for _score_saved_location_distance() - distance-based scoring"""
+
+    def test_saved_location_distance_scoring(self):
+        """Test distance to saved location scoring"""
+        from property.models import ContextData, SavedLocation
+
+        # Create saved location
+        saved_loc = SavedLocation.objects.create(
+            user=self.user,
+            name='Work',
+            postcode='SW1A 1AA',
+            address_line_1='10 Downing St',
+            city='London',
+            latitude=51.5034,
+            longitude=-0.1276
+        )
+
+        # Create context data with distance to saved location
+        # Expected structure: distances array with location_uuid, location_name, distance_km
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='saved_locations',
+            status='COMPLETE',
+            data={
+                'distances': [
+                    {
+                        'location_uuid': str(saved_loc.uuid),
+                        'location_name': 'Work',
+                        'distance_km': 2.5,
+                        'distance_miles': 1.55
+                    }
+                ]
+            }
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Distance to Work',
+            source='context_report',
+            field_name='saved_locations',
+            saved_location_uuid=saved_loc.uuid,
+            weight=Decimal('1.0')
+        )
+
+        service = RatingService(self.property1, self.rating_criteria)
+        raw_value, score = service._score_saved_location_distance(criterion)
+
+        self.assertEqual(raw_value, 2.5)
+        # 2.5km is in 1-3km range, should score 80
+        self.assertEqual(score, Decimal('80.0'))
+
+
+class POIDistanceScoringTests(RatingServiceTestCase):
+    """Tests for _score_poi_distance() - POI distance scoring"""
+
+    def test_poi_distance_scoring(self):
+        """Test distance to POI scoring"""
+        from property.models import ContextData
+
+        # Create context data with POI distances
+        # Expected structure: poi_types object with category keys, places need 'straight_distance_km'
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='poi',
+            status='COMPLETE',
+            data={
+                'poi_types': {
+                    'supermarket': [
+                        {
+                            'name': 'Tesco',
+                            'straight_distance_km': 0.8,
+                            'distance_miles': 0.5
+                        }
+                    ]
+                }
+            }
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Distance to Supermarket',
+            source='context_report',
+            field_name='poi',
+            poi_category='supermarket',
+            weight=Decimal('1.0')
+        )
+
+        service = RatingService(self.property1, self.rating_criteria)
+        raw_value, score = service._score_poi_distance(criterion)
+
+        self.assertEqual(raw_value, 0.8)
+        # 0.8km is in 0-1km range, should score 100
+        self.assertEqual(score, Decimal('100.00'))
+
+
 class OrdinalScoringTests(RatingServiceTestCase):
     """Tests for ordinal mapping scoring"""
 
