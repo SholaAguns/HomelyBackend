@@ -29,11 +29,10 @@ class CrimeService(IContextService):
 
     def validate_property_data(self, property_obj) -> bool:
         """Check property has postcode and coordinates"""
-        has_postcode_or_coordinates = property_obj.postcode or (property_obj.latitude and property_obj.longitude)
-
-        if not has_postcode_or_coordinates:
-            raise ValueError("Property must have postcode or coordinates to retrieve crime data")
-
+        if not property_obj.postcode:
+            raise ValueError("Property must have postcode for crime search")
+        if not property_obj.latitude or not property_obj.longitude:
+            raise ValueError("Property must have latitude/longitude for crime search")
         return True
 
     def get_cache_key(self, property_obj) -> str:
@@ -54,6 +53,8 @@ class CrimeService(IContextService):
         return self.CACHE_TTL
 
     def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
+        self.ensure_postcode(property_obj)
+        self.ensure_coordinates(property_obj)
         self.validate_property_data(property_obj)
 
         location_id = self._get_location_id(

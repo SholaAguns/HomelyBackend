@@ -224,6 +224,7 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         # Create property list without search criteria
         list_without_criteria = PropertyList.objects.create(
             owner=self.user,
+            project=self.project,
             title='No Criteria List'
         )
 

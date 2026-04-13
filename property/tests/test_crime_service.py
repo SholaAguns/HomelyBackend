@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth.models import User
+import requests
 
 from property.models import Property, PropertyList, Project
 from property.services.context_retrieval import CrimeService
@@ -216,13 +217,18 @@ class CrimeServiceTest(TestCase):
         # Mock responses: 10 successful, 2 failures
         successful_response = Mock()
         successful_response.status_code = 200
+        successful_response.raise_for_status = Mock()
         successful_response.json.return_value = [
             {'category': 'burglary'},
             {'category': 'anti-social-behaviour'}
         ]
 
+        # Create HTTPError for 404 response
         failed_response = Mock()
         failed_response.status_code = 404
+        http_error = requests.exceptions.HTTPError()
+        http_error.response = failed_response
+        failed_response.raise_for_status = Mock(side_effect=http_error)
         failed_response.json.return_value = []
 
         # Create side effect: 10 success, 2 failures
@@ -253,11 +259,14 @@ class CrimeServiceTest(TestCase):
     @patch('property.services.context_retrieval.crime_service.requests.get')
     def test_fetch_crimes_all_months_fail(self, mock_get):
         """Test _fetch_crimes_by_location raises error when all months fail"""
+        # Create HTTPError for 500 response
         failed_response = Mock()
         failed_response.status_code = 500
-        failed_response.raise_for_status.side_effect = Exception("Server error")
+        http_error = requests.exceptions.HTTPError("Server error")
+        http_error.response = failed_response
+        failed_response.raise_for_status = Mock(side_effect=http_error)
 
-        mock_get.side_effect = [failed_response] * 12
+        mock_get.return_value = failed_response
 
         with self.assertRaises(Exception) as context:
             self.service._fetch_crimes_by_location('51.5,-0.1', months_range=13)

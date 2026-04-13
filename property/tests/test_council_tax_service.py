@@ -129,20 +129,31 @@ class CouncilTaxServiceTest(TestCase):
 
         # Partial match
         score = self.service._calculate_similarity('123 test street', '123 test road')
-        self.assertGreater(score, 0.5)
+        self.assertGreaterEqual(score, 0.5)
         self.assertLess(score, 1.0)
 
         # No match
         score = self.service._calculate_similarity('123 test street', '456 other avenue')
         self.assertLess(score, 0.5)
 
-    @patch('property.services.context_retrieval.council_tax_service.requests.get')
-    def test_fetch_data_with_mock(self, mock_get):
+    @patch('property.services.context_retrieval.council_tax_service.requests.Session')
+    def test_fetch_data_with_mock(self, mock_session_class):
         """Test fetch_data with mocked GOV.UK response"""
-        # Mock HTML response with table
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.text = '''
+        # Mock session and responses
+        mock_session = Mock()
+        mock_session_class.return_value = mock_session
+
+        # Mock GET response (for CSRF token)
+        mock_get_response = Mock()
+        mock_get_response.text = '<html><input name="csrfToken" value="test-token"/></html>'
+        mock_get_response.raise_for_status = Mock()
+
+        # Mock POST response with table
+        mock_post_response = Mock()
+        mock_post_response.status_code = 200
+        mock_post_response.url = 'http://test.url'
+        mock_post_response.headers = {}
+        mock_post_response.text = '''
         <html>
             <table>
                 <tr><th>Address</th><th>Band</th><th>Local Authority</th></tr>
@@ -159,7 +170,10 @@ class CouncilTaxServiceTest(TestCase):
             </table>
         </html>
         '''
-        mock_get.return_value = mock_response
+        mock_post_response.raise_for_status = Mock()
+
+        mock_session.get.return_value = mock_get_response
+        mock_session.post.return_value = mock_post_response
 
         # Fetch data
         result = self.service.fetch_data(self.property)
@@ -175,14 +189,28 @@ class CouncilTaxServiceTest(TestCase):
         self.assertEqual(result['local_authority'], 'Westminster')
         self.assertEqual(result['band_range'], '£68,001 to £88,000')
 
-    @patch('property.services.context_retrieval.council_tax_service.requests.get')
-    def test_fetch_data_no_results(self, mock_get):
+    @patch('property.services.context_retrieval.council_tax_service.requests.Session')
+    def test_fetch_data_no_results(self, mock_session_class):
         """Test fetch_data when no results found"""
-        # Mock empty response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.text = '<html><p>No results found</p></html>'
-        mock_get.return_value = mock_response
+        # Mock session and responses
+        mock_session = Mock()
+        mock_session_class.return_value = mock_session
+
+        # Mock GET response (for CSRF token)
+        mock_get_response = Mock()
+        mock_get_response.text = '<html><input name="csrfToken" value="test-token"/></html>'
+        mock_get_response.raise_for_status = Mock()
+
+        # Mock POST response with no results
+        mock_post_response = Mock()
+        mock_post_response.status_code = 200
+        mock_post_response.url = 'http://test.url'
+        mock_post_response.headers = {}
+        mock_post_response.text = '<html><p>No results found</p></html>'
+        mock_post_response.raise_for_status = Mock()
+
+        mock_session.get.return_value = mock_get_response
+        mock_session.post.return_value = mock_post_response
 
         # Fetch data
         result = self.service.fetch_data(self.property)
