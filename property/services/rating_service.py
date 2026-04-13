@@ -384,7 +384,7 @@ class RatingService:
                 raise ValueError(f"POI context data not available: {context_data.status}")
 
             # Find distance for this poi location in the data
-            places_by_category = context_data.data.get('by_category', {})
+            places_by_category = context_data.data.get('poi_types', {})
             logger.debug(f"📍 POI: Available categories: {list(places_by_category.keys())}")
             logger.debug(f"📍 POI: Looking for category: {criterion.poi_category}")
             places = places_by_category[criterion.poi_category]

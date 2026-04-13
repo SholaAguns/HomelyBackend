@@ -295,17 +295,6 @@ class POIService(IContextService):
         types_searched: List[str],
         radius: int
     ) -> Dict[str, Any]:
-        """
-        Format final response data for ContextData.data field.
-
-        Args:
-            all_pois: Dict mapping place_type to list of places
-            types_searched: List of POI types searched
-            radius: Search radius used
-
-        Returns:
-            Formatted response dict
-        """
         total_pois = sum(len(places) for places in all_pois.values())
 
         return {
