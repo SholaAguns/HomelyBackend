@@ -4,7 +4,7 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
-from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, Project, TaskList, Task
+from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, Project, TaskList, Task, ProjectInvitation, AppNotification
 from property.models.stage2_models import ContextOptions
 from property.models.stage3_models import RatingCriteria, Criterion, CriterionScore
 from property.models.models_poi import PlaceOfInterest
@@ -917,3 +917,74 @@ class PropertyComparisonSerializer(serializers.Serializer):
     disqualified = serializers.BooleanField()
     disqualification_reason = serializers.CharField(allow_blank=True)
     state = serializers.CharField()
+
+
+class MemberSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+
+
+class ProjectMembersSerializer(serializers.Serializer):
+    owner = MemberSerializer()
+    viewers = MemberSerializer(many=True)
+    contributors = MemberSerializer(many=True)
+
+
+class ProjectInvitationSerializer(serializers.ModelSerializer):
+    invited_by_email = serializers.ReadOnlyField(source='invited_by.email')
+    invited_by_name = serializers.SerializerMethodField()
+    project_title = serializers.ReadOnlyField(source='project.title')
+    invite_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProjectInvitation
+        fields = [
+            'uuid', 'invited_email', 'role', 'status',
+            'invited_by_email', 'invited_by_name', 'project_title',
+            'invite_url', 'expires_at', 'created_at', 'accepted_at',
+        ]
+        read_only_fields = fields
+
+    def get_invited_by_name(self, obj):
+        return f"{obj.invited_by.first_name} {obj.invited_by.last_name}".strip() or obj.invited_by.email
+
+    def get_invite_url(self, obj):
+        return self.context.get('invite_url')
+
+
+class InvitePreviewSerializer(serializers.Serializer):
+    project_uuid = serializers.UUIDField()
+    project_title = serializers.CharField()
+    invited_by_name = serializers.CharField()
+    invited_by_email = serializers.EmailField()
+    role = serializers.CharField()
+    expires_at = serializers.DateTimeField()
+
+
+class UserSearchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email', 'first_name', 'last_name']
+
+
+class AppNotificationSerializer(serializers.ModelSerializer):
+    actor_email = serializers.SerializerMethodField()
+    actor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AppNotification
+        fields = [
+            'uuid', 'notification_type', 'title', 'message',
+            'related_object_uuid', 'related_object_type',
+            'is_read', 'created_at', 'actor_email', 'actor_name',
+        ]
+        read_only_fields = fields
+
+    def get_actor_email(self, obj):
+        return obj.actor.email if obj.actor else None
+
+    def get_actor_name(self, obj):
+        if not obj.actor:
+            return None
+        return f"{obj.actor.first_name} {obj.actor.last_name}".strip() or obj.actor.email

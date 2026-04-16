@@ -24,7 +24,8 @@
       "Bash(python manage.py test property.tests.test_rating_service --keepdb)",
       "Read(//tmp/**)",
       "Bash(python3 -c \"import sys; sys.stdout.buffer.write\\(open\\('/c/Repos/HomelyBackend/requirements.txt', 'rb'\\).read\\(\\)\\)\")",
-      "Bash(iconv -f UTF-16 -t UTF-8 /c/Repos/HomelyBackend/requirements.txt)"
+      "Bash(iconv -f UTF-16 -t UTF-8 /c/Repos/HomelyBackend/requirements.txt)",
+      "Bash(DJANGO_SETTINGS_MODULE=homely_core.settings.dev python *)"
     ]
   }
 }
