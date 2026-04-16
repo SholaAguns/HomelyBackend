@@ -362,7 +362,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         invitation.save(update_fields=['status'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['delete'], url_path=r'members/(?P<member_email>[^/.]+)')
+    @action(detail=True, methods=['delete'], url_path=r'members/(?P<member_email>[^/]+)')
     def remove_member(self, request, uuid=None, member_email=None):
         """DELETE /api/property/projects/{uuid}/members/{member_email}/"""
         project = self.get_object()
