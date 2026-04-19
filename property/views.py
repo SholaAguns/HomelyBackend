@@ -420,16 +420,15 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if not token:
             return Response({'error': 'token is required.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            verify_invite_token(token)
+            invitation_uuid = verify_invite_token(token)
         except signing.SignatureExpired:
             return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
         except signing.BadSignature:
             return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
 
-        token_hash_val = hash_token(token)
         try:
             invitation = ProjectInvitation.objects.select_related('project', 'invited_by').get(
-                token_hash=token_hash_val, status='pending'
+                uuid=invitation_uuid, status='pending'
             )
         except ProjectInvitation.DoesNotExist:
             return Response({'error': 'invitation_already_used'}, status=status.HTTP_400_BAD_REQUEST)
@@ -452,16 +451,15 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if not token:
             return Response({'error': 'token is required.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            verify_invite_token(token)
+            invitation_uuid = verify_invite_token(token)
         except signing.SignatureExpired:
             return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
         except signing.BadSignature:
             return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
 
-        token_hash_val = hash_token(token)
         try:
             invitation = ProjectInvitation.objects.select_related('project', 'invited_by').get(
-                token_hash=token_hash_val, status='pending'
+                uuid=invitation_uuid, status='pending'
             )
         except ProjectInvitation.DoesNotExist:
             return Response({'error': 'invitation_already_used'}, status=status.HTTP_400_BAD_REQUEST)
@@ -499,16 +497,15 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if not token:
             return Response({'error': 'token is required.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            verify_invite_token(token)
+            invitation_uuid = verify_invite_token(token)
         except signing.SignatureExpired:
             return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
         except signing.BadSignature:
             return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
 
-        token_hash_val = hash_token(token)
         try:
             invitation = ProjectInvitation.objects.select_related('project', 'invited_by').get(
-                token_hash=token_hash_val, status='pending'
+                uuid=invitation_uuid, status='pending'
             )
         except ProjectInvitation.DoesNotExist:
             return Response({'error': 'invitation_already_used'}, status=status.HTTP_400_BAD_REQUEST)
