@@ -396,6 +396,23 @@ class ProjectViewSet(viewsets.ModelViewSet):
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=['get'], url_path='my-invite')
+    def my_invite(self, request):
+        """GET /api/property/projects/my-invite/?project_uuid=... — returns token for current user's pending invite"""
+        project_uuid = request.query_params.get('project_uuid', '')
+        if not project_uuid:
+            return Response({'error': 'project_uuid is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            invitation = ProjectInvitation.objects.get(
+                project__uuid=project_uuid,
+                invited_email__iexact=request.user.email,
+                status='pending',
+            )
+        except ProjectInvitation.DoesNotExist:
+            return Response({'error': 'No pending invitation found.'}, status=status.HTTP_404_NOT_FOUND)
+        token = generate_invite_token(str(invitation.uuid))
+        return Response({'token': token})
+
     @action(detail=False, methods=['get'], url_path='preview-invite', permission_classes=[AllowAny])
     def preview_invite(self, request):
         """GET /api/property/projects/preview-invite/?token=... — no auth required"""

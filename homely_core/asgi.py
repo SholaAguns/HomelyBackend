@@ -10,8 +10,8 @@ https://docs.djangoproject.com/en/6.0/howto/deployment/asgi/
 import os
 import logging
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
 from django.core.asgi import get_asgi_application
+from homely_core.middleware import JwtAuthMiddlewareStack
 
 logger = logging.getLogger('homely_core.asgi')
 
@@ -33,7 +33,7 @@ logger.info("=" * 80)
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": AuthMiddlewareStack(
+    "websocket": JwtAuthMiddlewareStack(
         URLRouter(
             websocket_urlpatterns
         )
