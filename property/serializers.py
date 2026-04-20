@@ -61,15 +61,13 @@ class ProjectSerializer(serializers.ModelSerializer):
     property_lists_count = serializers.SerializerMethodField()
     viewers = serializers.SlugRelatedField(
         slug_field='email',
-        queryset=User.objects.all(),
         many=True,
-        required=False
+        read_only=True
     )
     contributors = serializers.SlugRelatedField(
         slug_field='email',
-        queryset=User.objects.all(),
         many=True,
-        required=False
+        read_only=True
     )
     # Use UUID for rating_criteria (consistent with RatingCriteriaViewSet lookup)
     rating_criteria = serializers.SlugRelatedField(
