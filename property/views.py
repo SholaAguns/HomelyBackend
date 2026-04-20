@@ -44,6 +44,36 @@ class ProjectViewSet(viewsets.ModelViewSet):
             Q(contributors=user)
         ).distinct()
 
+    def update(self, request, *args, **kwargs):
+        """Update project - owner or contributor only"""
+        project = self.get_object()
+        if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+            return Response(
+                {'error': 'Only owners and contributors can update projects.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update project - owner or contributor only"""
+        project = self.get_object()
+        if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+            return Response(
+                {'error': 'Only owners and contributors can update projects.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete project - owner only"""
+        project = self.get_object()
+        if project.owner != request.user:
+            return Response(
+                {'error': 'Only the project owner can delete projects.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=True, methods=['get'], url_path='context-options')
     def context_options(self, request, uuid=None):
         """
@@ -81,6 +111,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
         Update project context options.
         """
         project = self.get_object()
+
+        if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+            return Response(
+                {'error': 'Only owners and contributors can update context options.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         context_options, created = ContextOptions.objects.get_or_create(
             project=project
@@ -167,6 +203,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
             })
 
         # PUT/PATCH - Set rating criteria
+        if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+            return Response(
+                {'error': 'Only owners and contributors can update rating criteria.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         rating_criteria_uuid = request.data.get('rating_criteria_uuid')
 
         if not rating_criteria_uuid:
@@ -209,6 +251,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
         Trigger rating calculation for all eligible properties in project.
         """
         project = self.get_object()
+
+        if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+            return Response(
+                {'error': 'Only owners and contributors can run bulk stage 3.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         if not project.rating_criteria:
             return Response(
@@ -631,6 +679,39 @@ class PropertyListViewSet(viewsets.ModelViewSet):
             return PropertyListDetailSerializer
         return PropertyListSerializer
 
+    def update(self, request, *args, **kwargs):
+        """Update property list - owner or contributor only"""
+        property_list = self.get_object()
+        project = property_list.project
+        if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+            return Response(
+                {'error': 'Only owners and contributors can update property lists.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update property list - owner or contributor only"""
+        property_list = self.get_object()
+        project = property_list.project
+        if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+            return Response(
+                {'error': 'Only owners and contributors can update property lists.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete property list - owner or contributor only"""
+        property_list = self.get_object()
+        project = property_list.project
+        if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+            return Response(
+                {'error': 'Only owners and contributors can delete property lists.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
     def create(self, request, *args, **kwargs):
         """
         POST /api/property/property-lists/
@@ -904,8 +985,13 @@ class PropertyViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
 
     def get_queryset(self):
-        """Filter to properties in user's lists"""
-        queryset = Property.objects.filter(property_lists__owner=self.request.user).distinct()
+        """Filter to properties in accessible projects"""
+        user = self.request.user
+        queryset = Property.objects.filter(
+            Q(property_lists__project__owner=user) |
+            Q(property_lists__project__viewers=user) |
+            Q(property_lists__project__contributors=user)
+        ).distinct()
 
         # Optional filter by property_list uuid
         property_list_uuid = self.request.query_params.get('property_list')
@@ -920,6 +1006,45 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return PropertyDetailSerializer
         return PropertySerializer
 
+    def update(self, request, *args, **kwargs):
+        """Update property - owner or contributor only"""
+        property_obj = self.get_object()
+        for prop_list in property_obj.property_lists.all():
+            project = prop_list.project
+            if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+                return Response(
+                    {'error': 'Only owners and contributors can update properties.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            break
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update property - owner or contributor only"""
+        property_obj = self.get_object()
+        for prop_list in property_obj.property_lists.all():
+            project = prop_list.project
+            if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+                return Response(
+                    {'error': 'Only owners and contributors can update properties.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            break
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete property - owner or contributor only"""
+        property_obj = self.get_object()
+        for prop_list in property_obj.property_lists.all():
+            project = prop_list.project
+            if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+                return Response(
+                    {'error': 'Only owners and contributors can delete properties.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            break
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=True, methods=['post'], url_path='run-stage2')
     def run_stage2(self, request, uuid=None):
         """Trigger Stage 2 context retrieval (NEW → STAGE2_IN_PROGRESS)
@@ -927,6 +1052,16 @@ class PropertyViewSet(viewsets.ModelViewSet):
         Optional body: { "services": ["crime", "schools"] } to run specific services
         """
         property_obj = self.get_object()
+
+        for prop_list in property_obj.property_lists.all():
+            project = prop_list.project
+            if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+                return Response(
+                    {'error': 'Only owners and contributors can run stage 2.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            break
+
         services = request.data.get('services', None)
 
         try:
@@ -952,6 +1087,15 @@ class PropertyViewSet(viewsets.ModelViewSet):
         """Trigger Stage 3 rating calculation (STAGE2_COMPLETE → STAGE3_IN_PROGRESS)"""
         property_obj = self.get_object()
 
+        for prop_list in property_obj.property_lists.all():
+            project = prop_list.project
+            if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+                return Response(
+                    {'error': 'Only owners and contributors can run stage 3.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            break
+
         try:
             property_obj.run_stage3()
             property_obj.save()
@@ -974,6 +1118,15 @@ class PropertyViewSet(viewsets.ModelViewSet):
     def rerun_services(self, request, uuid=None):
         """Rerun context services (STAGE2_COMPLETE/STAGE3_* → STAGE2_IN_PROGRESS)"""
         property_obj = self.get_object()
+
+        for prop_list in property_obj.property_lists.all():
+            project = prop_list.project
+            if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+                return Response(
+                    {'error': 'Only owners and contributors can rerun services.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            break
 
         try:
             property_obj.rerun_services()
@@ -1300,13 +1453,16 @@ class PropertyViewSet(viewsets.ModelViewSet):
         property_list = None
         if property_list_uuid:
             try:
-                property_list = PropertyList.objects.get(
-                    uuid=property_list_uuid,
-                    owner=request.user
-                )
+                property_list = PropertyList.objects.get(uuid=property_list_uuid)
+                project = property_list.project
+                if project.owner != request.user and not project.contributors.filter(id=request.user.id).exists():
+                    return Response(
+                        {'error': 'Only owners and contributors can add properties to this list.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
             except PropertyList.DoesNotExist:
                 return Response(
-                    {'error': 'Property list not found or access denied'},
+                    {'error': 'Property list not found'},
                     status=status.HTTP_404_NOT_FOUND
                 )
 
