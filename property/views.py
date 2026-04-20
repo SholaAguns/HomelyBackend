@@ -643,11 +643,18 @@ class PropertyListViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter to lists in accessible projects"""
         user = self.request.user
-        return PropertyList.objects.filter(
+        queryset = PropertyList.objects.filter(
             Q(project__owner=user) |
             Q(project__viewers=user) |
             Q(project__contributors=user)
         ).distinct()
+
+        # Optional filter by project uuid
+        project_uuid = self.request.query_params.get('project')
+        if project_uuid:
+            queryset = queryset.filter(project__uuid=project_uuid)
+
+        return queryset
 
     def get_serializer_class(self):
         """Use detailed serializer for retrieve action"""
