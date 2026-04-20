@@ -3,3 +3,16 @@ claude --model claude-sonnet-4-5-20250929 --add-dir ../HomelyFrontend
 uvicorn homely_core.asgi:application --reload
 
 claude --add-dir ../HomelyFrontend
+
+Let's explore ensuring all the authorisation/permissions features are implemented:
+
+[Projects]
+Read access: Owners, contributors and viewers
+Write access: (excluding deletion): Owners and contributors
+Full write access: Owners only
+
+[For items relating to the shared project]
+Context options: Same permissions as projects
+Rating criteria: Same permissions as projects
+PropertyList: Owners and contributors have full access
+Properties: Owners and contributors have full access

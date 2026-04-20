@@ -30,7 +30,8 @@
       "Bash(npx ng *)",
       "Bash(grep -v \"^$\")",
       "Bash(git -C /c/Repos/HomelyFrontend stash)",
-      "Bash(git -C /c/Repos/HomelyFrontend stash -- src/app/core src/app/features src/app/shared src/app/app.routes.ts)"
+      "Bash(git -C /c/Repos/HomelyFrontend stash -- src/app/core src/app/features src/app/shared src/app/app.routes.ts)",
+      "Bash(tee /tmp/test_output.txt)"
     ]
   }
 }

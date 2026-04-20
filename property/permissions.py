@@ -5,12 +5,16 @@ from rest_framework import status
 
 def get_project_from_object(obj):
     """Extract project from various object types"""
-    if hasattr(obj, 'project'):
+    from property.models.stage1_models import Project
+
+    if isinstance(obj, Project):
+        return obj
+    elif hasattr(obj, 'project'):
         return obj.project
     elif hasattr(obj, 'property_lists'):
         prop_list = obj.property_lists.first()
         return prop_list.project if prop_list else None
-    return obj
+    return None
 
 
 def check_project_owner(user, project):
