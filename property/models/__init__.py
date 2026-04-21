@@ -1,6 +1,6 @@
 from .stage1_models import (
     Project, TaskList, Task,
-    SearchCriteria, PropertyList, Property,
+    SearchCriteria, PropertyList, Property, PropertyFavorite,
     PropertyImage, SavedLocation, PropertyListTask,
     StateTransitionLog, ProjectInvitation, AppNotification
 )
@@ -18,6 +18,7 @@ __all__ = [
     'SearchCriteria',
     'PropertyList',
     'Property',
+    'PropertyFavorite',
     'PropertyImage',
     'SavedLocation',
     'PropertyListTask',

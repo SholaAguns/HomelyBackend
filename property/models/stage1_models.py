@@ -287,6 +287,26 @@ class Property(models.Model):
         return completed == len(enabled_services)
 
 
+class PropertyFavorite(models.Model):
+    """User's favorited properties"""
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorited_properties')
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='favorited_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'property_favorites'
+        unique_together = [['user', 'property']]
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} → {self.property.title}"
+
+
 class PropertyImage(models.Model):
     """Images for a property from external sources"""
 

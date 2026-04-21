@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from property.views import (
     ProjectViewSet, TaskListViewSet, TaskViewSet,
     PropertyListViewSet, PropertyViewSet, SavedLocationViewSet, SchoolViewSet,
-    RatingCriteriaViewSet, NotificationViewSet
+    RatingCriteriaViewSet, NotificationViewSet, PropertyFavoriteViewSet
 )
 from property.admin_views import (
     SchoolAdminViewSet, upload_broadband_data, upload_mobile_data,
@@ -23,6 +23,7 @@ router.register(r'properties', PropertyViewSet, basename='property')
 router.register(r'saved-locations', SavedLocationViewSet, basename='savedlocation')
 router.register(r'rating-criteria', RatingCriteriaViewSet, basename='ratingcriteria')
 router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'favorites', PropertyFavoriteViewSet, basename='favorites')
 router.register(r'admin/schools', SchoolAdminViewSet, basename='admin-schools')
 
 # Admin CRUD routes

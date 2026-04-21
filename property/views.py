@@ -281,6 +281,34 @@ class ProjectViewSet(viewsets.ModelViewSet):
             'properties': serializer.data
         })
 
+    @action(detail=True, methods=['get'], url_path='favorites')
+    def favorites(self, request, uuid=None):
+        """
+        GET /api/property/projects/{uuid}/favorites/
+
+        Get all favorited properties in this project for current user.
+        """
+        project = self.get_object()
+
+        # Get user's favorited properties in this project
+        favorites = PropertyFavorite.objects.filter(
+            property__property_lists__project=project
+        ).select_related('property').distinct()
+
+        properties = [fav.property for fav in favorites]
+        serializer = PropertySerializer(
+            properties,
+            many=True,
+            context={'request': request}
+        )
+
+        return Response({
+            'project_id': str(project.uuid),
+            'project_name': project.title,
+            'total_favorites': len(properties),
+            'properties': serializer.data
+        })
+
     @action(detail=True, methods=['get'], url_path='members')
     def members(self, request, uuid=None):
         """GET /api/property/projects/{uuid}/members/"""
@@ -1570,3 +1598,103 @@ class RatingCriteriaViewSet(viewsets.ModelViewSet):
 
         serializer = RatingCriteriaSerializer(new_criteria)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class PropertyFavoriteViewSet(viewsets.ViewSet):
+    """
+    ViewSet for Property Favorites.
+    Users can favorite/unfavorite properties and list their favorites.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        """
+        GET /api/property/favorites/
+
+        List all properties user has favorited (across all accessible projects).
+        """
+        # Get user's accessible projects
+        accessible_projects = Project.objects.filter(
+            Q(owner=request.user) | Q(viewers=request.user) | Q(contributors=request.user)
+        ).distinct()
+
+        # Get favorited properties that belong to accessible projects
+        favorites = PropertyFavorite.objects.filter(
+            user=request.user,
+            property__property_lists__project__in=accessible_projects
+        ).select_related('property').distinct()
+
+        # Serialize properties with project info
+        properties = [fav.property for fav in favorites]
+        serializer = PropertySerializer(
+            properties,
+            many=True,
+            context={'request': request}
+        )
+
+        return Response(serializer.data)
+
+    def create(self, request):
+        """
+        POST /api/property/favorites/
+        Body: {"property_uuid": "<uuid>"}
+
+        Add property to user's favorites.
+        """
+        property_uuid = request.data.get('property_uuid')
+
+        if not property_uuid:
+            return Response(
+                {'error': 'property_uuid is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            property_obj = Property.objects.get(uuid=property_uuid)
+        except Property.DoesNotExist:
+            return Response(
+                {'error': 'Property not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check user has access to at least one project containing this property
+        accessible_projects = Project.objects.filter(
+            Q(owner=request.user) | Q(viewers=request.user) | Q(contributors=request.user),
+            property_lists__properties=property_obj
+        ).distinct()
+
+        if not accessible_projects.exists():
+            return Response(
+                {'error': 'You do not have access to this property'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Create or get favorite
+        favorite, created = PropertyFavorite.objects.get_or_create(
+            user=request.user,
+            property=property_obj
+        )
+
+        return Response(
+            {'status': 'added' if created else 'already_favorited'},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        )
+
+    def destroy(self, request, pk=None):
+        """
+        DELETE /api/property/favorites/{property_uuid}/
+
+        Remove property from user's favorites.
+        """
+        try:
+            favorite = PropertyFavorite.objects.get(
+                user=request.user,
+                property__uuid=pk
+            )
+            favorite.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except PropertyFavorite.DoesNotExist:
+            return Response(
+                {'error': 'Favorite not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
