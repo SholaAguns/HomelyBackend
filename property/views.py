@@ -552,6 +552,21 @@ class ProjectViewSet(viewsets.ModelViewSet):
         )
         return Response({'detail': 'Invitation declined.'})
 
+    @action(detail=True, methods=['get'], url_path='user-role')
+    def user_role(self, request, uuid=None):
+        """GET /api/property/projects/{uuid}/user-role/ - returns user's role in project"""
+        project = self.get_object()
+        user = request.user
+
+        if project.owner == user:
+            return Response({'role': 'owner'})
+        elif project.contributors.filter(pk=user.pk).exists():
+            return Response({'role': 'contributor'})
+        elif project.viewers.filter(pk=user.pk).exists():
+            return Response({'role': 'viewer'})
+        else:
+            return Response({'role': None})
+
 
 class NotificationViewSet(viewsets.GenericViewSet):
     """ViewSet for in-app notifications."""
