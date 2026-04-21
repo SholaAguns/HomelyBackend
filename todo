@@ -13,6 +13,7 @@ P1:
 - Admin dashboard
 - Retest all context reports
 - prices types - per week, per month
+- Endpoint for user to leave project
 
 P2:
 - populate schools, mobile and broadband db offline data

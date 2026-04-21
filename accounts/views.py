@@ -11,6 +11,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from .serializers import (
     RegisterSerializer,
@@ -23,6 +24,7 @@ from .serializers import (
     PasswordResetConfirmSerializer
 )
 from .models import UserProfile
+from property.serializers import UserSearchSerializer
 
 
 class RegisterView(generics.CreateAPIView):
@@ -265,3 +267,16 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         request.user.save()
 
         return Response({'message': 'Password updated successfully'})
+
+    @action(detail=False, methods=['get'], url_path='search')
+    def search(self, request):
+        """GET /api/accounts/users/search/?q=<string> — search users by name or email"""
+        q = request.query_params.get('q', '').strip()
+        if len(q) < 2:
+            return Response([])
+        qs = User.objects.filter(
+            Q(email__icontains=q) |
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q)
+        ).exclude(pk=request.user.pk)[:10]
+        return Response(UserSearchSerializer(qs, many=True).data)

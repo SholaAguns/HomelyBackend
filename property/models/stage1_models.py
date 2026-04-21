@@ -440,3 +440,82 @@ class StateTransitionLog(models.Model):
 
     def __str__(self):
         return f"{self.from_state} → {self.to_state} ({self.timestamp})"
+
+
+class ProjectInvitation(models.Model):
+    """Tracks share invitations sent to users (existing or not yet registered)"""
+
+    ROLE_CHOICES = [
+        ('viewer', 'Viewer'),
+        ('contributor', 'Contributor'),
+    ]
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('declined', 'Declined'),
+        ('revoked', 'Revoked'),
+    ]
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='invitations')
+    invited_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_invitations')
+    invited_email = models.EmailField(db_index=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    token_hash = models.CharField(max_length=64, unique=True, db_index=True)
+    accepted_by = models.ForeignKey(
+        User, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='accepted_invitations'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        db_table = 'project_invitations'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['project', 'status']),
+            models.Index(fields=['invited_email', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.invited_email} → {self.project.title} ({self.status})"
+
+
+class AppNotification(models.Model):
+    """In-app notifications for users — extensible to any event type"""
+
+    NOTIFICATION_TYPE_CHOICES = [
+        ('invite_received', 'Invite Received'),
+        ('invite_accepted', 'Invite Accepted'),
+        ('invite_declined', 'Invite Declined'),
+        ('member_removed', 'Member Removed'),
+    ]
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    actor = models.ForeignKey(
+        User, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='triggered_notifications'
+    )
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPE_CHOICES)
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    related_object_uuid = models.UUIDField(null=True, blank=True)
+    related_object_type = models.CharField(max_length=50, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'app_notifications'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['recipient', 'is_read', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.notification_type} → {self.recipient.username}"

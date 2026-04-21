@@ -1,10 +1,15 @@
 import logging
 
+from django.conf import settings
+from django.contrib.auth.models import User
+from django.core import signing
+from django.core.mail import send_mail
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 logger = logging.getLogger('property.views')
@@ -16,6 +21,9 @@ from property.models.stage3_models import RatingCriteria, Criterion, CriterionSc
 from property.models.models_poi import PlaceOfInterest
 from property.tasks import retrieve_context_data, calculate_property_rating, scrape_rightmove_properties, bulk_calculate_project_ratings
 from property.services import property_creation_service_factory
+from property.utils.invitation_tokens import generate_invite_token, verify_invite_token, hash_token
+from property.utils.notifications import create_notification
+from property.permissions import require_project_owner, require_project_contributor, check_project_contributor
 from django.db.models import Q
 
 
@@ -36,6 +44,21 @@ class ProjectViewSet(viewsets.ModelViewSet):
             Q(viewers=user) |
             Q(contributors=user)
         ).distinct()
+
+    @require_project_contributor()
+    def update(self, request, *args, **kwargs):
+        """Update project - owner or contributor only"""
+        return super().update(request, *args, **kwargs)
+
+    @require_project_contributor()
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update project - owner or contributor only"""
+        return super().partial_update(request, *args, **kwargs)
+
+    @require_project_owner()
+    def destroy(self, request, *args, **kwargs):
+        """Delete project - owner only"""
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=['get'], url_path='context-options')
     def context_options(self, request, uuid=None):
@@ -67,6 +90,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     @context_options.mapping.put
     @context_options.mapping.patch
+    @require_project_contributor()
     def update_context_options(self, request, uuid=None):
         """
         PUT/PATCH /api/property/projects/{uuid}/context-options/
@@ -160,6 +184,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
             })
 
         # PUT/PATCH - Set rating criteria
+        if not check_project_contributor(request.user, project):
+            return Response(
+                {'error': 'Only owners and contributors can update rating criteria.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         rating_criteria_uuid = request.data.get('rating_criteria_uuid')
 
         if not rating_criteria_uuid:
@@ -195,6 +225,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=True, methods=['post'], url_path='run-stage3-bulk')
+    @require_project_contributor()
     def run_stage3_bulk(self, request, uuid=None):
         """
         POST /api/projects/{uuid}/run-stage3-bulk/
@@ -250,6 +281,330 @@ class ProjectViewSet(viewsets.ModelViewSet):
             'properties': serializer.data
         })
 
+    @action(detail=True, methods=['get'], url_path='members')
+    def members(self, request, uuid=None):
+        """GET /api/property/projects/{uuid}/members/"""
+        project = self.get_object()
+        data = {
+            'owner': {'email': project.owner.email, 'first_name': project.owner.first_name, 'last_name': project.owner.last_name},
+            'viewers': [{'email': u.email, 'first_name': u.first_name, 'last_name': u.last_name} for u in project.viewers.all()],
+            'contributors': [{'email': u.email, 'first_name': u.first_name, 'last_name': u.last_name} for u in project.contributors.all()],
+        }
+        return Response(ProjectMembersSerializer(data).data)
+
+    @action(detail=True, methods=['get'], url_path='invitations')
+    def invitations(self, request, uuid=None):
+        """GET /api/property/projects/{uuid}/invitations/ — owner only"""
+        project = self.get_object()
+        if project.owner != request.user:
+            return Response({'error': 'Only the project owner can view invitations.'}, status=status.HTTP_403_FORBIDDEN)
+        qs = ProjectInvitation.objects.filter(project=project).order_by('-created_at')
+        return Response(ProjectInvitationSerializer(qs, many=True).data)
+
+    @action(detail=True, methods=['post'], url_path='invite')
+    def invite(self, request, uuid=None):
+        """POST /api/property/projects/{uuid}/invite/ — owner only"""
+        project = self.get_object()
+        if project.owner != request.user:
+            return Response({'error': 'Only the project owner can send invitations.'}, status=status.HTTP_403_FORBIDDEN)
+
+        invited_email = request.data.get('email', '').strip().lower()
+        role = request.data.get('role', '')
+
+        if not invited_email:
+            return Response({'error': 'email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if role not in ('viewer', 'contributor'):
+            return Response({'error': 'role must be viewer or contributor.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if project.owner.email.lower() == invited_email:
+            return Response({'error': 'Cannot invite the project owner.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if project.viewers.filter(email__iexact=invited_email).exists() or \
+                project.contributors.filter(email__iexact=invited_email).exists():
+            return Response({'error': 'User is already a member of this project.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing = ProjectInvitation.objects.filter(
+            project=project, invited_email__iexact=invited_email, status='pending'
+        ).first()
+        if existing:
+            return Response(ProjectInvitationSerializer(existing).data, status=status.HTTP_200_OK)
+
+        token = generate_invite_token(str(project.uuid) + '|' + invited_email)
+        token_hash_val = hash_token(token)
+        invite_url = f"{settings.FRONTEND_URL}/accept-invite?token={token}"
+
+        invitation = ProjectInvitation.objects.create(
+            project=project,
+            invited_by=request.user,
+            invited_email=invited_email,
+            role=role,
+            token_hash=token_hash_val,
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+        )
+
+        send_mail(
+            subject=f"You've been invited to join {project.title} on Homely",
+            message=(
+                f"{request.user.first_name or request.user.email} has invited you to join "
+                f"'{project.title}' as a {role}.\n\nAccept or decline here:\n{invite_url}\n\n"
+                f"This link expires in 7 days."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[invited_email],
+            fail_silently=True,
+        )
+
+        try:
+            invited_user = User.objects.get(email__iexact=invited_email)
+            inviter_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.email
+            create_notification(
+                recipient=invited_user,
+                actor=request.user,
+                notification_type='invite_received',
+                title=f"Project invitation from {inviter_name}",
+                message=f"{inviter_name} invited you to join '{project.title}' as a {role}.",
+                related_object_uuid=project.uuid,
+                related_object_type='project',
+            )
+        except User.DoesNotExist:
+            pass
+
+        serializer = ProjectInvitationSerializer(invitation, context={'invite_url': invite_url})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['delete'], url_path=r'invitations/(?P<invitation_uuid>[^/.]+)')
+    def revoke_invitation(self, request, uuid=None, invitation_uuid=None):
+        """DELETE /api/property/projects/{uuid}/invitations/{invitation_uuid}/"""
+        project = self.get_object()
+        if project.owner != request.user:
+            return Response({'error': 'Only the project owner can revoke invitations.'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            invitation = ProjectInvitation.objects.get(uuid=invitation_uuid, project=project, status='pending')
+        except ProjectInvitation.DoesNotExist:
+            return Response({'error': 'Pending invitation not found.'}, status=status.HTTP_404_NOT_FOUND)
+        invitation.status = 'revoked'
+        invitation.save(update_fields=['status'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['delete'], url_path=r'members/(?P<member_email>[^/]+)')
+    def remove_member(self, request, uuid=None, member_email=None):
+        """DELETE /api/property/projects/{uuid}/members/{member_email}/"""
+        project = self.get_object()
+        if project.owner != request.user:
+            return Response({'error': 'Only the project owner can remove members.'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            user = User.objects.get(email__iexact=member_email)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        removed = False
+        if project.viewers.filter(pk=user.pk).exists():
+            project.viewers.remove(user)
+            removed = True
+        if project.contributors.filter(pk=user.pk).exists():
+            project.contributors.remove(user)
+            removed = True
+
+        if not removed:
+            return Response({'error': 'User is not a member of this project.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        owner_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.email
+        create_notification(
+            recipient=user,
+            actor=request.user,
+            notification_type='member_removed',
+            title=f"Removed from '{project.title}'",
+            message=f"{owner_name} removed you from '{project.title}'.",
+            related_object_uuid=project.uuid,
+            related_object_type='project',
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['get'], url_path='my-invite')
+    def my_invite(self, request):
+        """GET /api/property/projects/my-invite/?project_uuid=... — returns token for current user's pending invite"""
+        project_uuid = request.query_params.get('project_uuid', '')
+        if not project_uuid:
+            return Response({'error': 'project_uuid is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            invitation = ProjectInvitation.objects.get(
+                project__uuid=project_uuid,
+                invited_email__iexact=request.user.email,
+                status='pending',
+            )
+        except ProjectInvitation.DoesNotExist:
+            return Response({'error': 'No pending invitation found.'}, status=status.HTTP_404_NOT_FOUND)
+        token = generate_invite_token(str(invitation.uuid))
+        return Response({'token': token})
+
+    @action(detail=False, methods=['get'], url_path='preview-invite', permission_classes=[AllowAny])
+    def preview_invite(self, request):
+        """GET /api/property/projects/preview-invite/?token=... — no auth required"""
+        token = request.query_params.get('token', '')
+        if not token:
+            return Response({'error': 'token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            invitation_uuid = verify_invite_token(token)
+        except signing.SignatureExpired:
+            return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
+        except signing.BadSignature:
+            return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            invitation = ProjectInvitation.objects.select_related('project', 'invited_by').get(
+                uuid=invitation_uuid, status='pending'
+            )
+        except ProjectInvitation.DoesNotExist:
+            return Response({'error': 'invitation_already_used'}, status=status.HTTP_400_BAD_REQUEST)
+
+        inviter_name = f"{invitation.invited_by.first_name} {invitation.invited_by.last_name}".strip() or invitation.invited_by.email
+        data = {
+            'project_uuid': invitation.project.uuid,
+            'project_title': invitation.project.title,
+            'invited_by_name': inviter_name,
+            'invited_by_email': invitation.invited_by.email,
+            'role': invitation.role,
+            'expires_at': invitation.expires_at,
+        }
+        return Response(InvitePreviewSerializer(data).data)
+
+    @action(detail=False, methods=['post'], url_path='accept-invite')
+    def accept_invite(self, request):
+        """POST /api/property/projects/accept-invite/"""
+        token = request.data.get('token', '')
+        if not token:
+            return Response({'error': 'token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            invitation_uuid = verify_invite_token(token)
+        except signing.SignatureExpired:
+            return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
+        except signing.BadSignature:
+            return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            invitation = ProjectInvitation.objects.select_related('project', 'invited_by').get(
+                uuid=invitation_uuid, status='pending'
+            )
+        except ProjectInvitation.DoesNotExist:
+            return Response({'error': 'invitation_already_used'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if request.user.email.lower() != invitation.invited_email.lower():
+            return Response({'error': 'email_mismatch', 'detail': 'This invitation was sent to a different email address.'}, status=status.HTTP_403_FORBIDDEN)
+
+        project = invitation.project
+        if invitation.role == 'viewer':
+            project.viewers.add(request.user)
+        else:
+            project.contributors.add(request.user)
+
+        invitation.status = 'accepted'
+        invitation.accepted_by = request.user
+        invitation.accepted_at = timezone.now()
+        invitation.save(update_fields=['status', 'accepted_by', 'accepted_at'])
+
+        acceptor_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.email
+        create_notification(
+            recipient=project.owner,
+            actor=request.user,
+            notification_type='invite_accepted',
+            title=f"{acceptor_name} joined '{project.title}'",
+            message=f"{acceptor_name} accepted your invitation to join '{project.title}' as a {invitation.role}.",
+            related_object_uuid=project.uuid,
+            related_object_type='project',
+        )
+        return Response({'project_uuid': str(project.uuid), 'role': invitation.role})
+
+    @action(detail=False, methods=['post'], url_path='decline-invite')
+    def decline_invite(self, request):
+        """POST /api/property/projects/decline-invite/"""
+        token = request.data.get('token', '')
+        if not token:
+            return Response({'error': 'token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            invitation_uuid = verify_invite_token(token)
+        except signing.SignatureExpired:
+            return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
+        except signing.BadSignature:
+            return Response({'error': 'invalid_or_expired_token'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            invitation = ProjectInvitation.objects.select_related('project', 'invited_by').get(
+                uuid=invitation_uuid, status='pending'
+            )
+        except ProjectInvitation.DoesNotExist:
+            return Response({'error': 'invitation_already_used'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if request.user.email.lower() != invitation.invited_email.lower():
+            return Response({'error': 'email_mismatch', 'detail': 'This invitation was sent to a different email address.'}, status=status.HTTP_403_FORBIDDEN)
+
+        invitation.status = 'declined'
+        invitation.save(update_fields=['status'])
+
+        decliner_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.email
+        create_notification(
+            recipient=invitation.invited_by,
+            actor=request.user,
+            notification_type='invite_declined',
+            title=f"{decliner_name} declined your invitation",
+            message=f"{decliner_name} declined your invitation to join '{invitation.project.title}'.",
+            related_object_uuid=invitation.project.uuid,
+            related_object_type='project',
+        )
+        return Response({'detail': 'Invitation declined.'})
+
+    @action(detail=True, methods=['get'], url_path='user-role')
+    def user_role(self, request, uuid=None):
+        """GET /api/property/projects/{uuid}/user-role/ - returns user's role in project"""
+        project = self.get_object()
+        user = request.user
+
+        if project.owner == user:
+            return Response({'role': 'owner'})
+        elif project.contributors.filter(pk=user.pk).exists():
+            return Response({'role': 'contributor'})
+        elif project.viewers.filter(pk=user.pk).exists():
+            return Response({'role': 'viewer'})
+        else:
+            return Response({'role': None})
+
+
+class NotificationViewSet(viewsets.GenericViewSet):
+    """ViewSet for in-app notifications."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = AppNotificationSerializer
+    lookup_field = 'uuid'
+
+    def get_queryset(self):
+        return AppNotification.objects.filter(recipient=self.request.user)
+
+    def list(self, request):
+        """GET /api/property/notifications/"""
+        qs = self.get_queryset()
+        return Response(AppNotificationSerializer(qs, many=True).data)
+
+    @action(detail=True, methods=['post'], url_path='read')
+    def mark_read(self, request, uuid=None):
+        """POST /api/property/notifications/{uuid}/read/"""
+        try:
+            notification = self.get_queryset().get(uuid=uuid)
+        except AppNotification.DoesNotExist:
+            return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        notification.is_read = True
+        notification.save(update_fields=['is_read'])
+        return Response(AppNotificationSerializer(notification).data)
+
+    @action(detail=False, methods=['post'], url_path='read-all')
+    def mark_all_read(self, request):
+        """POST /api/property/notifications/read-all/"""
+        self.get_queryset().filter(is_read=False).update(is_read=True)
+        return Response({'detail': 'All notifications marked as read.'})
+
+    @action(detail=False, methods=['get'], url_path='unread-count')
+    def unread_count(self, request):
+        """GET /api/property/notifications/unread-count/"""
+        count = self.get_queryset().filter(is_read=False).count()
+        return Response({'count': count})
+
 
 class TaskListViewSet(viewsets.ModelViewSet):
     """
@@ -303,17 +658,39 @@ class PropertyListViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter to lists in accessible projects"""
         user = self.request.user
-        return PropertyList.objects.filter(
+        queryset = PropertyList.objects.filter(
             Q(project__owner=user) |
             Q(project__viewers=user) |
             Q(project__contributors=user)
         ).distinct()
+
+        # Optional filter by project uuid
+        project_uuid = self.request.query_params.get('project')
+        if project_uuid:
+            queryset = queryset.filter(project__uuid=project_uuid)
+
+        return queryset
 
     def get_serializer_class(self):
         """Use detailed serializer for retrieve action"""
         if self.action == 'retrieve':
             return PropertyListDetailSerializer
         return PropertyListSerializer
+
+    @require_project_contributor()
+    def update(self, request, *args, **kwargs):
+        """Update property list - owner or contributor only"""
+        return super().update(request, *args, **kwargs)
+
+    @require_project_contributor()
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update property list - owner or contributor only"""
+        return super().partial_update(request, *args, **kwargs)
+
+    @require_project_contributor()
+    def destroy(self, request, *args, **kwargs):
+        """Delete property list - owner or contributor only"""
+        return super().destroy(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
         """
@@ -342,12 +719,10 @@ class PropertyListViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_404_NOT_FOUND)
 
         # Validate user has access to project
-        if project.owner != request.user:
-            # Check if user is contributor
-            if not project.contributors.filter(id=request.user.id).exists():
-                return Response({
-                    'error': 'You do not have permission to add lists to this project'
-                }, status=status.HTTP_403_FORBIDDEN)
+        if not check_project_contributor(request.user, project):
+            return Response({
+                'error': 'You do not have permission to add lists to this project'
+            }, status=status.HTTP_403_FORBIDDEN)
 
         # Validate Rightmove area
         area = search_criteria_data.get('area')
@@ -588,8 +963,13 @@ class PropertyViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
 
     def get_queryset(self):
-        """Filter to properties in user's lists"""
-        queryset = Property.objects.filter(property_lists__owner=self.request.user).distinct()
+        """Filter to properties in accessible projects"""
+        user = self.request.user
+        queryset = Property.objects.filter(
+            Q(property_lists__project__owner=user) |
+            Q(property_lists__project__viewers=user) |
+            Q(property_lists__project__contributors=user)
+        ).distinct()
 
         # Optional filter by property_list uuid
         property_list_uuid = self.request.query_params.get('property_list')
@@ -604,7 +984,23 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return PropertyDetailSerializer
         return PropertySerializer
 
+    @require_project_contributor()
+    def update(self, request, *args, **kwargs):
+        """Update property - owner or contributor only"""
+        return super().update(request, *args, **kwargs)
+
+    @require_project_contributor()
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update property - owner or contributor only"""
+        return super().partial_update(request, *args, **kwargs)
+
+    @require_project_contributor()
+    def destroy(self, request, *args, **kwargs):
+        """Delete property - owner or contributor only"""
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=True, methods=['post'], url_path='run-stage2')
+    @require_project_contributor()
     def run_stage2(self, request, uuid=None):
         """Trigger Stage 2 context retrieval (NEW → STAGE2_IN_PROGRESS)
 
@@ -632,6 +1028,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             )
 
     @action(detail=True, methods=['post'])
+    @require_project_contributor()
     def run_stage3(self, request, uuid=None):
         """Trigger Stage 3 rating calculation (STAGE2_COMPLETE → STAGE3_IN_PROGRESS)"""
         property_obj = self.get_object()
@@ -655,6 +1052,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             )
 
     @action(detail=True, methods=['post'])
+    @require_project_contributor()
     def rerun_services(self, request, uuid=None):
         """Rerun context services (STAGE2_COMPLETE/STAGE3_* → STAGE2_IN_PROGRESS)"""
         property_obj = self.get_object()
@@ -984,13 +1382,16 @@ class PropertyViewSet(viewsets.ModelViewSet):
         property_list = None
         if property_list_uuid:
             try:
-                property_list = PropertyList.objects.get(
-                    uuid=property_list_uuid,
-                    owner=request.user
-                )
+                property_list = PropertyList.objects.get(uuid=property_list_uuid)
+                project = property_list.project
+                if not check_project_contributor(request.user, project):
+                    return Response(
+                        {'error': 'Only owners and contributors can add properties to this list.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
             except PropertyList.DoesNotExist:
                 return Response(
-                    {'error': 'Property list not found or access denied'},
+                    {'error': 'Property list not found'},
                     status=status.HTTP_404_NOT_FOUND
                 )
 
