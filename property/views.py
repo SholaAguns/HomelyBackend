@@ -24,7 +24,7 @@ from property.services import property_creation_service_factory
 from property.utils.invitation_tokens import generate_invite_token, verify_invite_token, hash_token
 from property.utils.notifications import create_notification
 from property.permissions import require_project_owner, require_project_contributor, check_project_contributor
-from django.db.models import Q
+from django.db.models import Q, Avg
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
