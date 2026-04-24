@@ -118,8 +118,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """
         GET /api/property/projects/{uuid}/stats/
 
-        Get project statistics.
+        Get comprehensive project statistics including charts data.
         """
+        from django.db.models import Avg, Count, Q, Min, Max, F
+        from collections import defaultdict
+
         project = self.get_object()
 
         # Get all properties across all lists
@@ -127,36 +130,195 @@ class ProjectViewSet(viewsets.ModelViewSet):
             property_lists__project=project
         ).distinct()
 
-        # Get unique areas
-        areas = SearchCriteria.objects.filter(
-            property_lists__project=project
-        ).values_list('area', flat=True).distinct()
+        # Basic stats
+        price_stats = all_properties.aggregate(
+            avg=Avg('price'),
+            min=Min('price'),
+            max=Max('price')
+        )
 
-        # Calculate stats
         stats = {
-            'property_lists_count': project.property_lists.count(),
             'total_properties': all_properties.count(),
-            'areas_count': len(areas),
-            'areas': list(areas),
-            'properties_by_state': {
-                'new': all_properties.filter(state='NEW').count(),
-                'stage2_in_progress': all_properties.filter(state='STAGE2_IN_PROGRESS').count(),
-                'stage2_complete': all_properties.filter(state='STAGE2_COMPLETE').count(),
-                'stage3_in_progress': all_properties.filter(state='STAGE3_IN_PROGRESS').count(),
-                'stage3_complete': all_properties.filter(state='STAGE3_COMPLETE').count(),
-            },
-            'has_context_options': hasattr(project, 'context_options'),
-            'has_rating_criteria': project.rating_criteria is not None
+            'avg_price': price_stats['avg'],
+            'min_price': price_stats['min'],
+            'max_price': price_stats['max'],
+            'property_lists_count': project.property_lists.count(),
         }
 
-        # Price stats
-        prices = all_properties.values_list('price', flat=True)
-        if prices:
-            stats['average_price'] = sum(prices) / len(prices)
-            stats['min_price'] = min(prices)
-            stats['max_price'] = max(prices)
+        # Area breakdown
+        stats['by_area'] = self._calculate_area_breakdown(project, all_properties)
+
+        # Price distribution
+        stats['price_distribution'] = self._calculate_price_distribution(all_properties)
+
+        # Property types (extract from titles)
+        stats['property_types'] = self._calculate_property_types(all_properties)
+
+        # Ratings breakdown
+        stats['ratings'] = self._calculate_ratings_breakdown(all_properties)
+
+        # Property lists breakdown
+        stats['by_property_list'] = self._calculate_lists_breakdown(project)
 
         return Response(stats)
+
+    def _calculate_area_breakdown(self, project, all_properties):
+        """Calculate statistics grouped by area"""
+        from collections import defaultdict
+
+        area_data = defaultdict(lambda: {'property_count': 0, 'prices': [], 'list_ids': set()})
+
+        # Get property lists with their areas
+        property_lists = project.property_lists.select_related('search_criteria').all()
+
+        for prop_list in property_lists:
+            area = prop_list.search_criteria.area if hasattr(prop_list, 'search_criteria') and prop_list.search_criteria else 'Unknown'
+            area_data[area]['list_ids'].add(prop_list.uuid)
+
+            # Get properties for this list
+            props = all_properties.filter(property_lists=prop_list)
+            for prop in props:
+                if prop.uuid not in [p.get('id') for p in area_data[area].get('seen_props', [])]:
+                    area_data[area]['property_count'] += 1
+                    area_data[area]['prices'].append(prop.price)
+                    area_data[area].setdefault('seen_props', []).append({'id': prop.uuid})
+
+        # Format output
+        result = []
+        for area, data in area_data.items():
+            avg_price = sum(data['prices']) / len(data['prices']) if data['prices'] else 0
+            result.append({
+                'name': area,
+                'list_count': len(data['list_ids']),
+                'property_count': data['property_count'],
+                'avg_price': round(avg_price, 2)
+            })
+
+        return sorted(result, key=lambda x: x['property_count'], reverse=True)
+
+    def _calculate_price_distribution(self, properties):
+        """Calculate property count by price buckets"""
+        buckets = [
+            (0, 200000, '£0-£200k'),
+            (200000, 300000, '£200k-£300k'),
+            (300000, 400000, '£300k-£400k'),
+            (400000, 500000, '£400k-£500k'),
+            (500000, 750000, '£500k-£750k'),
+            (750000, 1000000, '£750k-£1M'),
+            (1000000, float('inf'), '£1M+'),
+        ]
+
+        distribution = []
+        for min_price, max_price, label in buckets:
+            count = properties.filter(price__gte=min_price, price__lt=max_price).count()
+            if count > 0:
+                distribution.append({'range': label, 'count': count})
+
+        return distribution
+
+    def _calculate_property_types(self, properties):
+        """Extract property types from titles"""
+        from collections import Counter
+
+        type_keywords = {
+            'flat': ['flat', 'apartment'],
+            'house': ['house', 'detached', 'semi-detached', 'terraced'],
+            'bungalow': ['bungalow'],
+            'maisonette': ['maisonette'],
+            'studio': ['studio'],
+        }
+
+        type_counts = Counter()
+
+        for prop in properties:
+            title_lower = prop.title.lower()
+            found = False
+            for type_name, keywords in type_keywords.items():
+                if any(kw in title_lower for kw in keywords):
+                    type_counts[type_name] += 1
+                    found = True
+                    break
+            if not found:
+                type_counts['other'] += 1
+
+        return [{'type': type_name.capitalize(), 'count': count}
+                for type_name, count in type_counts.most_common()]
+
+    def _calculate_ratings_breakdown(self, properties):
+        """Calculate ratings statistics"""
+        rated_props = properties.exclude(overall_rating__isnull=True)
+
+        if not rated_props.exists():
+            return {
+                'total_rated': 0,
+                'avg_rating': None,
+                'rating_distribution': [],
+                'disqualified_count': 0,
+                'top_rated': []
+            }
+
+        # Rating distribution buckets
+        buckets = [
+            (0, 20, '0-20'),
+            (21, 40, '21-40'),
+            (41, 60, '41-60'),
+            (61, 80, '61-80'),
+            (81, 100, '81-100'),
+        ]
+
+        distribution = []
+        for min_rating, max_rating, label in buckets:
+            count = rated_props.filter(
+                overall_rating__gte=min_rating,
+                overall_rating__lte=max_rating
+            ).count()
+            distribution.append({'range': label, 'count': count})
+
+        # Top rated (top 5)
+        top_rated = rated_props.filter(disqualified=False).order_by('-overall_rating')[:5]
+        top_rated_list = [
+            {
+                'uuid': str(prop.uuid),
+                'title': prop.title,
+                'rating': prop.overall_rating
+            }
+            for prop in top_rated
+        ]
+
+        return {
+            'total_rated': rated_props.count(),
+            'avg_rating': round(rated_props.aggregate(Avg('overall_rating'))['overall_rating__avg'], 2),
+            'rating_distribution': distribution,
+            'disqualified_count': rated_props.filter(disqualified=True).count(),
+            'top_rated': top_rated_list
+        }
+
+    def _calculate_lists_breakdown(self, project):
+        """Calculate statistics by property list"""
+        from django.db.models import Avg, Count, Q
+
+        result = []
+        for prop_list in project.property_lists.all():
+            properties = Property.objects.filter(property_lists=prop_list)
+
+            price_avg = properties.aggregate(Avg('price'))['price__avg']
+            rating_avg = properties.exclude(overall_rating__isnull=True).aggregate(
+                Avg('overall_rating')
+            )['overall_rating__avg']
+
+            result.append({
+                'uuid': str(prop_list.uuid),
+                'title': prop_list.title,
+                'property_count': properties.count(),
+                'avg_price': round(price_avg, 2) if price_avg else None,
+                'avg_rating': round(rating_avg, 2) if rating_avg else None,
+                'stage2_complete': properties.filter(
+                    Q(state='STAGE2_COMPLETE') | Q(state='STAGE3_IN_PROGRESS') | Q(state='STAGE3_COMPLETE')
+                ).count(),
+                'stage3_complete': properties.filter(state='STAGE3_COMPLETE').count(),
+            })
+
+        return sorted(result, key=lambda x: x['property_count'], reverse=True)
 
     @action(detail=True, methods=['get', 'put', 'patch'], url_path='rating-criteria')
     def rating_criteria_config(self, request, uuid=None):
