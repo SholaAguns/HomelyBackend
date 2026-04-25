@@ -1,4 +1,5 @@
 import logging
+from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -519,14 +520,18 @@ class ProjectViewSet(viewsets.ModelViewSet):
             project=project, invited_email__iexact=invited_email, status='pending'
         ).first()
 
-        token = generate_invite_token(str(project.uuid) + '|' + invited_email)
+        if existing:
+            existing_token = generate_invite_token(str(existing.uuid))
+            existing_invite_url = f"{settings.FRONTEND_URL}/register?invite_token={existing_token}"
+            return Response(ProjectInvitationSerializer(existing, context={'invite_url': existing_invite_url}).data, status=status.HTTP_200_OK)
+
+        invitation_uuid = uuid4()
+        token = generate_invite_token(str(invitation_uuid))
         token_hash_val = hash_token(token)
         invite_url = f"{settings.FRONTEND_URL}/register?invite_token={token}"
 
-        if existing:
-            return Response(ProjectInvitationSerializer(existing, context={'invite_url': invite_url}).data, status=status.HTTP_200_OK)
-
         invitation = ProjectInvitation.objects.create(
+            uuid=invitation_uuid,
             project=project,
             invited_by=request.user,
             invited_email=invited_email,
