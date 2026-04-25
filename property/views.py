@@ -521,7 +521,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         token = generate_invite_token(str(project.uuid) + '|' + invited_email)
         token_hash_val = hash_token(token)
-        invite_url = f"{settings.FRONTEND_URL}/accept-invite?token={token}"
+        invite_url = f"{settings.FRONTEND_URL}/register?invite_token={token}"
 
         if existing:
             return Response(ProjectInvitationSerializer(existing, context={'invite_url': invite_url}).data, status=status.HTTP_200_OK)

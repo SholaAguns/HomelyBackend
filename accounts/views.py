@@ -25,6 +25,8 @@ from .serializers import (
 )
 from .models import UserProfile
 from property.serializers import UserSearchSerializer
+from property.models.stage1_models import ProjectInvitation
+from property.utils.notifications import create_notification
 
 
 class RegisterView(generics.CreateAPIView):
@@ -36,6 +38,24 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        pending_invites = ProjectInvitation.objects.filter(
+            invited_email__iexact=user.email, status='pending'
+        ).select_related('project', 'invited_by')
+        for invite in pending_invites:
+            inviter_name = (
+                f"{invite.invited_by.first_name} {invite.invited_by.last_name}".strip()
+                or invite.invited_by.email
+            )
+            create_notification(
+                recipient=user,
+                actor=invite.invited_by,
+                notification_type='invite_received',
+                title=f"Project invitation from {inviter_name}",
+                message=f"{inviter_name} invited you to join '{invite.project.title}' as a {invite.role}.",
+                related_object_uuid=invite.project.uuid,
+                related_object_type='project',
+            )
 
         refresh = RefreshToken.for_user(user)
 
