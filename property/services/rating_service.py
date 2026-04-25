@@ -1,6 +1,6 @@
 """
 Stage 3 Rating System - Core calculation logic
-Implements 5 scoring strategies, dealbreaker evaluation, and rating aggregation
+Implements 5 scoring strategies and rating aggregation
 """
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
@@ -53,13 +53,6 @@ class RatingService:
         logger.debug(f"🎯 RATING: Using rating criteria: {self.rating_criteria.name}")
         logger.debug(f"🎯 RATING: Number of properties in comparison set: {self.all_properties.count()}")
 
-        # Step 1: Evaluate dealbreakers first
-        logger.debug("🎯 RATING: Step 1 - Evaluating dealbreakers...")
-        passed_dealbreakers, reason = self.evaluate_dealbreakers()
-        if not passed_dealbreakers:
-            logger.warning(f"❌ RATING: Property disqualified - {reason}")
-            return Decimal('0.00'), {}, True, reason
-        logger.debug("✅ RATING: Passed all dealbreakers")
 
         # Step 2-5: Calculate rating for all enabled criteria
         weighted_scores = []
@@ -129,61 +122,6 @@ class RatingService:
         logger.info(f"✅ RATING: Calculation complete for property {self.property.uuid} - Overall: {overall_rating}")
         return overall_rating, breakdown, False, None
 
-    def evaluate_dealbreakers(self) -> Tuple[bool, Optional[str]]:
-        dealbreaker_criteria = self.rating_criteria.criteria.filter(enabled=True, is_dealbreaker=True)
-        logger.debug(f"🚫 DEALBREAKER: Found {dealbreaker_criteria.count()} enabled dealbreaker criteria")
-
-        for criterion in dealbreaker_criteria:
-            try:
-                logger.debug(f"🚫 DEALBREAKER: Evaluating '{criterion.name}'")
-                raw_value = self.extract_raw_value(criterion)
-                logger.debug(f"  → Value: {raw_value}")
-                logger.debug(f"  → Threshold config: {criterion.dealbreaker_threshold}")
-
-                if not self._meets_dealbreaker_threshold(raw_value, criterion):
-                    reason = f"Failed dealbreaker: {criterion.name}"
-                    if criterion.dealbreaker_threshold:
-                        threshold = criterion.dealbreaker_threshold
-                        reason += f" (Required: {threshold.get('operator')} {threshold.get('value')})"
-                    logger.warning(f"❌ DEALBREAKER: Failed - {reason}")
-                    return False, reason
-
-                logger.debug(f"✅ DEALBREAKER: Passed '{criterion.name}'")
-
-            except Exception as e:
-                logger.error(f"❌ DEALBREAKER: Error evaluating {criterion.name}: {e}", exc_info=True)
-                # Treat extraction errors as dealbreaker failure
-                return False, f"Failed dealbreaker: {criterion.name} (data unavailable)"
-
-        return True, None
-
-    def _meets_dealbreaker_threshold(self, value: Any, criterion) -> bool:
-        if not criterion.dealbreaker_threshold:
-            return True
-
-        threshold_config = criterion.dealbreaker_threshold
-        operator = threshold_config.get('operator')
-        threshold_value = threshold_config.get('value')
-
-        # Handle different operators
-        if operator == '>=':
-            return value >= threshold_value
-        elif operator == '>':
-            return value > threshold_value
-        elif operator == '<=':
-            return value <= threshold_value
-        elif operator == '<':
-            return value < threshold_value
-        elif operator == '==':
-            return value == threshold_value
-        elif operator == '!=':
-            return value != threshold_value
-        elif operator == 'in':
-            return value in threshold_value
-        elif operator == 'not_in':
-            return value not in threshold_value
-
-        return True
 
 
     def _extract_from_property(self, criterion) -> Any:

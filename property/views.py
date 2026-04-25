@@ -1761,9 +1761,7 @@ class RatingCriteriaViewSet(viewsets.ModelViewSet):
                 field_name=criterion.field_name,
                 saved_location_uuid=criterion.saved_location_uuid,
                 poi_category=criterion.poi_category,
-                weight=criterion.weight,
-                is_dealbreaker=criterion.is_dealbreaker,
-                dealbreaker_threshold=criterion.dealbreaker_threshold
+                weight=criterion.weight
             )
 
         serializer = RatingCriteriaSerializer(new_criteria)

@@ -24,7 +24,7 @@ class PropertyImageInline(admin.TabularInline):
 class CriterionInline(admin.TabularInline):
     model = Criterion
     extra = 0
-    fields = ('name', 'source', 'weight', 'is_dealbreaker')
+    fields = ('name', 'source', 'weight')
 
 
 @admin.register(SearchCriteria)
@@ -304,8 +304,8 @@ class RatingCriteriaAdmin(admin.ModelAdmin):
 
 @admin.register(Criterion)
 class CriterionAdmin(admin.ModelAdmin):
-    list_display = ('name', 'rating_criteria', 'source', 'weight', 'is_dealbreaker')
-    list_filter = ('source', 'is_dealbreaker')
+    list_display = ('name', 'rating_criteria', 'source', 'weight')
+    list_filter = ('source',)
     search_fields = ('name', 'rating_criteria__name')
     fieldsets = (
         ('Basic Info', {
@@ -314,8 +314,8 @@ class CriterionAdmin(admin.ModelAdmin):
         ('Source', {
             'fields': ('source', 'field_name', 'data_path')
         }),
-        ('Weight & Dealbreaker', {
-            'fields': ('weight', 'is_dealbreaker', 'dealbreaker_threshold')
+        ('Weight', {
+            'fields': ('weight',)
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
