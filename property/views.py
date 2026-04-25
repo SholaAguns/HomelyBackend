@@ -518,12 +518,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
         existing = ProjectInvitation.objects.filter(
             project=project, invited_email__iexact=invited_email, status='pending'
         ).first()
-        if existing:
-            return Response(ProjectInvitationSerializer(existing).data, status=status.HTTP_200_OK)
 
         token = generate_invite_token(str(project.uuid) + '|' + invited_email)
         token_hash_val = hash_token(token)
         invite_url = f"{settings.FRONTEND_URL}/accept-invite?token={token}"
+
+        if existing:
+            return Response(ProjectInvitationSerializer(existing, context={'invite_url': invite_url}).data, status=status.HTTP_200_OK)
 
         invitation = ProjectInvitation.objects.create(
             project=project,

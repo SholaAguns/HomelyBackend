@@ -21,3 +21,4 @@
 - always add imports statement at the top of the file
 
 - do not leave multiline comments unless requested
+- When adding new environment variables, add them to .env.example
