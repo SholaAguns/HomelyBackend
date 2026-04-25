@@ -35,6 +35,12 @@ class Criterion(models.Model):
         ('context_report', 'Context Report Data'),
     ]
 
+    DISTANCE_CALCULATION_CHOICES = [
+        ('straight_distance', 'Straight Distance (km)'),
+        ('walking_distance', 'Walking distance (mins)'),
+        ('driving_distance', 'Driving distance (mins)'),
+    ]
+
 
     rating_criteria = models.ForeignKey(RatingCriteria, on_delete=models.CASCADE, related_name='criteria')
     name = models.CharField(max_length=255)
@@ -45,6 +51,7 @@ class Criterion(models.Model):
 
     saved_location_uuid = models.UUIDField(db_index=True, null=True, blank=True)
     poi_category = models.CharField(max_length=100, blank=True, null=True)
+    distance_calculation_preference = models.CharField(max_length=30, choices=DISTANCE_CALCULATION_CHOICES, null=True, blank=True)
 
     # Enabled state
     enabled = models.BooleanField(default=True)
