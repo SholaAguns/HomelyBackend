@@ -308,7 +308,7 @@ class RatingService:
                 if distance_data['location_uuid'] == str(target_location_id):
                     distance_km = distance_data['distance_km']
                     logger.debug(f"📍 DISTANCE: Found distance = {distance_km} km")
-                    return self._score_distance(distance_km)
+                    return self._score_straight_distance(distance_km)
 
             # If location not found in context data
             raise ValueError(f"Distance to saved_location_id={target_location_id} not found in context data")
@@ -342,18 +342,25 @@ class RatingService:
             if not places:
                 raise ValueError(f"Distance to place of interest={criterion.poi_category} for property {self.property.uuid}  not found in context data")
 
-            nearest_place = min(places, key=lambda p: p['straight_distance_km'] or float('inf'))
-
-            distance_km = nearest_place['straight_distance_km']
-
-            return self._score_distance(distance_km)
+            if criterion.distance_calculation_preference == 'straight_distance':
+                nearest_place = min(places, key=lambda p: p['straight_distance_km'] or float('inf'))
+                distance_km = nearest_place['straight_distance_km']
+                return self._score_straight_distance(distance_km)
+            elif criterion.distance_calculation_preference == 'walking_time':
+                nearest_place = min(places, key=lambda p: p['walking_time_min'] or float('inf'))
+                time_mins = nearest_place['walking_time_min']
+                return self._score_walking_time(time_mins)
+            elif criterion.distance_calculation_preference == 'driving_time':
+                nearest_place = min(places, key=lambda p: p['driving_time_min'] or float('inf'))
+                time_mins = nearest_place['driving_time_min']
+                return self._score_driving_time(time_mins)
 
         except ContextData.DoesNotExist:
             logger.error(f"📍 DISTANCE: SavedLocation context data not found")
             raise ValueError("SavedLocation context data not found. Ensure Stage 2 has been completed.")
 
     @staticmethod
-    def _score_distance(value) -> Tuple[Any, Decimal]:
+    def _score_straight_distance(value) -> Tuple[Any, Decimal]:
 
         thresholds = [
             (1, 100.0),
@@ -375,6 +382,56 @@ class RatingService:
                 return value, Decimal(str(sc))
 
         logger.debug(f"📍 DISTANCE: {distance_km} km > 20 km, score = 0")
+        return value, Decimal('0.00')
+
+    @staticmethod
+    def _score_walking_time(value) -> Tuple[Any, Decimal]:
+
+        thresholds = [
+            (5, 100.0),
+            (10, 80.0),
+            (15, 60.0),
+            (20, 40.0),
+            (25, 20.0),
+            (30, 10.0),
+            (0, 0.0),
+        ]
+
+        logger.debug(f"📍 WALKING Time: Value = {value} mins, using threshold scoring")
+
+        distance_min = float(value)
+
+        for threshold, sc in thresholds:
+            if distance_min <= threshold:
+                logger.debug(f"📍 WALKING Time:: {distance_min} min <= {threshold} min, score = {sc}")
+                return value, Decimal(str(sc))
+
+        logger.debug(f"📍 WALKING Time:: {distance_min} mins > 30 mins, score = 0")
+        return value, Decimal('0.00')
+
+    @staticmethod
+    def _score_driving_time(value) -> Tuple[Any, Decimal]:
+
+        thresholds = [
+            (10, 100.0),
+            (20, 80.0),
+            (30, 60.0),
+            (45, 40.0),
+            (60, 20.0),
+            (90, 10.0),
+            (0, 0.0),
+        ]
+
+        logger.debug(f"📍 Driving Time: Value = {value} mins, using threshold scoring")
+
+        distance_min = float(value)
+
+        for threshold, sc in thresholds:
+            if distance_min <= threshold:
+                logger.debug(f"📍 Driving Time:: {distance_min} min <= {threshold} min, score = {sc}")
+                return value, Decimal(str(sc))
+
+        logger.debug(f"📍 Driving Time:: {distance_min} mins > 30 mins, score = 0")
         return value, Decimal('0.00')
 
     def _score_council_tax(self, criterion) -> Tuple[Any, Decimal]:

@@ -804,7 +804,7 @@ class CriterionSerializer(serializers.ModelSerializer):
         model = Criterion
         fields = [
             'id', 'name', 'source', 'field_name', 'saved_location_uuid', 'poi_category',
-            'enabled', 'weight', 'created_at', 'updated_at'
+            'distance_calculation_preference', 'enabled', 'weight', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 

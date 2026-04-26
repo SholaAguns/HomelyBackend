@@ -37,8 +37,8 @@ class Criterion(models.Model):
 
     DISTANCE_CALCULATION_CHOICES = [
         ('straight_distance', 'Straight Distance (km)'),
-        ('walking_distance', 'Walking distance (mins)'),
-        ('driving_distance', 'Driving distance (mins)'),
+        ('walking_time', 'Walking time (mins)'),
+        ('driving_time', 'Driving time (mins)'),
     ]
 
 
