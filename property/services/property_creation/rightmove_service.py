@@ -585,6 +585,18 @@ class RightmoveService(IPropertyCreationService):
 
         return mapped
 
+    def _infer_amenities_from_text(self, property_obj, key_features: list) -> None:
+        texts = [
+            property_obj.summary or '',
+            property_obj.description or '',
+            *[f.get('description', '') or '' for f in key_features],
+        ]
+        combined = ' '.join(texts).lower()
+        if not property_obj.garden and 'garden' in combined:
+            property_obj.garden = True
+        if not property_obj.parking and 'parking' in combined:
+            property_obj.parking = True
+
     def batch_create_properties(self, properties_data: list, property_list, progress_callback=None) -> dict:
         """
         Create multiple properties in batch with progress tracking.
@@ -649,6 +661,11 @@ class RightmoveService(IPropertyCreationService):
                         property_obj.property_lists.add(property_list)
                         created_count += 1
                         logger.debug("batch_create_properties created property (no external_id)")
+
+                    # Infer garden/parking from text fields
+                    if property_obj:
+                        self._infer_amenities_from_text(property_obj, key_features)
+                        property_obj.save()
 
                     # Create/update images
                     if property_obj and images_data:
