@@ -385,8 +385,7 @@ class PropertySerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'uuid', 'state', 'state_display', 'property_lists',
-            , 'currency_code', 'property_type',
+            'uuid', 'state', 'state_display', 'property_lists', 'currency_code', 'property_type',
             'let_available_date', 'first_visible_date',
             'key_features', 'added_or_reduced', 'display_size',
             'listing_update_reason', 'listing_update_date',

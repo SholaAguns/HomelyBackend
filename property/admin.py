@@ -181,7 +181,7 @@ class PropertyAdmin(admin.ModelAdmin):
             'fields': ('price', 'bedrooms', 'bathrooms', 'square_area', 'garden', 'parking', 'furnished_status')
         }),
         ('Additional Info', {
-            'fields': ('council_tax_band', 'epc_rating', 'lease_length', 'floor_level', 'child_suitable', 'completion_date'),
+            'fields': ('council_tax_band', 'epc_rating', 'lease_length', 'floor_level', 'child_suitable',),
             'classes': ('collapse',)
         }),
         ('External References', {
