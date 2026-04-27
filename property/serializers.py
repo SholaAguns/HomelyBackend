@@ -4,7 +4,7 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
-from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, Project, TaskList, Task, ProjectInvitation, AppNotification, PropertyFavorite
+from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, Project, TaskList, Task, ProjectInvitation, AppNotification, PropertyFavorite, KeyFeature
 from property.models.stage2_models import ContextOptions
 from property.models.stage3_models import RatingCriteria, Criterion, CriterionScore
 from property.models.models_poi import PlaceOfInterest
@@ -337,6 +337,12 @@ class PlaceOfInterestSerializer(serializers.ModelSerializer):
         read_only_fields = ['uuid', 'created_at', 'updated_at']
 
 
+class KeyFeatureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KeyFeature
+        fields = ['order', 'description']
+
+
 class PropertySerializer(serializers.ModelSerializer):
     """Serializer for Property model"""
 
@@ -354,6 +360,7 @@ class PropertySerializer(serializers.ModelSerializer):
     primary_image = serializers.SerializerMethodField()
     overall_rating = serializers.FloatField(allow_null=True, read_only=True)
     is_favorited = serializers.SerializerMethodField()
+    key_features = KeyFeatureSerializer(many=True, read_only=True)
 
     class Meta:
         model = Property
@@ -362,10 +369,15 @@ class PropertySerializer(serializers.ModelSerializer):
             'state', 'state_display',
             'title', 'address_line_1', 'address_line_2', 'city', 'postcode',
             'latitude', 'longitude',
-            'price', 'bedrooms', 'bathrooms', 'square_area',
+            'price', 'price_frequency', 'currency_code',
+            'bedrooms', 'bathrooms', 'square_area',
             'garden', 'parking', 'furnished_status',
+            'property_type', 'description',
             'council_tax_band', 'epc_rating', 'lease_length', 'floor_level',
             'child_suitable',
+            'let_available_date', 'first_visible_date',
+            'key_features', 'added_or_reduced', 'display_size',
+            'listing_update_reason', 'listing_update_date',
             'external_id', 'external_url',
             'normalized_address', 'uprn',
             'overall_rating', 'rating_breakdown', 'disqualified', 'disqualification_reason',
@@ -374,6 +386,10 @@ class PropertySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'uuid', 'state', 'state_display', 'property_lists',
+            , 'currency_code', 'property_type',
+            'let_available_date', 'first_visible_date',
+            'key_features', 'added_or_reduced', 'display_size',
+            'listing_update_reason', 'listing_update_date',
             'normalized_address', 'uprn',
             'overall_rating', 'rating_breakdown', 'disqualified', 'disqualification_reason',
             'images', 'primary_image', 'is_favorited',
