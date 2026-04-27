@@ -9,6 +9,8 @@ import time
 from typing import Dict, Any, List, Optional
 from decimal import Decimal
 from datetime import datetime, timezone
+
+from property.models.stage1_models import KeyFeature
 from property.services.property_creation.interface import IPropertyCreationService
 
 logger = logging.getLogger('property.services.rightmove')
@@ -206,7 +208,7 @@ class RightmoveService(IPropertyCreationService):
         # Pricing
         price_info = p.get('price', {})
         price_amount = price_info.get('amount') or self.clean_price(
-            price_info.get('displayPrices', [{}])[0].get('displayPrice', ''))
+        price_info.get('displayPrices', [{}])[0].get('displayPrice', ''))
         price_frequency = price_info.get('frequency', '')
         currency_code = price_info.get('currencyCode', 'GBP')
 
@@ -215,10 +217,15 @@ class RightmoveService(IPropertyCreationService):
         bathrooms = p.get('bathrooms', 0)
         property_type = p.get('propertySubType', '')
         full_desc = p.get('propertyTypeFullDescription', '')
+        added_or_reduced = p.get('addedOrReduced', '')
+        display_size = p.get('displaySize', '')
+        listing_update_reason = p.get('listingUpdateReason', '')
+
 
         # Dates
         let_date = self.clean_date(p.get('letAvailableDate', ''))
         first_vis = self.clean_date(p.get('firstVisibleDate', ''))
+        listing_update_date = self.clean_date(p.get('listingUpdateDate', ''))
 
         # Images
         images = []
@@ -234,6 +241,14 @@ class RightmoveService(IPropertyCreationService):
                 'url': img.get('url') or '',
                 'caption': img.get('caption') or ''
             })
+
+        key_features = []
+        for feature in p.get('keyFeatures', []):
+            key_features.append({
+                'order': feature.get('order') or None,
+                'description': feature.get('description') or '',
+            })
+
 
         return {
             'external_id': str(external_id),
@@ -252,6 +267,11 @@ class RightmoveService(IPropertyCreationService):
             'let_available_date': let_date,
             'first_visible_date': first_vis,
             'images': images,
+            'key_features': key_features,
+            'added_or_reduced': added_or_reduced,
+            'display_size': display_size,
+            'listing_update_reason': listing_update_reason,
+            'listing_update_date': listing_update_date
         }
 
     def _extract_from_html(self, soup, url: str, property_id: str) -> Dict[str, Any]:
@@ -388,7 +408,7 @@ class RightmoveService(IPropertyCreationService):
     def scrape_properties_by_search(
         self,
         search_criteria: dict,
-        max_properties: int = 100,
+        max_properties: int = 1000,
         progress_callback=None
     ) -> List[Dict[str, Any]]:
         try:
@@ -534,6 +554,7 @@ class RightmoveService(IPropertyCreationService):
             'address_line_2': '',
             'city': '',
             'postcode': '',
+            'summary': property_data.get('summary'),
             'latitude': property_data.get('latitude'),
             'longitude': property_data.get('longitude'),
             'price': property_data.get('price', Decimal('0')) if isinstance(property_data.get('price'), Decimal) else Decimal(str(property_data.get('price', 0))),
@@ -543,6 +564,13 @@ class RightmoveService(IPropertyCreationService):
             'parking': False,
             'furnished_status': '',
             'square_area': None,
+            'property_type': property_data.get('property_type'),
+            'currency_code': property_data.get('currency_code'),
+            'let_available_date': property_data.get('let_available_date'),
+            'first_visible_date': property_data.get('first_visible_date'),
+            'display_size': property_data.get('display_size'),
+            'listing_update_reason': property_data.get('listing_update_reason'),
+            'listing_update_date': property_data.get('listing_update_date'),
         }
 
         # Try to extract postcode from address
@@ -584,6 +612,7 @@ class RightmoveService(IPropertyCreationService):
                 with transaction.atomic():
                     # Extract images before mapping
                     images_data = prop_data.pop('images', [])
+                    key_features = prop_data.pop('key_features', [])
 
                     # Map service data to Property model fields
                     property_fields = self._map_extracted_to_property(prop_data)
@@ -634,6 +663,19 @@ class RightmoveService(IPropertyCreationService):
                                 url=image_data.get('url') or '',
                                 caption=image_data.get('caption') or '',
                                 order=img_idx
+                            )
+
+                    # Create/update features
+                    if property_obj and key_features:
+                        # Clear existing images
+                        property_obj.key_features.all().delete()
+
+                        # Create new features
+                        for feature_data in key_features:
+                            KeyFeature.objects.create(
+                                property=property_obj,
+                                description=feature_data.get('description'),
+                                order=feature_data.get('order')
                             )
 
                     # Progress callback

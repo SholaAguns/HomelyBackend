@@ -358,14 +358,14 @@ class PropertySerializer(serializers.ModelSerializer):
     class Meta:
         model = Property
         fields = [
-            'uuid', 'property_lists', 'property_lists_input',
+            'uuid', 'property_lists', 'property_lists_input', 'summary',
             'state', 'state_display',
             'title', 'address_line_1', 'address_line_2', 'city', 'postcode',
             'latitude', 'longitude',
             'price', 'bedrooms', 'bathrooms', 'square_area',
             'garden', 'parking', 'furnished_status',
             'council_tax_band', 'epc_rating', 'lease_length', 'floor_level',
-            'child_suitable', 'completion_date',
+            'child_suitable',
             'external_id', 'external_url',
             'normalized_address', 'uprn',
             'overall_rating', 'rating_breakdown', 'disqualified', 'disqualification_reason',

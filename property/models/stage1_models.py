@@ -196,6 +196,7 @@ class Property(models.Model):
     address_line_2 = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True)
     postcode = models.CharField(max_length=10, blank=True)
+    summary = models.TextField(blank=True, null=True)
 
     # Location coordinates
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
@@ -203,12 +204,16 @@ class Property(models.Model):
 
     # Property characteristics
     price = models.DecimalField(max_digits=12, decimal_places=2)
+    price_frequency = models.CharField(max_length=30, blank=True, null=True)
+    currency_code = models.CharField(max_length=3, blank=True, null=True)
     bedrooms = models.IntegerField(blank=True, null=True)
     bathrooms = models.IntegerField(blank=True, null=True)
     square_area = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     garden = models.BooleanField(default=False)
     parking = models.BooleanField(default=False)
     furnished_status = models.CharField(max_length=50, blank=True)
+    property_type = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
 
     # Additional details
     council_tax_band = models.CharField(max_length=1, blank=True)
@@ -216,7 +221,12 @@ class Property(models.Model):
     lease_length = models.IntegerField(null=True, blank=True)
     floor_level = models.IntegerField(null=True, blank=True)
     child_suitable = models.BooleanField(default=False)
-    completion_date = models.DateField(null=True, blank=True)
+    let_available_date = models.DateField(null=True, blank=True)
+    first_visible_date = models.DateField(null=True, blank=True)
+    added_or_reduced = models.CharField(max_length=100, blank=True)
+    display_size = models.CharField(max_length=100, blank=True)
+    listing_update_reason = models.CharField(max_length=100, blank=True)
+    listing_update_date = models.DateField(null=True, blank=True)
 
     # External references
     external_id = models.CharField(max_length=100, blank=True)
@@ -306,6 +316,29 @@ class PropertyFavorite(models.Model):
     def __str__(self):
         return f"{self.user.username} → {self.property.title}"
 
+class KeyFeature(models.Model):
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='key_features'
+    )
+
+    order = models.IntegerField(default=0, help_text="Display order (0 = primary)")
+    description = models.CharField(max_length=255, blank=True, null=True)
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'property_key_features'
+        ordering = ['order', 'created_at']
+        indexes = [
+            models.Index(fields=['property', 'order'])
+        ]
+
+    def __str__(self):
+        return f"{self.property.title} - Feature {self.order}"
 
 class PropertyImage(models.Model):
     """Images for a property from external sources"""
