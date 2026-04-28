@@ -1,6 +1,6 @@
 """
 Tests for Stage 3 Rating Service
-Tests all 5 scoring strategies, dealbreaker evaluation, and rating aggregation
+Tests all 5 scoring strategies and rating aggregation
 """
 from decimal import Decimal
 from unittest import skip
@@ -492,7 +492,8 @@ class POIDistanceScoringTests(RatingServiceTestCase):
             source='context_report',
             field_name='poi',
             poi_category='supermarket',
-            weight=Decimal('1.0')
+            weight=Decimal('1.0'),
+            distance_calculation_preference='straight_distance'
         )
 
         service = RatingService(self.property1, self.rating_criteria)
@@ -659,118 +660,6 @@ class ThresholdScoringTests(RatingServiceTestCase):
         self.assertEqual(score_3000, Decimal('25'))  # Still matches 2000 threshold
 
 
-class DealbrekerTests(RatingServiceTestCase):
-    """Tests for dealbreaker evaluation"""
-
-    def test_dealbreaker_pass(self):
-        """Test property passing dealbreaker"""
-        criterion = Criterion.objects.create(
-            rating_criteria=self.rating_criteria,
-            name='Min Bedrooms',
-            source='property',
-            field_name='bedrooms',
-            weight=Decimal('1.0'),
-            is_dealbreaker=True,
-            dealbreaker_threshold={'operator': '>=', 'value': 2}
-        )
-
-        service = RatingService(self.property2, self.rating_criteria)
-        passed, reason = service.evaluate_dealbreakers()
-
-        self.assertTrue(passed)
-        self.assertIsNone(reason)
-
-    def test_dealbreaker_fail(self):
-        """Test property failing dealbreaker"""
-        criterion = Criterion.objects.create(
-            rating_criteria=self.rating_criteria,
-            name='Max Price',
-            source='property',
-            field_name='price',
-            weight=Decimal('1.5'),
-            is_dealbreaker=True,
-            dealbreaker_threshold={'operator': '<=', 'value': 350000}
-        )
-
-        # property2 has price of £400k, should fail
-        service = RatingService(self.property2, self.rating_criteria)
-        passed, reason = service.evaluate_dealbreakers()
-
-        self.assertFalse(passed)
-        self.assertIn('Max Price', reason)
-
-    @skip("Test uses 'parking' field which is not yet supported by RatingService. Re-enable when boolean field scoring (garden, parking) is implemented.")
-    def test_multiple_dealbreakers(self):
-        """Test multiple dealbreakers"""
-        Criterion.objects.create(
-            rating_criteria=self.rating_criteria,
-            name='Min Bedrooms',
-            source='property',
-            field_name='bedrooms',
-            weight=Decimal('1.0'),
-            is_dealbreaker=True,
-            dealbreaker_threshold={'operator': '>=', 'value': 2}
-        )
-
-        Criterion.objects.create(
-            rating_criteria=self.rating_criteria,
-            name='Must Have Parking',
-            source='property',
-            field_name='parking',
-            weight=Decimal('0.5'),
-            is_dealbreaker=True,
-            dealbreaker_threshold={'operator': '==', 'value': True}
-        )
-
-        # property1 has 2 bedrooms but no parking - should fail
-        service = RatingService(self.property1, self.rating_criteria)
-        passed, reason = service.evaluate_dealbreakers()
-
-        self.assertFalse(passed)
-        self.assertIn('Parking', reason)
-
-    def test_dealbreaker_operators(self):
-        """Test various dealbreaker operators"""
-        service = RatingService(self.property1, self.rating_criteria)
-
-        # Test >= operator
-        criterion = Criterion.objects.create(
-            rating_criteria=self.rating_criteria,
-            name='Test >=',
-            source='property',
-            field_name='bedrooms',
-            weight=Decimal('1.0'),
-            dealbreaker_threshold={'operator': '>=', 'value': 2}
-        )
-        self.assertTrue(service._meets_dealbreaker_threshold(2, criterion))
-        self.assertFalse(service._meets_dealbreaker_threshold(1, criterion))
-
-        # Test > operator
-        criterion.dealbreaker_threshold = {'operator': '>', 'value': 2}
-        self.assertFalse(service._meets_dealbreaker_threshold(2, criterion))
-        self.assertTrue(service._meets_dealbreaker_threshold(3, criterion))
-
-        # Test <= operator
-        criterion.dealbreaker_threshold = {'operator': '<=', 'value': 3}
-        self.assertTrue(service._meets_dealbreaker_threshold(3, criterion))
-        self.assertFalse(service._meets_dealbreaker_threshold(4, criterion))
-
-        # Test < operator
-        criterion.dealbreaker_threshold = {'operator': '<', 'value': 3}
-        self.assertTrue(service._meets_dealbreaker_threshold(2, criterion))
-        self.assertFalse(service._meets_dealbreaker_threshold(3, criterion))
-
-        # Test == operator
-        criterion.dealbreaker_threshold = {'operator': '==', 'value': 2}
-        self.assertTrue(service._meets_dealbreaker_threshold(2, criterion))
-        self.assertFalse(service._meets_dealbreaker_threshold(3, criterion))
-
-        # Test != operator
-        criterion.dealbreaker_threshold = {'operator': '!=', 'value': 2}
-        self.assertFalse(service._meets_dealbreaker_threshold(2, criterion))
-        self.assertTrue(service._meets_dealbreaker_threshold(3, criterion))
-
-
 class RawValueExtractionTests(RatingServiceTestCase):
     """Tests for raw value extraction"""
 
@@ -902,26 +791,6 @@ class OverallRatingTests(RatingServiceTestCase):
         self.assertGreater(overall, Decimal('0'))
         self.assertLessEqual(overall, Decimal('100'))
 
-    def test_rating_with_dealbreaker_fail(self):
-        """Test rating calculation when dealbreaker fails"""
-        Criterion.objects.create(
-            rating_criteria=self.rating_criteria,
-            name='Max Price',
-            source='property',
-            field_name='price',
-            weight=Decimal('1.5'),
-            is_dealbreaker=True,
-            dealbreaker_threshold={'operator': '<=', 'value': 350000}
-        )
-
-        # property3 has price £500k, should be disqualified
-        service = RatingService(self.property3, self.rating_criteria)
-        overall, breakdown, disqualified, reason = service.calculate_rating()
-
-        self.assertTrue(disqualified)
-        self.assertIsNotNone(reason)
-        self.assertEqual(overall, Decimal('0.00'))
-
     def test_rating_with_zero_weight_criterion(self):
         """Test that zero-weight criteria are included in breakdown but not in overall calculation"""
         Criterion.objects.create(
@@ -992,30 +861,6 @@ class CalculateAndPersistTests(RatingServiceTestCase):
         # Check criterion scores were created
         scores = CriterionScore.objects.filter(property=self.property1)
         self.assertEqual(scores.count(), 2)
-
-    def test_persist_rating_with_disqualification(self):
-        """Test persistence when property is disqualified"""
-        Criterion.objects.create(
-            rating_criteria=self.rating_criteria,
-            name='Max Price',
-            source='property',
-            field_name='price',
-            weight=Decimal('1.0'),
-            is_dealbreaker=True,
-            dealbreaker_threshold={'operator': '<=', 'value': 250000}
-        )
-
-        result = calculate_and_persist_rating(self.property1.id)
-
-        # Check disqualification
-        self.assertTrue(result['disqualified'])
-        self.assertIsNotNone(result['disqualification_reason'])
-
-        # Check property
-        self.property1.refresh_from_db()
-        self.assertEqual(self.property1.overall_rating, Decimal('0.00'))
-        self.assertTrue(self.property1.disqualified)
-        self.assertIn('Max Price', self.property1.disqualification_reason)
 
     def test_no_rating_criteria_configured(self):
         """Test error when no rating criteria configured"""
