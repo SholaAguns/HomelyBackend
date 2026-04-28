@@ -1866,3 +1866,39 @@ class PropertyFavoriteViewSet(viewsets.ViewSet):
                 {'error': 'Favorite not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+class ProjectCommentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for ProjectComment CRUD.
+    List/create filtered by project_uuid query param.
+    Only the author can delete their own comment.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProjectCommentSerializer
+    lookup_field = 'uuid'
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = ProjectComment.objects.filter(
+            Q(project__owner=user) |
+            Q(project__viewers=user) |
+            Q(project__contributors=user)
+        ).distinct()
+
+        project_uuid = self.request.query_params.get('project')
+        if project_uuid:
+            queryset = queryset.filter(project__uuid=project_uuid)
+
+        return queryset
+
+    def perform_create(self, serializer):
+        project_uuid = self.request.data.get('project_uuid')
+        project = Project.objects.get(uuid=project_uuid)
+        serializer.save(author=self.request.user, project=project)
+
+    def destroy(self, request, *args, **kwargs):
+        comment = self.get_object()
+        if comment.author != request.user:
+            return Response({'error': 'Only the author can delete this comment'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)

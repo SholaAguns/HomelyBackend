@@ -572,3 +572,21 @@ class AppNotification(models.Model):
 
     def __str__(self):
         return f"{self.notification_type} → {self.recipient.username}"
+
+
+class ProjectComment(models.Model):
+    """Comment on a project by a member"""
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='project_comments')
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'project_comments'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Comment by {self.author.username} on {self.project.title}"

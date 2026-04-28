@@ -4,7 +4,7 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
-from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, Project, TaskList, Task, ProjectInvitation, AppNotification, PropertyFavorite, KeyFeature
+from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, Project, TaskList, Task, ProjectInvitation, AppNotification, PropertyFavorite, KeyFeature, ProjectComment
 from property.models.stage2_models import ContextOptions
 from property.models.stage3_models import RatingCriteria, Criterion, CriterionScore
 from property.models.models_poi import PlaceOfInterest
@@ -161,7 +161,15 @@ class TaskSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
-    assigned_to_username = serializers.ReadOnlyField(source='assigned_to.username')
+    assigned_to_email = serializers.ReadOnlyField(source='assigned_to.email')
+    assigned_to_input = serializers.SlugRelatedField(
+        slug_field='email',
+        queryset=User.objects.all(),
+        source='assigned_to',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
 
@@ -170,10 +178,10 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = [
             'uuid', 'task_list_uuid', 'task_list_input', 'title', 'description',
             'status', 'status_display', 'priority', 'priority_display',
-            'assigned_to', 'assigned_to_username', 'due_date', 'order',
+            'assigned_to_email', 'assigned_to_input', 'due_date', 'order',
             'created_at', 'updated_at', 'completed_at'
         ]
-        read_only_fields = ['uuid', 'task_list_uuid', 'created_at', 'updated_at', 'completed_at']
+        read_only_fields = ['uuid', 'task_list_uuid', 'assigned_to_email', 'created_at', 'updated_at', 'completed_at']
 
 
 
@@ -1026,3 +1034,17 @@ class AppNotificationSerializer(serializers.ModelSerializer):
         if not obj.actor:
             return None
         return f"{obj.actor.first_name} {obj.actor.last_name}".strip() or obj.actor.email
+
+
+
+class ProjectCommentSerializer(serializers.ModelSerializer):
+    author_email = serializers.ReadOnlyField(source='author.email')
+    author_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProjectComment
+        fields = ['uuid', 'body', 'author_email', 'author_name', 'created_at', 'updated_at']
+        read_only_fields = ['uuid', 'author_email', 'author_name', 'created_at', 'updated_at']
+
+    def get_author_name(self, obj):
+        return f"{obj.author.first_name} {obj.author.last_name}".strip() or obj.author.email

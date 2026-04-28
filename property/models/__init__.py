@@ -2,7 +2,7 @@ from .stage1_models import (
     Project, TaskList, Task,
     SearchCriteria, PropertyList, Property, PropertyFavorite,
     PropertyImage, SavedLocation, PropertyListTask,
-    StateTransitionLog, ProjectInvitation, AppNotification
+    StateTransitionLog, ProjectInvitation, AppNotification, ProjectComment
 )
 from .stage2_models import ContextOptions, ContextData
 from .stage3_models import RatingCriteria, Criterion, CriterionScore
@@ -25,6 +25,7 @@ __all__ = [
     'StateTransitionLog',
     'ProjectInvitation',
     'AppNotification',
+    'ProjectComment',
     # Stage 2 models
     'ContextOptions',
     'ContextData',
