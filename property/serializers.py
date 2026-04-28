@@ -62,12 +62,14 @@ class ProjectSerializer(serializers.ModelSerializer):
     viewers = serializers.SlugRelatedField(
         slug_field='email',
         many=True,
-        read_only=True
+        queryset=User.objects.all(),
+        required=False
     )
     contributors = serializers.SlugRelatedField(
         slug_field='email',
         many=True,
-        read_only=True
+        queryset=User.objects.all(),
+        required=False
     )
     # Use UUID for rating_criteria (consistent with RatingCriteriaViewSet lookup)
     rating_criteria = serializers.SlugRelatedField(
@@ -129,19 +131,34 @@ class ProjectSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        viewers = validated_data.pop('viewers', [])
+        contributors = validated_data.pop('contributors', [])
         validated_data['owner'] = self.context['request'].user
-        return super().create(validated_data)
+        project = super().create(validated_data)
+        project.viewers.set(viewers)
+        project.contributors.set(contributors)
+        return project
+
+    def update(self, instance, validated_data):
+        viewers = validated_data.pop('viewers', None)
+        contributors = validated_data.pop('contributors', None)
+        instance = super().update(instance, validated_data)
+        if viewers is not None:
+            instance.viewers.set(viewers)
+        if contributors is not None:
+            instance.contributors.set(contributors)
+        return instance
 
 
 class TaskSerializer(serializers.ModelSerializer):
     """Serializer for Task model"""
 
     task_list_uuid = serializers.UUIDField(source='task_list.uuid', read_only=True)
-    task_list_input = serializers.PrimaryKeyRelatedField(
-        queryset=TaskList.objects.none(),  # Will be overridden in __init__
+    task_list_input = serializers.SlugRelatedField(
+        slug_field='uuid',
+        queryset=TaskList.objects.all(),
         source='task_list',
         write_only=True,
-        pk_field=serializers.UUIDField(),
         required=False
     )
     assigned_to_username = serializers.ReadOnlyField(source='assigned_to.username')
@@ -158,22 +175,17 @@ class TaskSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['uuid', 'task_list_uuid', 'created_at', 'updated_at', 'completed_at']
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Set queryset to all task lists (permission checks done at view level)
-        if 'task_list_input' in self.fields:
-            self.fields['task_list_input'].queryset = TaskList.objects.all()
 
 
 class TaskListSerializer(serializers.ModelSerializer):
     """Serializer for TaskList model"""
 
     project_uuid = serializers.UUIDField(source='project.uuid', read_only=True)
-    project_input = serializers.PrimaryKeyRelatedField(
-        queryset=Project.objects.none(),  # Will be overridden in __init__
+    project_input = serializers.SlugRelatedField(
+        slug_field='uuid',
+        queryset=Project.objects.all(),
         source='project',
         write_only=True,
-        pk_field=serializers.UUIDField(),
         required=False
     )
     project_title = serializers.ReadOnlyField(source='project.title')
@@ -189,11 +201,6 @@ class TaskListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['uuid', 'project_uuid', 'created_at', 'updated_at']
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Set queryset to all projects (permission checks done at view level)
-        if 'project_input' in self.fields:
-            self.fields['project_input'].queryset = Project.objects.all()
 
     def get_tasks_count(self, obj):
         return obj.tasks.count()
@@ -492,12 +499,11 @@ class PropertySerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Cross-field validation"""
-        # Ensure at minimum title and postcode exist
-        if not data.get('title'):
-            raise serializers.ValidationError({'title': 'Property title is required'})
-        if not data.get('postcode'):
-            raise serializers.ValidationError({'postcode': 'Postcode is required'})
-
+        if not self.partial:
+            if not data.get('title'):
+                raise serializers.ValidationError({'title': 'Property title is required'})
+            if not data.get('postcode'):
+                raise serializers.ValidationError({'postcode': 'Postcode is required'})
         return data
 
 

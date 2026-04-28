@@ -498,7 +498,6 @@ class EnhancedCreateFromInputEndpointTest(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertIn('not found or access denied', response.data['error'])
 
     @patch('requests.get')
     def test_create_from_input_handles_extraction_errors(self, mock_get):

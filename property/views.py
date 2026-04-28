@@ -1584,12 +1584,12 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 project = property_list.project
                 if not check_project_contributor(request.user, project):
                     return Response(
-                        {'error': 'Only owners and contributors can add properties to this list.'},
-                        status=status.HTTP_403_FORBIDDEN
+                        {'error': 'Property list not found or access denied'},
+                        status=status.HTTP_404_NOT_FOUND
                     )
             except PropertyList.DoesNotExist:
                 return Response(
-                    {'error': 'Property list not found'},
+                    {'error': 'Property list not found or access denied'},
                     status=status.HTTP_404_NOT_FOUND
                 )
 

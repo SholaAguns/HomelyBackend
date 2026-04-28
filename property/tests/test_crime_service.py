@@ -127,8 +127,13 @@ class CrimeServiceTest(TestCase):
             {'category': 'anti-social-behaviour'},
         ]
 
+        # Mock postcode validation response (validate_postcode calls requests.get first)
+        mock_validate = Mock()
+        mock_validate.status_code = 200
+        mock_validate.json.return_value = {'status': 200, 'result': True}
+
         # Set up mock to return different responses
-        mock_get.side_effect = [mock_locate, mock_boundary] + [mock_crimes] * 12
+        mock_get.side_effect = [mock_validate, mock_locate, mock_boundary] + [mock_crimes] * 12
 
         # Fetch data
         result = self.service.fetch_data(self.property)
