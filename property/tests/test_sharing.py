@@ -202,15 +202,17 @@ class PreviewInviteAPITest(APITestCase):
         self.project = Project.objects.create(owner=self.owner, title='My Project')
 
     def _create_invitation(self, email='jane@test.com', role='viewer'):
-        token = generate_invite_token(str(self.project.uuid) + '|' + email)
         invitation = ProjectInvitation.objects.create(
             project=self.project,
             invited_by=self.owner,
             invited_email=email,
             role=role,
-            token_hash=hash_token(token),
+            token_hash='placeholder',
             expires_at=timezone.now() + timezone.timedelta(days=7),
         )
+        token = generate_invite_token(str(invitation.uuid))
+        invitation.token_hash = hash_token(token)
+        invitation.save()
         return invitation, token
 
     def test_preview_returns_invite_details(self):
@@ -245,15 +247,17 @@ class AcceptInviteAPITest(APITestCase):
         auth_client(self.client, self.invitee)
 
     def _create_invitation(self, email='jane@test.com', role='viewer'):
-        token = generate_invite_token(str(self.project.uuid) + '|' + email)
         invitation = ProjectInvitation.objects.create(
             project=self.project,
             invited_by=self.owner,
             invited_email=email,
             role=role,
-            token_hash=hash_token(token),
+            token_hash='placeholder',
             expires_at=timezone.now() + timezone.timedelta(days=7),
         )
+        token = generate_invite_token(str(invitation.uuid))
+        invitation.token_hash = hash_token(token)
+        invitation.save()
         return invitation, token
 
     def test_accept_viewer_invite(self):
@@ -325,15 +329,17 @@ class DeclineInviteAPITest(APITestCase):
         auth_client(self.client, self.invitee)
 
     def _create_invitation(self, email='jane2@test.com', role='viewer'):
-        token = generate_invite_token(str(self.project.uuid) + '|' + email)
         invitation = ProjectInvitation.objects.create(
             project=self.project,
             invited_by=self.owner,
             invited_email=email,
             role=role,
-            token_hash=hash_token(token),
+            token_hash='placeholder',
             expires_at=timezone.now() + timezone.timedelta(days=7),
         )
+        token = generate_invite_token(str(invitation.uuid))
+        invitation.token_hash = hash_token(token)
+        invitation.save()
         return invitation, token
 
     def test_decline_marks_invitation_declined(self):
