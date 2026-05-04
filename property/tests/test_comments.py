@@ -1,4 +1,6 @@
-from django.test import TestCase
+from unittest.mock import patch
+
+from django.test import TestCase, AsyncClient
 from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
 from rest_framework import status
@@ -176,3 +178,102 @@ class ProjectCommentAPITest(APITestCase):
         })
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    @patch('property.views._publish_comment_event')
+    def test_create_comment_publishes_comment_created_sse_event(self, mock_publish):
+        """POST /api/property/comments/ publishes comment_created SSE event with serialized comment data"""
+        self._auth(self.owner_token)
+        response = self.client.post('/api/property/comments/', {
+            'body': 'SSE publish test',
+            'project_uuid': str(self.project.uuid),
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        mock_publish.assert_called_once()
+        project_uuid_arg, event_type_arg, data_arg = mock_publish.call_args[0]
+        self.assertEqual(project_uuid_arg, str(self.project.uuid))
+        self.assertEqual(event_type_arg, 'comment_created')
+        self.assertEqual(data_arg['body'], 'SSE publish test')
+        self.assertEqual(data_arg['author_email'], 'owner@test.com')
+        self.assertIn('uuid', data_arg)
+
+    @patch('property.views._publish_comment_event')
+    def test_delete_comment_publishes_comment_deleted_sse_event(self, mock_publish):
+        """DELETE /api/property/comments/<uuid>/ publishes comment_deleted SSE event with comment uuid"""
+        comment = ProjectComment.objects.create(
+            project=self.project, author=self.owner, body='To be deleted'
+        )
+        self._auth(self.owner_token)
+
+        response = self.client.delete(f'/api/property/comments/{comment.uuid}/')
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        mock_publish.assert_called_once()
+        project_uuid_arg, event_type_arg, data_arg = mock_publish.call_args[0]
+        self.assertEqual(project_uuid_arg, str(self.project.uuid))
+        self.assertEqual(event_type_arg, 'comment_deleted')
+        self.assertEqual(data_arg['uuid'], str(comment.uuid))
+
+    @patch('property.views._publish_comment_event')
+    def test_failed_delete_does_not_publish_sse_event(self, mock_publish):
+        """DELETE /api/property/comments/<uuid>/ does not publish when non-author attempts delete"""
+        owner_comment = ProjectComment.objects.create(
+            project=self.project, author=self.owner, body='Owners comment'
+        )
+        self._auth(self.contributor_token)
+
+        self.client.delete(f'/api/property/comments/{owner_comment.uuid}/')
+
+        mock_publish.assert_not_called()
+
+
+class ProjectCommentStreamViewTest(TestCase):
+    """Test project_comment_stream SSE view authentication and access control"""
+
+    def setUp(self):
+        self.member = User.objects.create_user(
+            username='member', email='member@test.com', password='testpass123'
+        )
+        self.outsider = User.objects.create_user(
+            username='outsider', email='outsider@test.com', password='testpass123'
+        )
+        self.project = Project.objects.create(owner=self.member, title='Test Project')
+        self.member_token = str(RefreshToken.for_user(self.member).access_token)
+        self.outsider_token = str(RefreshToken.for_user(self.outsider).access_token)
+        self.async_client = AsyncClient()
+
+    async def test_stream_returns_401_without_token(self):
+        """GET /projects/<uuid>/comments/stream/ returns 401 when no token provided"""
+        response = await self.async_client.get(
+            f'/api/property/projects/{self.project.uuid}/comments/stream/'
+        )
+        self.assertEqual(response.status_code, 401)
+
+    async def test_stream_returns_401_with_invalid_token(self):
+        """GET /projects/<uuid>/comments/stream/ returns 401 for invalid JWT token"""
+        response = await self.async_client.get(
+            f'/api/property/projects/{self.project.uuid}/comments/stream/?token=notavalidtoken'
+        )
+        self.assertEqual(response.status_code, 401)
+
+    async def test_stream_returns_401_for_non_member(self):
+        """GET /projects/<uuid>/comments/stream/ returns 401 when user is not a project member"""
+        response = await self.async_client.get(
+            f'/api/property/projects/{self.project.uuid}/comments/stream/?token={self.outsider_token}'
+        )
+        self.assertEqual(response.status_code, 401)
+
+    @patch('property.sse_views._event_stream')
+    async def test_stream_returns_streaming_response_for_project_member(self, mock_event_stream):
+        """GET /projects/<uuid>/comments/stream/ returns SSE streaming response for project member"""
+        async def _mock_gen():
+            yield 'data: {"type": "connected"}\n\n'
+
+        mock_event_stream.return_value = _mock_gen()
+
+        response = await self.async_client.get(
+            f'/api/property/projects/{self.project.uuid}/comments/stream/?token={self.member_token}'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get('Content-Type'), 'text/event-stream')
