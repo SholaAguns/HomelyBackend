@@ -92,3 +92,32 @@ async def property_list_stream(request, list_uuid):
         return _unauthorized()
 
     return _sse_response(_event_stream(f'sse:property-list:{list_uuid}'))
+
+
+@sync_to_async
+def _user_can_access_project(user, project_uuid_str: str) -> bool:
+    from django.db.models import Q
+    from property.models import Project
+    return Project.objects.filter(uuid=project_uuid_str).filter(
+        Q(owner=user) | Q(viewers=user) | Q(contributors=user)
+    ).exists()
+
+
+async def project_comment_stream(request, project_uuid):
+    """
+    GET /api/property/projects/<uuid>/comments/stream/?token=<jwt>
+    Streams: comment_created, comment_deleted
+    """
+    token_str = request.GET.get('token')
+    if not token_str:
+        return _unauthorized()
+
+    user = await _resolve_user(token_str)
+    if not user:
+        return _unauthorized()
+
+    has_access = await _user_can_access_project(user, str(project_uuid))
+    if not has_access:
+        return _unauthorized()
+
+    return _sse_response(_event_stream(f'sse:project:{project_uuid}:comments'))

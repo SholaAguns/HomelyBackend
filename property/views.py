@@ -15,6 +15,15 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 logger = logging.getLogger('property.views')
 
+
+def _publish_comment_event(project_uuid: str, event_type: str, data):
+    import json as _json
+    import redis as _redis
+    client = _redis.Redis.from_url(settings.REDIS_URL)
+    payload = _json.dumps({'type': event_type, 'data': data})
+    client.publish(f'sse:project:{project_uuid}:comments', payload)
+    client.close()
+
 from property.models.stage1_models import *
 from property.serializers import *
 from property.models.stage2_models import ContextData, ContextOptions
@@ -1895,10 +1904,17 @@ class ProjectCommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         project_uuid = self.request.data.get('project_uuid')
         project = Project.objects.get(uuid=project_uuid)
-        serializer.save(author=self.request.user, project=project)
+        comment = serializer.save(author=self.request.user, project=project)
+        _publish_comment_event(str(project.uuid), 'comment_created', ProjectCommentSerializer(comment).data)
 
     def destroy(self, request, *args, **kwargs):
         comment = self.get_object()
         if comment.author != request.user:
             return Response({'error': 'Only the author can delete this comment'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
+
+    def perform_destroy(self, instance):
+        comment_uuid = str(instance.uuid)
+        project_uuid = str(instance.project.uuid)
+        super().perform_destroy(instance)
+        _publish_comment_event(project_uuid, 'comment_deleted', {'uuid': comment_uuid})
