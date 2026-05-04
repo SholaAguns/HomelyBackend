@@ -1,8 +1,8 @@
+import json as _json
 import logging
 
 from celery import shared_task
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
+from django.conf import settings
 from django.utils import timezone
 from decimal import Decimal
 
@@ -217,7 +217,7 @@ def calculate_property_rating(self, property_id):
         logger.info(f'Starting rating calculation for property {property_id}')
 
         # Send initial progress update
-        _send_websocket_update(
+        _send_property_event(
             property_obj.uuid,
             'rating_progress',
             {'message': 'Calculating rating...', 'progress': 50}
@@ -380,8 +380,8 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
         task.save(update_fields=['status', 'celery_task_id', 'updated_at'])
         logger.debug("scrape_rightmove_properties task=%s status=IN_PROGRESS", task_uuid)
 
-        # Send initial websocket update
-        _send_list_websocket_update(
+        # Send initial SSE update
+        _send_list_event(
             property_list.uuid,
             'scrape_progress',
             {
@@ -419,7 +419,7 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
             task.save(update_fields=['total_items', 'completed_items', 'updated_at'])
             logger.debug("making progess callback created=%s, total=%s", created, total)
 
-            _send_list_websocket_update(
+            _send_list_event(
                 property_list.uuid,
                 'scrape_progress',
                 {
@@ -471,8 +471,8 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
         task.metadata['skipped_count'] = skipped_count
         task.save(update_fields=['status', 'completed_at', 'metadata', 'updated_at'])
 
-        # Send completion websocket update
-        _send_list_websocket_update(
+        # Send completion SSE update
+        _send_list_event(
             property_list.uuid,
             'scrape_complete',
             {
@@ -512,8 +512,8 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
             task.completed_at = timezone.now()
             task.save(update_fields=['status', 'error_message', 'completed_at', 'updated_at'])
 
-            # Send failure websocket update
-            _send_list_websocket_update(
+            # Send failure SSE update
+            _send_list_event(
                 property_list.uuid,
                 'scrape_failed',
                 {
@@ -534,64 +534,24 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
 
 
 
-def _send_websocket_update(property_uuid, message_type, data):
-    """
-    Helper function to send WebSocket updates to connected clients.
-
-    Args:
-        property_uuid: The property UUID
-        message_type: Type of message (progress_update, service_complete, etc)
-        data: Message data dictionary
-    """
-    logger.info("=" * 80)
-    logger.info("SENDING WEBSOCKET UPDATE TO PROPERTY CHANNEL")
-    logger.info(f"PROPERTY_UUID: {property_uuid}")
-    logger.info(f"MESSAGE_TYPE: {message_type}")
-    logger.info(f"ROOM_GROUP_NAME: property_{property_uuid}")
-    logger.info(f"DATA: {data}")
-
-    channel_layer = get_channel_layer()
-    room_group_name = f'property_{property_uuid}'
-
-    async_to_sync(channel_layer.group_send)(
-        room_group_name,
-        {
-            'type': message_type,
-            'data': data
-        }
-    )
-    logger.info("WEBSOCKET UPDATE SENT SUCCESSFULLY")
-    logger.info("=" * 80)
+def _publish_sse(channel: str, event_type: str, data: dict) -> None:
+    """Publish a JSON-encoded SSE event to a Redis pub/sub channel."""
+    import redis as _redis
+    client = _redis.Redis.from_url(settings.REDIS_URL)
+    try:
+        payload = _json.dumps({'type': event_type, 'data': data})
+        client.publish(channel, payload)
+        logger.info(f"SSE published: channel={channel} type={event_type}")
+    finally:
+        client.close()
 
 
-def _send_list_websocket_update(property_list_uuid, message_type, data):
-    """
-    Helper function to send WebSocket updates for property list operations.
+def _send_property_event(property_uuid, event_type: str, data: dict) -> None:
+    _publish_sse(f'sse:property:{property_uuid}', event_type, data)
 
-    Args:
-        property_list_uuid: The property list UUID
-        message_type: Type of message (scrape_progress, scrape_complete, etc)
-        data: Message data dictionary
-    """
-    logger.info("=" * 80)
-    logger.info("SENDING WEBSOCKET UPDATE TO PROPERTY LIST CHANNEL")
-    logger.info(f"PROPERTY_LIST_UUID: {property_list_uuid}")
-    logger.info(f"MESSAGE_TYPE: {message_type}")
-    logger.info(f"ROOM_GROUP_NAME: property_list_{property_list_uuid}")
-    logger.info(f"DATA: {data}")
 
-    channel_layer = get_channel_layer()
-    room_group_name = f'property_list_{property_list_uuid}'
-
-    async_to_sync(channel_layer.group_send)(
-        room_group_name,
-        {
-            'type': message_type.replace('_', '.'),  # Convert to dotted notation for consumer
-            'data': data
-        }
-    )
-    logger.info("WEBSOCKET UPDATE SENT SUCCESSFULLY")
-    logger.info("=" * 80)
+def _send_list_event(list_uuid, event_type: str, data: dict) -> None:
+    _publish_sse(f'sse:property-list:{list_uuid}', event_type, data)
 
 
 def _classify_error(exc) -> dict:
@@ -676,11 +636,11 @@ def _send_service_update(property_obj, service_name, status, data=None, error=No
     }
 
     # Send to property channel
-    _send_websocket_update(property_obj.uuid, 'service_update', message_data)
+    _send_property_event(property_obj.uuid, 'service_update', message_data)
 
     # Also send to all property list channels that contain this property
     for property_list in property_obj.property_lists.all():
-        _send_list_websocket_update(property_list.uuid, 'service_update', message_data)
+        _send_list_event(property_list.uuid, 'service_update', message_data)
 
 
 def _get_enabled_services_from_project(property_obj):
@@ -809,11 +769,11 @@ def _check_stage2_completion(property_obj):
         }
 
         # Send to property channel
-        _send_websocket_update(property_obj.uuid, 'stage2_complete', completion_data)
+        _send_property_event(property_obj.uuid, 'stage2_complete', completion_data)
 
         # Also send to all property list channels that contain this property
         for property_list in property_obj.property_lists.all():
-            _send_list_websocket_update(property_list.uuid, 'stage2_complete', completion_data)
+            _send_list_event(property_list.uuid, 'stage2_complete', completion_data)
 
 
 def _send_rating_complete(property_obj, result):
@@ -835,13 +795,13 @@ def _send_rating_complete(property_obj, result):
     }
 
     # Send to property channel
-    _send_websocket_update(property_obj.uuid, 'rating_complete', message_data)
+    _send_property_event(property_obj.uuid, 'rating_complete', message_data)
 
     # Also send to all property list channels that contain this property
     for property_list in property_obj.property_lists.all():
-        _send_list_websocket_update(property_list.uuid, 'rating_complete', message_data)
+        _send_list_event(property_list.uuid, 'rating_complete', message_data)
 
-    logger.info(f'Sent rating_complete WebSocket update for property {property_obj.id}')
+    logger.info(f'Sent rating_complete SSE update for property {property_obj.id}')
 
 
 def _send_rating_failed(property_obj, error_message):
@@ -860,10 +820,10 @@ def _send_rating_failed(property_obj, error_message):
     }
 
     # Send to property channel
-    _send_websocket_update(property_obj.uuid, 'rating_failed', message_data)
+    _send_property_event(property_obj.uuid, 'rating_failed', message_data)
 
     # Also send to all property list channels that contain this property
     for property_list in property_obj.property_lists.all():
-        _send_list_websocket_update(property_list.uuid, 'rating_failed', message_data)
+        _send_list_event(property_list.uuid, 'rating_failed', message_data)
 
-    logger.info(f'Sent rating_failed WebSocket update for property {property_obj.id}')
+    logger.info(f'Sent rating_failed SSE update for property {property_obj.id}')

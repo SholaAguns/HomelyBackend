@@ -165,6 +165,9 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+#MESSAGE BROKER
+REDIS_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379')
+
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',

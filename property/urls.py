@@ -6,6 +6,7 @@ from property.views import (
     RatingCriteriaViewSet, NotificationViewSet, PropertyFavoriteViewSet,
     ProjectCommentViewSet
 )
+from property.sse_views import property_stream, property_list_stream
 from property.admin_views import (
     SchoolAdminViewSet, upload_broadband_data, upload_mobile_data,
     admin_dashboard_statistics, admin_system_status,
@@ -36,6 +37,11 @@ router.register(r'admin/context-data', AdminContextDataViewSet, basename='admin-
 
 urlpatterns = [
     path('', include(router.urls)),
+
+    # SSE streaming endpoints
+    path('properties/<uuid:property_uuid>/stream/', property_stream, name='property-stream'),
+    path('property-lists/<uuid:list_uuid>/stream/', property_list_stream, name='property-list-stream'),
+
     path('schools/ofsted/<str:urn>/', SchoolViewSet.as_view({'get': 'ofsted_report'}), name='school-ofsted'),
 
     # Admin data uploads
