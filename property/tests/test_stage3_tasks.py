@@ -63,7 +63,7 @@ class CalculatePropertyRatingTaskTest(TestCase):
         self.property.property_lists.add(self.property_list)
 
     @patch('property.tasks._send_rating_complete')
-    @patch('property.tasks._send_websocket_update')
+    @patch('property.tasks._send_property_event')
     def test_calculate_rating_success(self, mock_websocket, mock_rating_complete):
         """Test successful rating calculation"""
         # Transition to Stage3InProgress
@@ -383,7 +383,7 @@ class RatingTaskIntegrationTest(TestCase):
             prop.property_lists.add(self.property_list)
 
     @patch('property.tasks._send_rating_complete')
-    @patch('property.tasks._send_websocket_update')
+    @patch('property.tasks._send_property_event')
     def test_end_to_end_rating_workflow(self, mock_websocket, mock_rating_complete):
         """Test complete rating workflow from trigger to completion"""
         properties = Property.objects.filter(property_lists=self.property_list)

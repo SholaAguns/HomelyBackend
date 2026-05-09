@@ -45,7 +45,7 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         )
 
     @patch('property.services.RightmoveService')
-    @patch('property.tasks._send_list_websocket_update')
+    @patch('property.tasks._send_list_event')
     def test_scrape_task_creates_properties(self, mock_ws_update, mock_service_class):
         """Task successfully scrapes and creates properties"""
 
@@ -81,7 +81,7 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         self.assertGreaterEqual(mock_ws_update.call_count, 2)
 
     @patch('property.services.RightmoveService')
-    @patch('property.tasks._send_list_websocket_update')
+    @patch('property.tasks._send_list_event')
     def test_scrape_task_updates_existing_properties(self, mock_ws_update, mock_service_class):
         """Task updates existing properties with same external_id"""
         # Create existing property
@@ -123,7 +123,7 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         self.assertEqual(len(call_args[0]), 2)  # 2 properties passed to batch method
 
     @patch('property.services.RightmoveService')
-    @patch('property.tasks._send_list_websocket_update')
+    @patch('property.tasks._send_list_event')
     def test_scrape_task_progress_callbacks(self, mock_ws_update, mock_service_class):
         """Task sends progress updates via WebSocket"""
         # Setup mocks
@@ -161,7 +161,7 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         self.assertEqual(self.task.completed_items, 5)
 
     @patch('property.services.RightmoveService')
-    @patch('property.tasks._send_list_websocket_update')
+    @patch('property.tasks._send_list_event')
     def test_scrape_task_handles_errors(self, mock_ws_update, mock_service_class):
         """Task handles errors and marks task as failed"""
         # Setup mock to raise exception
@@ -186,7 +186,7 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         self.assertGreater(len(failure_calls), 0)
 
     @patch('property.services.RightmoveService')
-    @patch('property.tasks._send_list_websocket_update')
+    @patch('property.tasks._send_list_event')
     def test_scrape_task_respects_max_properties(self, mock_ws_update, mock_service_class):
         """Task limits properties to max_properties parameter"""
         # Setup mock with many properties
@@ -243,7 +243,7 @@ class ScrapeRightmovePropertiesTaskTest(TestCase):
         self.assertEqual(task.status, 'FAILED')
 
     @patch('property.services.RightmoveService')
-    @patch('property.tasks._send_list_websocket_update')
+    @patch('property.tasks._send_list_event')
     def test_scrape_task_partial_failure(self, mock_ws_update, mock_service_class):
         """Task continues even if some properties fail to create"""
         # Setup mock
