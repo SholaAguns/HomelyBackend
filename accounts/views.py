@@ -288,6 +288,12 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response({'message': 'Password updated successfully'})
 
+    @action(detail=False, methods=['delete'], url_path='delete_account')
+    def delete_account(self, request):
+        """Hard delete the current user's account and all owned data"""
+        request.user.delete()
+        return Response({'message': 'Account deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=False, methods=['get'], url_path='search')
     def search(self, request):
         """GET /api/accounts/users/search/?q=<string> — search users by name or email"""

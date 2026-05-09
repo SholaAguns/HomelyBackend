@@ -82,11 +82,17 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name', required=False)
     last_name = serializers.CharField(source='user.last_name', required=False)
-    email = serializers.EmailField(source='user.email', read_only=True)
+    email = serializers.EmailField(source='user.email', required=False)
 
     class Meta:
         model = UserProfile
         fields = ['email', 'first_name', 'last_name', 'bio', 'phone_number', 'avatar']
+
+    def validate_email(self, value):
+        from django.contrib.auth.models import User as DjangoUser
+        if DjangoUser.objects.filter(email=value).exclude(pk=self.instance.user.pk).exists():
+            raise serializers.ValidationError('A user with this email already exists.')
+        return value
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
@@ -95,6 +101,9 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             instance.user.first_name = user_data['first_name']
         if 'last_name' in user_data:
             instance.user.last_name = user_data['last_name']
+        if 'email' in user_data:
+            instance.user.email = user_data['email']
+            instance.user.username = user_data['email']
         instance.user.save()
 
         instance.bio = validated_data.get('bio', instance.bio)
