@@ -627,6 +627,41 @@ class ProjectViewSet(viewsets.ModelViewSet):
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=True, methods=['post'], url_path='leave')
+    def leave_project(self, request, uuid=None):
+        """POST /api/property/projects/{uuid}/leave/ — remove self from project (non-owners only)"""
+        project = self.get_object()
+        user = request.user
+
+        if project.owner == user:
+            return Response(
+                {'error': 'Project owners cannot leave their own project. Transfer ownership or delete the project instead.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        removed = False
+        if project.contributors.filter(pk=user.pk).exists():
+            project.contributors.remove(user)
+            removed = True
+        if project.viewers.filter(pk=user.pk).exists():
+            project.viewers.remove(user)
+            removed = True
+
+        if not removed:
+            return Response({'error': 'You are not a member of this project.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        owner_name = f"{project.owner.first_name} {project.owner.last_name}".strip() or project.owner.email
+        create_notification(
+            recipient=project.owner,
+            actor=user,
+            notification_type='member_removed',
+            title=f"Member left '{project.title}'",
+            message=f"{user.first_name or user.email} left your project '{project.title}'.",
+            related_object_uuid=project.uuid,
+            related_object_type='project',
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=False, methods=['get'], url_path='my-invite')
     def my_invite(self, request):
         """GET /api/property/projects/my-invite/?project_uuid=... — returns token for current user's pending invite"""
