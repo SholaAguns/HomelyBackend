@@ -19,8 +19,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . .
 
-# Expose port
+# Collect static files (DATABASE_URL dummy value is only used to pass the startup check)
+RUN DATABASE_URL=sqlite:///tmp/dummy.db python manage.py collectstatic --noinput --settings=homely_core.settings.prod
+
 EXPOSE 8000
 
-# Run server
-CMD ["uvicorn", "homely_core.asgi:application", "--host", "0.0.0.0", "--port", "8000"]
+CMD gunicorn homely_core.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000}

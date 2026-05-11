@@ -1,8 +1,12 @@
 from .base import *
 import os
+from django.core.exceptions import ImproperlyConfigured
 
 DEBUG=False
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = [h for h in os.getenv('ALLOWED_HOSTS', '').split(',') if h]
+
+if not os.getenv('DATABASE_URL'):
+    raise ImproperlyConfigured("DATABASE_URL environment variable is required in production")
 
 # Production email settings (configure via environment variables)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -22,7 +26,12 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
 # CORS - only specific origins in production
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
+CORS_ALLOWED_ORIGINS = [h for h in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if h]
+
+# Static files via whitenoise — must be after SecurityMiddleware
+MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Email verification mandatory in production
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
