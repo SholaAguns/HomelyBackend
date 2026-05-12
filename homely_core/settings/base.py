@@ -216,10 +216,16 @@ OFCOM_BROADBAND_API_KEY_SECONDARY = os.getenv('OFCOM_BROADBAND_API_KEY_SECONDARY
 OFCOM_MOBILE_API_KEY_PRIMARY = os.getenv('OFCOM_MOBILE_API_KEY_PRIMARY', '')
 OFCOM_MOBILE_API_KEY_SECONDARY = os.getenv('OFCOM_MOBILE_API_KEY_SECONDARY', '')
 
+# JWT Cookie settings
+JWT_AUTH_COOKIE = 'access_token'
+JWT_AUTH_REFRESH_COOKIE = 'refresh_token'
+JWT_AUTH_COOKIE_SECURE = False
+JWT_AUTH_COOKIE_SAMESITE = 'Lax'
+
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'homely_core.authentication.CookieJWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [

@@ -33,5 +33,9 @@ MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# JWT Cookie — SameSite=None required for cross-origin (api.homely.app ↔ homely.app)
+JWT_AUTH_COOKIE_SECURE = True
+JWT_AUTH_COOKIE_SAMESITE = 'None'
+
 # Email verification mandatory in production
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
