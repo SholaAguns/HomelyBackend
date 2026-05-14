@@ -394,14 +394,13 @@ class TaskAPITest(APITestCase):
         data = {
             'task_list_input': str(self.task_list.uuid),
             'title': 'Paint bedroom',
-            'assigned_to': self.user2.id,
+            'assigned_to_input': self.user2.email,
             'due_date': str(date.today() + timedelta(days=7))
         }
         response = self.client.post('/api/property/tasks/', data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['assigned_to'], self.user2.id)
-        self.assertEqual(response.data['assigned_to_username'], 'testuser2')
+        self.assertEqual(response.data['assigned_to_email'], self.user2.email)
 
     def test_list_tasks(self):
         """GET /api/property/tasks/ returns accessible tasks"""
