@@ -163,7 +163,7 @@ def run_service_task(self, property_id, service_name):
             context_data.error_message = str(exc)
             context_data.error_type = error_info['error_type']
             context_data.save()
-        except:
+        except Exception:
             pass
 
         # Retry if transient error and retries remaining
@@ -184,7 +184,7 @@ def run_service_task(self, property_id, service_name):
                 # Check if all services complete (even with failures)
                 _check_stage2_completion(property_obj)
 
-            except:
+            except Exception:
                 pass
 
             return f'Service {service_name} failed permanently for property {property_id}'
@@ -250,7 +250,7 @@ def calculate_property_rating(self, property_id):
         try:
             property_obj = Property.objects.get(id=property_id)
             _send_rating_failed(property_obj, str(e))
-        except:
+        except Exception:
             pass
         raise
     except Exception as exc:
@@ -265,7 +265,7 @@ def calculate_property_rating(self, property_id):
             try:
                 property_obj = Property.objects.get(id=property_id)
                 _send_rating_failed(property_obj, str(exc))
-            except:
+            except Exception:
                 pass
             raise
 
@@ -526,7 +526,7 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
                     'message': f'Scrape failed: {str(e)}'
                 }
             )
-        except:
+        except Exception:
             pass
 
         raise

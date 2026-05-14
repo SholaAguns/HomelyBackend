@@ -394,7 +394,7 @@ class SchoolAdminViewSet(viewsets.ViewSet):
             if temp_file and os.path.exists(temp_path):
                 try:
                     os.unlink(temp_path)
-                except:
+                except OSError:
                     pass
 
     @action(detail=False, methods=['get'], url_path='stats')

@@ -207,7 +207,7 @@ class RatingService:
                 prop_value = RatingService(prop, self.rating_criteria).extract_raw_value(criterion)
                 if prop_value is not None:
                     values.append(float(prop_value))
-            except:
+            except (TypeError, ValueError, AttributeError):
                 continue
 
         if not values:

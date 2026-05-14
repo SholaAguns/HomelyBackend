@@ -37,5 +37,18 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 JWT_AUTH_COOKIE_SECURE = True
 JWT_AUTH_COOKIE_SAMESITE = 'None'
 
+# Rate limiting
+REST_FRAMEWORK = {
+    **REST_FRAMEWORK,
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/min',
+        'user': '300/min',
+    },
+}
+
 # Email verification mandatory in production
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'

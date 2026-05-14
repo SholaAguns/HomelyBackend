@@ -319,7 +319,7 @@ def validate_postcode(postcode: str) -> bool:
 
         return False
 
-    except:
+    except Exception:
         return False
 
 
