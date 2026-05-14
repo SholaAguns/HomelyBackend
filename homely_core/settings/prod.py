@@ -8,6 +8,9 @@ ALLOWED_HOSTS = [h for h in os.getenv('ALLOWED_HOSTS', '').split(',') if h]
 if not os.getenv('DATABASE_URL'):
     raise ImproperlyConfigured("DATABASE_URL environment variable is required in production")
 
+if not os.getenv('REDIS_URL'):
+    raise ImproperlyConfigured("REDIS_URL environment variable is required in production")
+
 # Production email settings (configure via environment variables)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
@@ -23,7 +26,12 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 X_FRAME_OPTIONS = 'DENY'
+
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+MIDDLEWARE.append('homely_core.middleware.ContentSecurityPolicyMiddleware')
 
 # CORS - only specific origins in production
 CORS_ALLOWED_ORIGINS = [h for h in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if h]

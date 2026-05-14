@@ -4,6 +4,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
+      # Dev-only credentials — never use these values in production
       - POSTGRES_DB=homely_db
       - POSTGRES_USER=homely_user
       - POSTGRES_PASSWORD=homely_pass
