@@ -126,7 +126,7 @@ class ProjectAPITest(APITestCase):
             password='testpass123'
         )
         self.token = RefreshToken.for_user(self.user).access_token
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.client.cookies['access_token'] = str(self.token)
 
     def test_create_project(self):
         """POST /api/property/projects/ creates new project"""
@@ -267,7 +267,7 @@ class TaskListAPITest(APITestCase):
             password='testpass123'
         )
         self.token = RefreshToken.for_user(self.user).access_token
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.client.cookies['access_token'] = str(self.token)
 
         self.project = Project.objects.create(
             owner=self.user,
@@ -356,7 +356,7 @@ class TaskAPITest(APITestCase):
             password='testpass123'
         )
         self.token = RefreshToken.for_user(self.user).access_token
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.client.cookies['access_token'] = str(self.token)
 
         self.project = Project.objects.create(
             owner=self.user,

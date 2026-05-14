@@ -44,7 +44,7 @@ def make_user(username, email, password='testpass123'):
 
 def auth_client(client, user):
     token = RefreshToken.for_user(user).access_token
-    client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+    client.cookies['access_token'] = str(token)
 
 
 class ProjectMembersAPITest(APITestCase):
@@ -314,7 +314,7 @@ class AcceptInviteAPITest(APITestCase):
         self.assertEqual(res.data['error'], 'invalid_or_expired_token')
 
     def test_accept_unauthenticated_returns_401(self):
-        self.client.credentials()
+        self.client.cookies.clear()
         _, token = self._create_invitation()
         res = self.client.post('/api/property/projects/accept-invite/', {'token': token})
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -456,7 +456,7 @@ class UserSearchAPITest(APITestCase):
         self.assertEqual(res.data, [])
 
     def test_search_unauthenticated_returns_401(self):
-        self.client.credentials()
+        self.client.cookies.clear()
         res = self.client.get('/api/accounts/users/search/?q=alice')
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 

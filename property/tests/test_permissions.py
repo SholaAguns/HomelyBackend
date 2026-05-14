@@ -19,7 +19,7 @@ def make_user(username, email, password='testpass123'):
 
 def auth_client(client, user):
     token = RefreshToken.for_user(user).access_token
-    client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+    client.cookies['access_token'] = str(token)
 
 
 class PermissionUtilsTest(APITestCase):

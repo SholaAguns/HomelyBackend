@@ -99,7 +99,7 @@ class ProjectCommentAPITest(APITestCase):
         self.outsider_token = str(RefreshToken.for_user(self.outsider).access_token)
 
     def _auth(self, token):
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        self.client.cookies['access_token'] = str(token)
 
     def test_owner_can_create_comment(self):
         """POST /api/property/comments/ creates comment for project owner"""
@@ -171,7 +171,7 @@ class ProjectCommentAPITest(APITestCase):
 
     def test_unauthenticated_request_is_rejected(self):
         """POST /api/property/comments/ returns 401 without authentication"""
-        self.client.credentials()
+        self.client.cookies.clear()
         response = self.client.post('/api/property/comments/', {
             'body': 'Sneaky!',
             'project_uuid': str(self.project.uuid),

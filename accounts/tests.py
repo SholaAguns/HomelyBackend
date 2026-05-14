@@ -64,10 +64,10 @@ class RegisterViewTest(APITestCase):
         response = self.client.post('/api/accounts/register/', data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
         self.assertIn('user', response.data)
         self.assertEqual(response.data['user']['email'], 'newuser@test.com')
+        self.assertIn('access_token', response.cookies)
+        self.assertIn('refresh_token', response.cookies)
 
         # Verify user created
         user = User.objects.get(email='newuser@test.com')
@@ -124,9 +124,9 @@ class LoginViewTest(APITestCase):
         response = self.client.post('/api/accounts/login/', data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
         self.assertIn('user', response.data)
+        self.assertIn('access_token', response.cookies)
+        self.assertIn('refresh_token', response.cookies)
 
     def test_login_invalid_credentials(self):
         """Login fails with wrong password"""
@@ -157,10 +157,10 @@ class LogoutViewTest(APITestCase):
         self.access = str(self.refresh.access_token)
 
     def test_logout_success(self):
-        """Logout with valid refresh token"""
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
-        data = {'refresh': str(self.refresh)}
-        response = self.client.post('/api/accounts/logout/', data)
+        """Logout with valid cookies clears auth cookies"""
+        self.client.cookies['access_token'] = self.access
+        self.client.cookies['refresh_token'] = str(self.refresh)
+        response = self.client.post('/api/accounts/logout/', {})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('message', response.data)
@@ -186,7 +186,7 @@ class UserProfileViewTest(APITestCase):
 
     def test_get_profile(self):
         """Get user profile"""
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        self.client.cookies['access_token'] = self.access
         response = self.client.get('/api/accounts/users/profile/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -195,7 +195,7 @@ class UserProfileViewTest(APITestCase):
 
     def test_update_profile(self):
         """Update user profile"""
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        self.client.cookies['access_token'] = self.access
         data = {
             'first_name': 'Updated',
             'last_name': 'Name',
@@ -226,7 +226,7 @@ class ChangePasswordViewTest(APITestCase):
 
     def test_change_password_success(self):
         """Change password with correct old password"""
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        self.client.cookies['access_token'] = self.access
         data = {
             'old_password': 'oldpass123',
             'new_password': 'NewPass123!'
@@ -241,7 +241,7 @@ class ChangePasswordViewTest(APITestCase):
 
     def test_change_password_wrong_old(self):
         """Change password fails with wrong old password"""
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        self.client.cookies['access_token'] = self.access
         data = {
             'old_password': 'wrongpass',
             'new_password': 'NewPass123!'
@@ -287,12 +287,12 @@ class TokenRefreshTest(APITestCase):
         self.refresh = RefreshToken.for_user(self.user)
 
     def test_token_refresh(self):
-        """Refresh access token"""
-        data = {'refresh': str(self.refresh)}
-        response = self.client.post('/api/accounts/token/refresh/', data)
+        """Refresh access token via cookie"""
+        self.client.cookies['refresh_token'] = str(self.refresh)
+        response = self.client.post('/api/accounts/token/refresh/', {})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)
+        self.assertIn('access_token', response.cookies)
 
     def test_token_refresh_invalid(self):
         """Refresh with invalid token fails"""
@@ -323,7 +323,7 @@ class UserViewSetTest(APITestCase):
 
     def test_list_users(self):
         """List all users"""
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        self.client.cookies['access_token'] = self.access
         response = self.client.get('/api/accounts/users/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -331,7 +331,7 @@ class UserViewSetTest(APITestCase):
 
     def test_retrieve_user_by_uuid(self):
         """Get user by UUID"""
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        self.client.cookies['access_token'] = self.access
         uuid = self.user2.profile.uuid
         response = self.client.get(f'/api/accounts/users/{uuid}/')
 

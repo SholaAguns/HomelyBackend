@@ -27,7 +27,7 @@ class CreateFromSearchEndpointTest(TransactionTestCase):
             password='testpass123'
         )
         self.token = RefreshToken.for_user(self.user).access_token
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.client.cookies['access_token'] = str(self.token)
 
         self.project = Project.objects.create(
             owner=self.user,
@@ -163,7 +163,7 @@ class CreateFromSearchEndpointTest(TransactionTestCase):
 
     def test_create_from_search_requires_authentication(self):
         """Endpoint requires authentication"""
-        self.client.credentials()  # Remove auth
+        self.client.cookies.clear()  # Remove auth
 
         data = {
             'search_criteria': {
@@ -221,7 +221,7 @@ class ScrapeStatusEndpointTest(APITestCase):
             password='testpass123'
         )
         self.token = RefreshToken.for_user(self.user).access_token
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.client.cookies['access_token'] = str(self.token)
 
         self.project = Project.objects.create(
             owner=self.user,
@@ -269,7 +269,7 @@ class ScrapeStatusEndpointTest(APITestCase):
 
     def test_get_scrape_status_requires_authentication(self):
         """Endpoint requires authentication"""
-        self.client.credentials()  # Remove auth
+        self.client.cookies.clear()  # Remove auth
 
         response = self.client.get(
             f'/api/property/property-lists/{self.property_list.uuid}/scrape-status/{self.task.uuid}/'
@@ -316,7 +316,7 @@ class EnhancedCreateFromInputEndpointTest(APITestCase):
             password='testpass123'
         )
         self.token = RefreshToken.for_user(self.user).access_token
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.client.cookies['access_token'] = str(self.token)
 
         self.project = Project.objects.create(
             owner=self.user,
@@ -536,7 +536,7 @@ class EnhancedCreateFromInputEndpointTest(APITestCase):
 
     def test_create_from_input_requires_authentication(self):
         """Endpoint requires authentication"""
-        self.client.credentials()  # Remove auth
+        self.client.cookies.clear()  # Remove auth
 
         data = {
             'input_data': 'https://www.rightmove.co.uk/properties/123456',

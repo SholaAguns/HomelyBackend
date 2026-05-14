@@ -429,7 +429,7 @@ class PropertyListAPITest(APITestCase):
             title='Test Project'
         )
         self.token = RefreshToken.for_user(self.user).access_token
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.client.cookies['access_token'] = str(self.token)
 
     def test_create_property_list(self):
         """POST /api/property/property-lists/ creates new list with search criteria"""
@@ -546,7 +546,7 @@ class PropertyAPITest(APITestCase):
             password='testpass123'
         )
         self.token = RefreshToken.for_user(self.user).access_token
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.client.cookies['access_token'] = str(self.token)
 
         self.project = Project.objects.create(
             owner=self.user,
@@ -758,7 +758,7 @@ class SavedLocationAPITest(APITestCase):
             password='testpass123'
         )
         self.token = RefreshToken.for_user(self.user).access_token
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.client.cookies['access_token'] = str(self.token)
 
     def test_create_saved_location(self):
         """POST /api/property/saved-locations/ creates location"""

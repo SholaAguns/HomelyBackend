@@ -183,7 +183,7 @@ class PropertyFavoriteAPITest(APITestCase):
             password='testpass123'
         )
         self.token = RefreshToken.for_user(self.user).access_token
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.client.cookies['access_token'] = str(self.token)
 
         self.project = Project.objects.create(owner=self.user, title='Test Project')
         self.property_list = PropertyList.objects.create(
@@ -424,7 +424,7 @@ class PropertyFavoriteAPITest(APITestCase):
 
     def test_unauthenticated_cannot_access_favorites(self):
         """Unauthenticated user cannot access favorites endpoints"""
-        self.client.credentials()
+        self.client.cookies.clear()
 
         response = self.client.get('/api/property/favorites/')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
