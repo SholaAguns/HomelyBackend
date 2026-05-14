@@ -65,6 +65,7 @@ claude_responses/
 poc/
 /.env.docker
 
+.claude/
 
 *debug.json
 /property/services/rightmove_response_debug_just_5.json
