@@ -3,7 +3,7 @@ Interface for context retrieval services (Stage 2)
 """
 from abc import ABC, abstractmethod
 from typing import Dict, Any
-from property.utils.geocoding import validate_postcode, reverse_geocode, geocode_postcode, GeocodingError
+from property.utils.geolocation import validate_postcode, reverse_geocode, geocode_postcode, GeocodingError
 import logging
 
 logger = logging.getLogger(__name__)

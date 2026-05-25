@@ -8,7 +8,7 @@ from property.models.stage1_models import Property, PropertyList, SavedLocation,
 from property.models.stage2_models import ContextOptions
 from property.models.stage3_models import RatingCriteria, Criterion, CriterionScore
 from property.models.models_poi import PlaceOfInterest
-from property.utils.geocoding import geocode_postcode
+from property.utils.geolocation import geocode_postcode
 
 
 class SearchCriteriaSerializer(serializers.ModelSerializer):

@@ -62,7 +62,7 @@ class SchoolRatingService(IContextService):
             school_types: List of school types to retrieve (nursery, primary, secondary, all_through)
         """
         from property.models import School
-        from property.utils.geocoding import calculate_distance
+        from property.utils.geolocation import calculate_distance
         from property.services.context_retrieval.ofsted_service import OfstedService
 
         self.validate_property_data(property_obj)

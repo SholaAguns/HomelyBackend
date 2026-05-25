@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 from decimal import Decimal
 from django.test import TestCase
 
-from property.utils.geocoding import geocode_postcode, bulk_geocode_postcodes, validate_postcode
+from property.utils.geolocation import geocode_postcode, bulk_geocode_postcodes, validate_postcode
 
 
 class GeocodingTest(TestCase):

@@ -4,7 +4,7 @@ Saved Locations distance service
 import logging
 from typing import Dict, Any, List
 from .interface import IContextService
-from property.utils.geocoding import calculate_distance
+from property.utils.geolocation import calculate_distance
 
 logger = logging.getLogger(__name__)
 

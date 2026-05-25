@@ -37,7 +37,7 @@ class BroadbandDatasetService(IContextService):
 
     def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
         from property.models import BroadbandCoverage
-        from property.utils.geocoding import postcode_to_oa, GeocodingError
+        from property.utils.geolocation import postcode_to_oa, GeocodingError
 
         self.ensure_postcode(property_obj)
         self.validate_property_data(property_obj)

@@ -7,7 +7,7 @@ from urllib.parse import quote_plus
 from typing import List, Dict, Tuple, Optional
 from django.conf import settings
 from .igeoservice import IGeoService
-from property.utils.geocoding import calculate_distance
+from property.utils.geolocation import calculate_distance
 
 logger = logging.getLogger(__name__)
 
