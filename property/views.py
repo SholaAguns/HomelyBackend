@@ -858,13 +858,16 @@ class TaskListViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
 
     def get_queryset(self):
-        """Filter to task lists in accessible projects"""
         user = self.request.user
-        return TaskList.objects.filter(
+        accessible_qs = TaskList.objects.filter(
             Q(project__owner=user) |
             Q(project__viewers=user) |
             Q(project__contributors=user)
         ).distinct()
+        project_uuid = self.request.query_params.get('project')
+        if project_uuid:
+            accessible_qs = accessible_qs.filter(project__uuid=project_uuid)
+        return accessible_qs
 
 
 class TaskViewSet(viewsets.ModelViewSet):
