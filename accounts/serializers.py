@@ -36,6 +36,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         if User.objects.filter(email=attrs['email']).exists():
             raise serializers.ValidationError({"email": "A user with this email already exists."})
 
+        from django.conf import settings
+        whitelist = getattr(settings, 'SIGNUP_EMAIL_WHITELIST', [])
+        if whitelist and attrs['email'].lower() not in whitelist:
+            raise serializers.ValidationError({"email": "This email is not authorised to register."})
+
         return attrs
 
     def create(self, validated_data):

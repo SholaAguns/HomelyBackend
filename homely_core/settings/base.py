@@ -305,6 +305,10 @@ else:
         },
     }
 
+# Signup whitelist — comma-separated emails; empty means open signup
+_whitelist_raw = os.getenv('SIGNUP_EMAIL_WHITELIST', '')
+SIGNUP_EMAIL_WHITELIST = [e.strip().lower() for e in _whitelist_raw.split(',') if e.strip()]
+
 # Spectacular API Documentation
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Homely API',
