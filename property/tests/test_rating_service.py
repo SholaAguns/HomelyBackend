@@ -459,6 +459,184 @@ class SavedLocationDistanceScoringTests(RatingServiceTestCase):
         # 2.5km is in 1-3km range, should score 80
         self.assertEqual(score, Decimal('80.0'))
 
+    def test_saved_location_walking_time_scoring(self):
+        """Test saved location scoring using walking_time preference"""
+        from property.models import ContextData, SavedLocation
+
+        saved_loc = SavedLocation.objects.create(
+            user=self.user,
+            name='Park',
+            postcode='SW1A 1AA',
+            address_line_1='St James Park',
+            latitude=51.5034,
+            longitude=-0.1276
+        )
+
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='saved_locations',
+            status='COMPLETE',
+            data={
+                'distances': [{
+                    'location_uuid': str(saved_loc.uuid),
+                    'location_name': 'Park',
+                    'distance_km': 1.0,
+                    'distance_miles': 0.62,
+                    'driving_time_mins': 5.0,
+                    'walking_time_mins': 12.0,
+                }]
+            }
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Walk to Park',
+            source='context_report',
+            field_name='saved_locations',
+            saved_location_uuid=saved_loc.uuid,
+            distance_calculation_preference='walking_time',
+            weight=Decimal('1.0')
+        )
+
+        service = RatingService(self.property1, self.rating_criteria)
+        raw_value, score = service._score_saved_location_distance(criterion)
+
+        self.assertEqual(raw_value, 12.0)
+        # 12 mins <= 15 min threshold, should score 60
+        self.assertEqual(score, Decimal('60.0'))
+
+    def test_saved_location_driving_time_scoring(self):
+        """Test saved location scoring using driving_time preference"""
+        from property.models import ContextData, SavedLocation
+
+        saved_loc = SavedLocation.objects.create(
+            user=self.user,
+            name='Office',
+            postcode='EC1A 1BB',
+            address_line_1='1 City Road',
+            latitude=51.5200,
+            longitude=-0.0900
+        )
+
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='saved_locations',
+            status='COMPLETE',
+            data={
+                'distances': [{
+                    'location_uuid': str(saved_loc.uuid),
+                    'location_name': 'Office',
+                    'distance_km': 3.0,
+                    'distance_miles': 1.86,
+                    'driving_time_mins': 8.0,
+                    'walking_time_mins': 35.0,
+                }]
+            }
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Drive to Office',
+            source='context_report',
+            field_name='saved_locations',
+            saved_location_uuid=saved_loc.uuid,
+            distance_calculation_preference='driving_time',
+            weight=Decimal('1.0')
+        )
+
+        service = RatingService(self.property1, self.rating_criteria)
+        raw_value, score = service._score_saved_location_distance(criterion)
+
+        self.assertEqual(raw_value, 8.0)
+        # 8 mins <= 10 min threshold, should score 100
+        self.assertEqual(score, Decimal('100.0'))
+
+    def test_saved_location_walking_time_unavailable_raises(self):
+        """Test ValueError raised when walking_time_mins is None"""
+        from property.models import ContextData, SavedLocation
+
+        saved_loc = SavedLocation.objects.create(
+            user=self.user,
+            name='Station',
+            postcode='SW1A 1AA',
+            address_line_1='Victoria Station',
+            latitude=51.4952,
+            longitude=-0.1441
+        )
+
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='saved_locations',
+            status='COMPLETE',
+            data={
+                'distances': [{
+                    'location_uuid': str(saved_loc.uuid),
+                    'location_name': 'Station',
+                    'distance_km': 1.0,
+                    'distance_miles': 0.62,
+                    'driving_time_mins': None,
+                    'walking_time_mins': None,
+                }]
+            }
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Walk to Station',
+            source='context_report',
+            field_name='saved_locations',
+            saved_location_uuid=saved_loc.uuid,
+            distance_calculation_preference='walking_time',
+            weight=Decimal('1.0')
+        )
+
+        service = RatingService(self.property1, self.rating_criteria)
+        with self.assertRaises(ValueError):
+            service._score_saved_location_distance(criterion)
+
+    def test_saved_location_driving_time_unavailable_raises(self):
+        """Test ValueError raised when driving_time_mins is None"""
+        from property.models import ContextData, SavedLocation
+
+        saved_loc = SavedLocation.objects.create(
+            user=self.user,
+            name='Airport',
+            postcode='TW6 1QG',
+            address_line_1='Heathrow Airport',
+            latitude=51.4700,
+            longitude=-0.4543
+        )
+
+        ContextData.objects.create(
+            property=self.property1,
+            service_name='saved_locations',
+            status='COMPLETE',
+            data={
+                'distances': [{
+                    'location_uuid': str(saved_loc.uuid),
+                    'location_name': 'Airport',
+                    'distance_km': 20.0,
+                    'distance_miles': 12.4,
+                    'driving_time_mins': None,
+                    'walking_time_mins': None,
+                }]
+            }
+        )
+
+        criterion = Criterion.objects.create(
+            rating_criteria=self.rating_criteria,
+            name='Drive to Airport',
+            source='context_report',
+            field_name='saved_locations',
+            saved_location_uuid=saved_loc.uuid,
+            distance_calculation_preference='driving_time',
+            weight=Decimal('1.0')
+        )
+
+        service = RatingService(self.property1, self.rating_criteria)
+        with self.assertRaises(ValueError):
+            service._score_saved_location_distance(criterion)
+
 
 class POIDistanceScoringTests(RatingServiceTestCase):
     """Tests for _score_poi_distance() - POI distance scoring"""

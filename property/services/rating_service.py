@@ -306,9 +306,23 @@ class RatingService:
             for distance_data in distances:
                 logger.debug(f"📍 DISTANCE: Checking distance data with name {distance_data['location_name']} and uuid {distance_data['location_uuid']}")
                 if distance_data['location_uuid'] == str(target_location_id):
-                    distance_km = distance_data['distance_km']
-                    logger.debug(f"📍 DISTANCE: Found distance = {distance_km} km")
-                    return self._score_straight_distance(distance_km)
+                    pref = criterion.distance_calculation_preference
+                    logger.debug(f"📍 DISTANCE: Scoring by preference '{pref}'")
+
+                    if pref == 'walking_time':
+                        time_mins = distance_data.get('walking_time_mins')
+                        if time_mins is None:
+                            raise ValueError(f"Walking time not available for saved_location_id={target_location_id}")
+                        return self._score_walking_time(time_mins)
+                    elif pref == 'driving_time':
+                        time_mins = distance_data.get('driving_time_mins')
+                        if time_mins is None:
+                            raise ValueError(f"Driving time not available for saved_location_id={target_location_id}")
+                        return self._score_driving_time(time_mins)
+                    else:
+                        distance_km = distance_data['distance_km']
+                        logger.debug(f"📍 DISTANCE: Found distance = {distance_km} km")
+                        return self._score_straight_distance(distance_km)
 
             # If location not found in context data
             raise ValueError(f"Distance to saved_location_id={target_location_id} not found in context data")
@@ -368,7 +382,7 @@ class RatingService:
             (5, 60.0),
             (10, 40.0),
             (15, 20.0),
-            (20, 10.0),
+            (20, 5.0),
             (0, 0.0),
         ]
 
@@ -393,7 +407,7 @@ class RatingService:
             (15, 60.0),
             (20, 40.0),
             (25, 20.0),
-            (30, 10.0),
+            (3000, 10.0),
             (0, 0.0),
         ]
 
