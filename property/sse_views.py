@@ -61,12 +61,17 @@ def _sse_response(generator):
     return response
 
 
+def _get_token(request) -> str | None:
+    return request.GET.get('token') or request.COOKIES.get('access_token')
+
+
 async def property_stream(request, property_uuid):
     """
-    GET /api/property/properties/<uuid>/stream/?token=<jwt>
+    GET /api/property/properties/<uuid>/stream/
+    Auth via ?token=<jwt> query param or access_token cookie.
     Streams: service_update, stage2_complete, rating_complete, rating_failed
     """
-    token_str = request.GET.get('token')
+    token_str = _get_token(request)
     if not token_str:
         return _unauthorized()
 
@@ -79,11 +84,12 @@ async def property_stream(request, property_uuid):
 
 async def property_list_stream(request, list_uuid):
     """
-    GET /api/property/property-lists/<uuid>/stream/?token=<jwt>
+    GET /api/property/property-lists/<uuid>/stream/
+    Auth via ?token=<jwt> query param or access_token cookie.
     Streams: service_update, stage2_complete, rating_complete,
              scrape_progress, scrape_complete, scrape_failed
     """
-    token_str = request.GET.get('token')
+    token_str = _get_token(request)
     if not token_str:
         return _unauthorized()
 
@@ -105,10 +111,11 @@ def _user_can_access_project(user, project_uuid_str: str) -> bool:
 
 async def project_comment_stream(request, project_uuid):
     """
-    GET /api/property/projects/<uuid>/comments/stream/?token=<jwt>
+    GET /api/property/projects/<uuid>/comments/stream/
+    Auth via ?token=<jwt> query param or access_token cookie.
     Streams: comment_created, comment_deleted
     """
-    token_str = request.GET.get('token')
+    token_str = _get_token(request)
     if not token_str:
         return _unauthorized()
 

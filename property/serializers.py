@@ -813,6 +813,8 @@ class SavedLocationDistanceSerializer(serializers.Serializer):
     longitude = serializers.FloatField()
     distance_km = serializers.FloatField()
     distance_miles = serializers.FloatField()
+    driving_time_mins = serializers.FloatField(allow_null=True)
+    walking_time_mins = serializers.FloatField(allow_null=True)
 
 
 class SavedLocationsReportDataSerializer(serializers.Serializer):

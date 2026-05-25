@@ -4,7 +4,7 @@ Saved Locations distance service
 import logging
 from typing import Dict, Any, List
 from .interface import IContextService
-from property.utils.geolocation import calculate_distance
+from property.utils.geolocation import calculate_distance, get_route_info
 
 logger = logging.getLogger(__name__)
 
@@ -96,10 +96,12 @@ class SavedLocationService(IContextService):
         for location in saved_locations:
             if location.latitude and location.longitude:
                 try:
-                    distance_km = calculate_distance(
-                        prop_lat, prop_lon,
-                        float(location.latitude), float(location.longitude)
-                    )
+                    loc_lat = float(location.latitude)
+                    loc_lon = float(location.longitude)
+
+                    distance_km = calculate_distance(prop_lat, prop_lon, loc_lat, loc_lon)
+                    driving_time, _ = get_route_info(prop_lat, prop_lon, loc_lat, loc_lon, 'driving')
+                    walking_time, _ = get_route_info(prop_lat, prop_lon, loc_lat, loc_lon, 'foot')
 
                     distances.append({
                         'location_id': location.id,
@@ -107,10 +109,12 @@ class SavedLocationService(IContextService):
                         'location_name': location.name,
                         'address': f"{location.address_line_1}, {location.postcode}",
                         'postcode': location.postcode,
-                        'latitude': float(location.latitude),
-                        'longitude': float(location.longitude),
+                        'latitude': loc_lat,
+                        'longitude': loc_lon,
                         'distance_km': round(distance_km, 2),
-                        'distance_miles': round(distance_km * 0.621371, 2)
+                        'distance_miles': round(distance_km * 0.621371, 2),
+                        'driving_time_mins': driving_time,
+                        'walking_time_mins': walking_time,
                     })
                 except Exception as e:
                     logger.error(f"Failed to calculate distance for location {location.id}: {e}")

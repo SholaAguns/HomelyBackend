@@ -337,6 +337,28 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return c * r
 
 
+OSRM_BASE = "http://router.project-osrm.org"
+
+
+def get_route_info(orig_lat, orig_lon, dest_lat, dest_lon, profile: str) -> Tuple[Optional[float], Optional[float]]:
+    """
+    Returns (duration_mins, distance_km) via OSRM for 'driving' or 'foot'.
+    Returns (None, None) on any error so callers degrade gracefully.
+    """
+    coords = f"{orig_lon},{orig_lat};{dest_lon},{dest_lat}"
+    url = f"{OSRM_BASE}/route/v1/{profile}/{coords}"
+    try:
+        resp = requests.get(url, params={'overview': 'false'}, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get('routes'):
+            rt = data['routes'][0]
+            return round(rt['duration'] / 60.0, 1), round(rt['distance'] / 1000.0, 2)
+    except Exception as e:
+        logger.warning(f"OSRM {profile} route lookup failed ({orig_lat},{orig_lon} -> {dest_lat},{dest_lon}): {e}")
+    return None, None
+
+
 def reverse_geocode(latitude: float, longitude: float, limit: int = 1) -> Optional[str]:
     # Cache key based on rounded coordinates (to avoid cache bloat)
     cache_key = f'reverse_geo:{round(latitude, 5)}:{round(longitude, 5)}'
