@@ -337,7 +337,12 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return c * r
 
 
-OSRM_BASE = "http://router.project-osrm.org"
+# routing.openstreetmap.de hosts separate OSRM instances per profile.
+# router.project-osrm.org only has the car profile — passing 'foot' silently routes as car.
+_OSRM_PROFILE_BASES = {
+    'driving': 'https://routing.openstreetmap.de/routed-car/route/v1/driving',
+    'foot':    'https://routing.openstreetmap.de/routed-foot/route/v1/foot',
+}
 
 
 def get_route_info(orig_lat, orig_lon, dest_lat, dest_lon, profile: str) -> Tuple[Optional[float], Optional[float]]:
@@ -345,8 +350,13 @@ def get_route_info(orig_lat, orig_lon, dest_lat, dest_lon, profile: str) -> Tupl
     Returns (duration_mins, distance_km) via OSRM for 'driving' or 'foot'.
     Returns (None, None) on any error so callers degrade gracefully.
     """
+    base = _OSRM_PROFILE_BASES.get(profile)
+    if not base:
+        logger.warning(f"Unknown OSRM profile '{profile}'")
+        return None, None
+
     coords = f"{orig_lon},{orig_lat};{dest_lon},{dest_lat}"
-    url = f"{OSRM_BASE}/route/v1/{profile}/{coords}"
+    url = f"{base}/{coords}"
     try:
         resp = requests.get(url, params={'overview': 'false'}, timeout=10)
         resp.raise_for_status()
