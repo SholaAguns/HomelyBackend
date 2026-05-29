@@ -34,6 +34,14 @@ class RightmoveService(IPropertyCreationService):
         'www.rightmove.co.uk'
     ]
 
+    PROPERTY_TYPE_MAP = {
+        'house':               'houses',
+        'flat':                'flats',
+        'bungalow':            'bungalows',
+        'land':                'land',
+        'commercial-property': 'commercial-property',
+    }
+
     HEADERS = {
         'Accept': '*/*',
         'Accept-Encoding': 'gzip, deflate, br, zstd',
@@ -444,7 +452,6 @@ class RightmoveService(IPropertyCreationService):
             'price_max': 'maxPrice',
             'bedrooms_min': 'minBedrooms',
             'bedrooms_max': 'maxBedrooms',
-            'property_types': 'propertyTypes',
             'max_days_since_added': 'maxDaysSinceAdded',
         }
 
@@ -452,6 +459,11 @@ class RightmoveService(IPropertyCreationService):
             value = search_criteria.get(src)
             if value:
                 params[dest] = str(value)
+
+        raw_type = search_criteria.get('property_types', '')
+        rm_type = self.PROPERTY_TYPE_MAP.get(raw_type)
+        if rm_type:
+            params['propertyTypes'] = rm_type
 
         # Fetch first page to get total count
         first_sr, _ = self.fetch_page(session, params)

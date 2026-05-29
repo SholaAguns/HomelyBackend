@@ -309,6 +309,8 @@ else:
 _whitelist_raw = os.getenv('SIGNUP_EMAIL_WHITELIST', '')
 SIGNUP_EMAIL_WHITELIST = [e.strip().lower() for e in _whitelist_raw.split(',') if e.strip()]
 
+FLARESOLVERR_URL = os.getenv('FLARESOLVERR_URL')
+
 # Spectacular API Documentation
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Homely API',

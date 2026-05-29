@@ -29,7 +29,7 @@ from property.serializers import *
 from property.models.stage2_models import ContextData, ContextOptions
 from property.models.stage3_models import RatingCriteria, Criterion, CriterionScore
 from property.models.models_poi import PlaceOfInterest
-from property.tasks import retrieve_context_data, calculate_property_rating, scrape_rightmove_properties, bulk_calculate_project_ratings
+from property.tasks import retrieve_context_data, calculate_property_rating, scrape_rightmove_properties, scrape_zoopla_properties, bulk_calculate_project_ratings
 from property.services import property_creation_service_factory
 from property.utils.invitation_tokens import generate_invite_token, verify_invite_token, hash_token
 from property.utils.notifications import create_notification
@@ -999,26 +999,37 @@ class PropertyListViewSet(viewsets.ModelViewSet):
             search_criteria=search_criteria
         )
 
-        # Create PropertyListTask for tracking
-        task_obj = PropertyListTask.objects.create(
+        # Create one task per service
+        rm_task = PropertyListTask.objects.create(
             property_list=property_list,
             task_type='SCRAPE_SEARCH',
-            status='QUEUED'
+            status='QUEUED',
+            metadata={'source': 'rightmove'}
+        )
+        zoopla_task = PropertyListTask.objects.create(
+            property_list=property_list,
+            task_type='SCRAPE_SEARCH',
+            status='QUEUED',
+            metadata={'source': 'zoopla'}
         )
 
-        # Trigger async scraping
-        max_properties = request.data.get('max_properties', 100)
+        max_properties = request.data.get('max_properties', 500)
+        #transaction.on_commit(
+        #    lambda: scrape_rightmove_properties.delay(str(rm_task.uuid), max_properties=max_properties)
+        #)
         transaction.on_commit(
-            lambda: scrape_rightmove_properties.delay(str(task_obj.uuid), max_properties=max_properties)
+            lambda: scrape_zoopla_properties.delay(str(zoopla_task.uuid), max_properties=max_properties)
         )
+        logger.debug("create queued rm_task=%s zoopla_task=%s", rm_task.uuid, zoopla_task.uuid)
 
-        # Serialize response
         serializer = self.get_serializer(property_list)
 
         return Response({
             **serializer.data,
-            'scraping_task_uuid': str(task_obj.uuid),
-            'scraping_status': 'QUEUED'
+            'scraping_tasks': [
+                #{'uuid': str(rm_task.uuid), 'status': 'QUEUED', 'source': 'rightmove'},
+                {'uuid': str(zoopla_task.uuid), 'status': 'QUEUED', 'source': 'zoopla'},
+            ]
         }, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='run-stage2-bulk')
@@ -1118,7 +1129,7 @@ class PropertyListViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         search_criteria_data = serializer.validated_data['search_criteria']
-        max_properties = serializer.validated_data.get('max_properties', 100)
+        max_properties = serializer.validated_data.get('max_properties', 500)
         logger.debug("create_from_search criteria=%s max_properties=%d", search_criteria_data, max_properties)
 
         if property_list.search_criteria:
@@ -1133,19 +1144,34 @@ class PropertyListViewSet(viewsets.ModelViewSet):
             property_list.save()
             logger.debug("create_from_search created new search_criteria=%s", search_criteria.id)
 
-        task = PropertyListTask.objects.create(
+        rm_task = PropertyListTask.objects.create(
             property_list=property_list,
             task_type='SCRAPE_SEARCH',
-            status='QUEUED'
+            status='QUEUED',
+            metadata={'source': 'rightmove'}
+        )
+        zoopla_task = PropertyListTask.objects.create(
+            property_list=property_list,
+            task_type='SCRAPE_SEARCH',
+            status='QUEUED',
+            metadata={'source': 'zoopla'}
         )
 
+        #transaction.on_commit(
+        #    lambda: scrape_rightmove_properties.delay(str(rm_task.uuid), max_properties=max_properties)
+        #)
         transaction.on_commit(
-            lambda: scrape_rightmove_properties.delay(str(task.uuid), max_properties=max_properties)
+            lambda: scrape_zoopla_properties.delay(str(zoopla_task.uuid), max_properties=max_properties)
         )
-        logger.debug("create_from_search queued task=%s", task.uuid)
+        logger.debug("create_from_search queued rm_task=%s zoopla_task=%s", rm_task.uuid, zoopla_task.uuid)
 
-        task_serializer = PropertyListTaskSerializer(task, context={'request': request})
-        return Response(task_serializer.data, status=status.HTTP_202_ACCEPTED)
+        return Response(
+            {'tasks': [
+                #PropertyListTaskSerializer(rm_task, context={'request': request}).data,
+                PropertyListTaskSerializer(zoopla_task, context={'request': request}).data,
+            ]},
+            status=status.HTTP_202_ACCEPTED
+        )
 
     @extend_schema(
         responses={

@@ -34,6 +34,13 @@ services:
       - db
       - redis
 
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    ports:
+      - "8191:8191"
+    environment:
+      - LOG_LEVEL=info
+
   celery:
     build: .
     command: celery -A homely_core worker -l info
@@ -46,9 +53,11 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
       - SECRET_KEY=dev-secret-key-change-in-production
       - DEBUG=True
+      - FLARESOLVERR_URL=http://flaresolverr:8191/v1
     depends_on:
       - db
       - redis
+      - flaresolverr
 
   frontend:
     build: ../HomelyFrontend

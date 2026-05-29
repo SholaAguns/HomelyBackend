@@ -534,6 +534,161 @@ def scrape_rightmove_properties(self, task_uuid, max_properties=100):
 
 
 
+@shared_task(bind=True, max_retries=0)
+def scrape_zoopla_properties(self, task_uuid, max_properties=100):
+    from property.models import PropertyListTask
+    from property.services.property_creation.zoopla_service import ZooplaService
+    from django.core.exceptions import ValidationError
+
+    logger.debug("scrape_zoopla_properties started task_uuid=%s max_properties=%d", task_uuid, max_properties)
+
+    try:
+        task = PropertyListTask.objects.get(uuid=task_uuid)
+        property_list = task.property_list
+        search_criteria = property_list.search_criteria
+
+        if not search_criteria:
+            raise ValueError("PropertyList does not have search criteria configured")
+
+        task.status = 'IN_PROGRESS'
+        task.celery_task_id = self.request.id
+        task.save(update_fields=['status', 'celery_task_id', 'updated_at'])
+
+        _send_list_event(
+            property_list.uuid,
+            'scrape_progress',
+            {
+                'source': 'zoopla',
+                'task_uuid': task_uuid,
+                'status': 'IN_PROGRESS',
+                'completed_items': 0,
+                'total_items': 0,
+                'failed_items': 0,
+                'progress_percentage': 0,
+                'errors': [],
+                'message': 'Starting Zoopla property search...'
+            }
+        )
+
+        criteria_dict = {
+            'area': search_criteria.area,
+            'bedrooms_min': search_criteria.bedrooms_min,
+            'bedrooms_max': search_criteria.bedrooms_max,
+            'price_min': search_criteria.price_min,
+            'price_max': search_criteria.price_max,
+            'radius': search_criteria.radius,
+            'property_types': search_criteria.property_types,
+            'max_days_since_added': search_criteria.max_days_since_added,
+        }
+
+        service = ZooplaService()
+
+        def progress_callback(created, total):
+            task.total_items = total
+            task.completed_items = created
+            task.save(update_fields=['total_items', 'completed_items', 'updated_at'])
+            _send_list_event(
+                property_list.uuid,
+                'scrape_progress',
+                {
+                    'source': 'zoopla',
+                    'task_uuid': task_uuid,
+                    'status': 'IN_PROGRESS',
+                    'completed_items': created,
+                    'total_items': total,
+                    'failed_items': task.failed_items,
+                    'progress_percentage': int((created / total) * 100) if total > 0 else 0,
+                    'errors': task.errors,
+                    'message': f'Zoopla: scraped {created} of {total} properties...'
+                }
+            )
+
+        properties_data = service.scrape_properties_by_search(
+            criteria_dict,
+            max_properties=max_properties,
+            progress_callback=progress_callback
+        )
+        logger.debug("scrape_zoopla_properties task=%s scrape returned %d properties", task_uuid, len(properties_data))
+
+        def batch_progress_callback(created, updated, failed):
+            task.failed_items = failed
+            task.save(update_fields=['failed_items', 'updated_at'])
+
+        result = service.batch_create_properties(
+            properties_data,
+            property_list,
+            progress_callback=batch_progress_callback
+        )
+
+        created_count = result['created']
+        updated_count = result['updated']
+
+        for error in result['errors']:
+            task.add_error(f"Failed to create property: {error['error']}", error)
+
+        task.status = 'COMPLETED'
+        task.completed_at = timezone.now()
+        task.metadata['created_count'] = created_count
+        task.metadata['updated_count'] = updated_count
+        task.metadata['source'] = 'zoopla'
+        task.save(update_fields=['status', 'completed_at', 'metadata', 'updated_at'])
+
+        _send_list_event(
+            property_list.uuid,
+            'scrape_complete',
+            {
+                'source': 'zoopla',
+                'task_uuid': task_uuid,
+                'status': 'COMPLETED',
+                'completed_items': created_count,
+                'total_items': len(properties_data),
+                'failed_items': task.failed_items,
+                'progress_percentage': 100,
+                'errors': task.errors,
+                'metadata': {'created': created_count, 'updated': updated_count},
+                'message': f'Zoopla scrape completed: {created_count} created, {updated_count} updated'
+            }
+        )
+
+        return {
+            'status': 'completed',
+            'source': 'zoopla',
+            'created': created_count,
+            'updated': updated_count,
+            'failed': task.failed_items,
+            'total': len(properties_data)
+        }
+
+    except (PropertyListTask.DoesNotExist, ValidationError):
+        logger.error("scrape_zoopla_properties task=%s not found or invalid", task_uuid)
+        return {'status': 'failed', 'error': f'Task {task_uuid} not found'}
+    except Exception as e:
+        logger.error("scrape_zoopla_properties task=%s failed: %s", task_uuid, e, exc_info=True)
+        try:
+            task.status = 'FAILED'
+            task.error_message = str(e)
+            task.completed_at = timezone.now()
+            task.save(update_fields=['status', 'error_message', 'completed_at', 'updated_at'])
+            _send_list_event(
+                property_list.uuid,
+                'scrape_failed',
+                {
+                    'source': 'zoopla',
+                    'task_uuid': task_uuid,
+                    'status': 'FAILED',
+                    'completed_items': 0,
+                    'total_items': 0,
+                    'failed_items': 0,
+                    'progress_percentage': 0,
+                    'errors': [str(e)],
+                    'message': f'Zoopla scrape failed: {str(e)}'
+                }
+            )
+        except Exception:
+            pass
+        raise
+
+
 def _publish_sse(channel: str, event_type: str, data: dict) -> None:
     """Publish a JSON-encoded SSE event to a Redis pub/sub channel."""
     import redis as _redis
