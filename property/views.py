@@ -1032,6 +1032,34 @@ class PropertyListViewSet(viewsets.ModelViewSet):
             ]
         }, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=['post'], url_path='create-blank')
+    def create_blank(self, request):
+        """POST /api/property/property-lists/create-blank/ — create an empty list with no scraping."""
+        from property.utils.title_generation import generate_unique_list_title
+
+        project_uuid = request.data.get('project_uuid')
+        if not project_uuid:
+            return Response({'error': 'project_uuid is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            project = Project.objects.get(uuid=project_uuid)
+        except Project.DoesNotExist:
+            return Response({'error': f'Project {project_uuid} not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not check_project_contributor(request.user, project):
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        title = request.data.get('title') or generate_unique_list_title('New List', project)
+
+        property_list = PropertyList.objects.create(
+            owner=request.user,
+            project=project,
+            title=title,
+        )
+
+        serializer = self.get_serializer(property_list)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     @action(detail=True, methods=['post'], url_path='run-stage2-bulk')
     def run_stage2_bulk(self, request, uuid=None):
         """
