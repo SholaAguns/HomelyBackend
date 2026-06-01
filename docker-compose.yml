@@ -60,7 +60,9 @@ services:
       - flaresolverr
 
   frontend:
-    build: ../HomelyFrontend
+    build:
+      context: ../HomelyFrontend
+      dockerfile: Dockerfile.dev
     volumes:
       - ../HomelyFrontend:/app
       - /app/node_modules

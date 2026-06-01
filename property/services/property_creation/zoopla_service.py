@@ -427,7 +427,7 @@ class ZooplaService(IPropertyCreationService):
             'furnished_status': '',
             'square_area': None,
             'property_type': property_data.get('property_type', ''),
-            'summary': property_data.get('summary', ''),
+            'summary': property_data.get('description', ''),
             'first_visible_date': property_data.get('first_visible_date'),
         }
 

@@ -356,7 +356,7 @@ def bulk_calculate_project_ratings(project_id):
 
 
 @shared_task(bind=True, max_retries=0)
-def scrape_rightmove_properties(self, task_uuid, max_properties=100):
+def scrape_rightmove_properties(self, task_uuid, max_properties=500):
     from property.models import PropertyListTask, Property
     from property.services import RightmoveService
     from django.db import transaction
