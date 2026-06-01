@@ -32,10 +32,10 @@ class ZooplaService(IPropertyCreationService):
     }
 
     PROPERTY_TYPE_MAP = {
-        'house':     ['detached', 'semi_detached', 'terraced'],
-        'flat':      ['flats'],
-        'bungalow':  ['bungalows'],
-        'land':      ['land'],
+        'house':     'detached,semi-detached,terraced',
+        'flat':      'flats',
+        'bungalow':  'bungalows',
+        'land':      'land',
     }
 
     def __init__(self, flaresolverr: FlareSolverrService = None):
@@ -320,9 +320,9 @@ class ZooplaService(IPropertyCreationService):
             params["radius"] = str(search_criteria["radius"])
 
         raw_type = search_criteria.get("property_types", "")
-        zoopla_types = self.PROPERTY_TYPE_MAP.get(raw_type)
-        if zoopla_types:
-            params["property_sub_type"] = zoopla_types
+        zoopla_type = self.PROPERTY_TYPE_MAP.get(raw_type)
+        if zoopla_type:
+            params["property_sub_type"] = zoopla_type
 
         days = search_criteria.get("max_days_since_added")
         if days:
@@ -340,13 +340,7 @@ class ZooplaService(IPropertyCreationService):
         try:
             while len(all_properties) < max_properties:
                 page_params = {**params, "pn": str(page_num)}
-                parts = []
-                for k, v in page_params.items():
-                    if isinstance(v, list):
-                        parts.extend(f"{k}={i}" for i in v)
-                    else:
-                        parts.append(f"{k}={v}")
-                param_str = "&".join(parts)
+                param_str = "&".join(f"{k}={v}" for k, v in page_params.items())
                 url = f"{base_url}?{param_str}"
                 logger.debug("scrape_properties_by_search page=%d url=%s", page_num, url)
 
