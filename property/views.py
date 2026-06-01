@@ -1014,9 +1014,9 @@ class PropertyListViewSet(viewsets.ModelViewSet):
         )
 
         max_properties = request.data.get('max_properties', 500)
-        #transaction.on_commit(
-        #    lambda: scrape_rightmove_properties.delay(str(rm_task.uuid), max_properties=max_properties)
-        #)
+        transaction.on_commit(
+            lambda: scrape_rightmove_properties.delay(str(rm_task.uuid), max_properties=max_properties)
+        )
         transaction.on_commit(
             lambda: scrape_zoopla_properties.delay(str(zoopla_task.uuid), max_properties=max_properties)
         )
@@ -1027,7 +1027,7 @@ class PropertyListViewSet(viewsets.ModelViewSet):
         return Response({
             **serializer.data,
             'scraping_tasks': [
-                #{'uuid': str(rm_task.uuid), 'status': 'QUEUED', 'source': 'rightmove'},
+                {'uuid': str(rm_task.uuid), 'status': 'QUEUED', 'source': 'rightmove'},
                 {'uuid': str(zoopla_task.uuid), 'status': 'QUEUED', 'source': 'zoopla'},
             ]
         }, status=status.HTTP_201_CREATED)
@@ -1157,9 +1157,9 @@ class PropertyListViewSet(viewsets.ModelViewSet):
             metadata={'source': 'zoopla'}
         )
 
-        #transaction.on_commit(
-        #    lambda: scrape_rightmove_properties.delay(str(rm_task.uuid), max_properties=max_properties)
-        #)
+        transaction.on_commit(
+            lambda: scrape_rightmove_properties.delay(str(rm_task.uuid), max_properties=max_properties)
+        )
         transaction.on_commit(
             lambda: scrape_zoopla_properties.delay(str(zoopla_task.uuid), max_properties=max_properties)
         )
@@ -1167,7 +1167,7 @@ class PropertyListViewSet(viewsets.ModelViewSet):
 
         return Response(
             {'tasks': [
-                #PropertyListTaskSerializer(rm_task, context={'request': request}).data,
+                PropertyListTaskSerializer(rm_task, context={'request': request}).data,
                 PropertyListTaskSerializer(zoopla_task, context={'request': request}).data,
             ]},
             status=status.HTTP_202_ACCEPTED

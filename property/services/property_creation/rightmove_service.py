@@ -35,7 +35,7 @@ class RightmoveService(IPropertyCreationService):
     ]
 
     PROPERTY_TYPE_MAP = {
-        'house':               'houses',
+        'house':               'detached,semi-detached,terraced',
         'flat':                'flats',
         'bungalow':            'bungalows',
         'land':                'land',
