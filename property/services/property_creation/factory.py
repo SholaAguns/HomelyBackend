@@ -12,16 +12,34 @@ URL_SERVICES = [
     ZooplaService,
 ]
 
+HTML_SOURCE_MAP = {
+    'rightmove': RightmoveService,
+    'zoopla': ZooplaService,
+}
+
+HTML_DOMAIN_HINTS = [
+    ('rightmove.co.uk', RightmoveService),
+    ('zoopla.co.uk', ZooplaService),
+]
+
 
 def property_creation_service_factory(
     input_data: str,
-    input_type: str
+    input_type: str,
+    source: str = None,
 ) -> Optional[IPropertyCreationService]:
-   
+
     if input_type == "text":
         services = TEXT_SERVICES
     elif input_type == "url":
         services = URL_SERVICES
+    elif input_type == "html":
+        if source and source in HTML_SOURCE_MAP:
+            return HTML_SOURCE_MAP[source]()
+        for domain, service_class in HTML_DOMAIN_HINTS:
+            if domain in input_data[:2000]:
+                return service_class()
+        return None
     else:
         return None
 

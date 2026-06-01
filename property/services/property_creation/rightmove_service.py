@@ -539,6 +539,30 @@ class RightmoveService(IPropertyCreationService):
 
         return all_properties
 
+    def parse_search_results_html(self, html: str) -> List[Dict[str, Any]]:
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(html, 'html.parser')
+        tag = soup.find('script', id='__NEXT_DATA__', type='application/json')
+        if not tag or not tag.string:
+            raise ValueError("No __NEXT_DATA__ script tag found — is this a Rightmove search results page?")
+
+        data = json.loads(tag.string.replace('\n', '').replace('\r', ''))
+        sr = data.get('props', {}).get('pageProps', {}).get('searchResults', {})
+        properties = sr.get('properties', [])
+
+        results = []
+        for p in properties:
+            try:
+                property_data = self._parse_property_json(p, str(p.get('id')))
+                property_data['link'] = self.BASE_URL + p.get('propertyUrl', '')
+                results.append(property_data)
+            except Exception as e:
+                logger.warning("parse_search_results_html failed to parse property id=%s: %s", p.get('id'), e)
+
+        logger.debug("parse_search_results_html extracted %d properties", len(results))
+        return results
+
     # ========================================================================
     # Property Creation Methods
     # ========================================================================

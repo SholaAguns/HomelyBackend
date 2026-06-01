@@ -220,16 +220,21 @@ class CreateFromInputSerializer(serializers.Serializer):
     input_data = serializers.CharField(
         required=True,
         allow_blank=False,
-        help_text="URL or text to extract property data from"
+        help_text="URL, text, or raw HTML search results page"
     )
     input_type = serializers.ChoiceField(
-        choices=['url', 'text'],
+        choices=['url', 'text', 'html'],
         default='url',
-        help_text="Type of input: 'url' or 'text'"
+        help_text="Type of input: 'url', 'text', or 'html' (batch from search results page)"
+    )
+    source = serializers.ChoiceField(
+        choices=['rightmove', 'zoopla'],
+        required=False,
+        allow_null=True,
+        help_text="Source site for html input_type — auto-detected if omitted"
     )
 
     def validate_input_data(self, value):
-        """Validate input_data is not empty"""
         if not value or not value.strip():
             raise serializers.ValidationError("Input data cannot be empty")
         return value.strip()

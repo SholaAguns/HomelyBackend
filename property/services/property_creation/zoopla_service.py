@@ -390,6 +390,121 @@ class ZooplaService(IPropertyCreationService):
         logger.debug("scrape_properties_by_search area=%s returned %d properties", area, len(all_properties))
         return all_properties
 
+    def parse_search_results_html(self, html: str) -> List[Dict[str, Any]]:
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(html, 'html.parser')
+        listings = self._extract_rsc_listings(soup)
+
+        if listings is None:
+            sr_page = self._get_jsonld_by_type(soup, "SearchResultsPage")
+            if not sr_page:
+                raise ValueError("No Zoopla listing data found — is this a Zoopla search results page?")
+            items = sr_page.get("mainEntity", {}).get("itemListElement", [])
+            results = []
+            for item in items:
+                try:
+                    parsed = self._parse_search_listing(item)
+                    if parsed:
+                        results.append(parsed)
+                except Exception as e:
+                    logger.warning("parse_search_results_html JSON-LD parse error: %s", e)
+            return results
+
+        results = []
+        for listing in listings:
+            try:
+                parsed = self._parse_rsc_listing(listing)
+                if parsed:
+                    results.append(parsed)
+            except Exception as e:
+                logger.warning("parse_search_results_html RSC parse error: %s", e)
+
+        logger.debug("parse_search_results_html extracted %d properties", len(results))
+        return results
+
+    def _extract_rsc_listings(self, soup) -> Optional[List[dict]]:
+        for s in soup.find_all('script'):
+            text = s.string or ''
+            if 'regularListingsFormatted' not in text:
+                continue
+            m = re.search(r'self\.__next_f\.push\(\[1,\s*(.+)\]\)', text, re.DOTALL)
+            if not m:
+                continue
+            try:
+                inner = json.loads(m.group(1))
+                idx = inner.find('"regularListingsFormatted":[')
+                if idx < 0:
+                    continue
+                arr_start = inner.find('[', idx)
+                depth = 0
+                end = arr_start
+                for i, c in enumerate(inner[arr_start:], arr_start):
+                    if c == '[':
+                        depth += 1
+                    elif c == ']':
+                        depth -= 1
+                        if depth == 0:
+                            end = i
+                            break
+                return json.loads(inner[arr_start:end + 1])
+            except Exception as e:
+                logger.warning("_extract_rsc_listings parse error: %s", e)
+        return None
+
+    def _parse_rsc_listing(self, listing: dict) -> Optional[Dict[str, Any]]:
+        listing_id = str(listing.get('listingId', ''))
+        detail_uri = listing.get('listingUris', {}).get('detail', '')
+        url = f"https://www.zoopla.co.uk{detail_uri}" if detail_uri else ''
+
+        try:
+            price = Decimal(str(listing.get('priceUnformatted', 0)))
+        except Exception:
+            price = Decimal('0')
+
+        bedrooms = 0
+        bathrooms = 0
+        for feature in listing.get('features', []):
+            if feature.get('iconId') == 'bed':
+                try:
+                    bedrooms = int(feature['content'])
+                except (ValueError, TypeError):
+                    pass
+            elif feature.get('iconId') == 'bath':
+                try:
+                    bathrooms = int(feature['content'])
+                except (ValueError, TypeError):
+                    pass
+
+        pos = listing.get('pos') or {}
+        try:
+            latitude = float(pos['lat']) if pos.get('lat') is not None else None
+            longitude = float(pos['lng']) if pos.get('lng') is not None else None
+        except (ValueError, TypeError):
+            latitude = longitude = None
+
+        image_src = (listing.get('image') or {}).get('src', '')
+        images = [{'source_url': image_src, 'url': image_src, 'caption': ''}] if image_src else []
+
+        return {
+            'external_id': listing_id,
+            'external_url': url,
+            'title': listing.get('title', listing.get('address', '')),
+            'address': listing.get('address', ''),
+            'price': price,
+            'price_frequency': 'per_month',
+            'currency_code': listing.get('priceCurrency', 'GBP'),
+            'bedrooms': bedrooms,
+            'bathrooms': bathrooms,
+            'latitude': latitude,
+            'longitude': longitude,
+            'property_type': listing.get('propertyType', ''),
+            'square_area': listing.get('sizeSqft'),
+            'description': listing.get('summaryDescription', ''),
+            'images': images,
+            'key_features': [],
+        }
+
     # ========================================================================
     # Property Creation Methods
     # ========================================================================

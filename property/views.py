@@ -1635,21 +1635,14 @@ class PropertyViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=['post'], url_path='create-from-input')
     def create_from_input(self, request):
-        """
-        Extract property data from URL or text input.
-
-        If property_list_uuid is provided, creates Property model and adds to list.
-        Otherwise, returns unsaved property data that can be used to populate form.
-        """
-        # Validate input using serializer
         serializer = CreateFromInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         input_data = serializer.validated_data['input_data']
         input_type = serializer.validated_data['input_type']
+        source = serializer.validated_data.get('source')
         property_list_uuid = request.data.get('property_list_uuid')
 
-        # Validate property_list access BEFORE extracting data
         property_list = None
         if property_list_uuid:
             try:
@@ -1666,26 +1659,27 @@ class PropertyViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-        # Get appropriate service
-        service = property_creation_service_factory(input_data, input_type)
+        service = property_creation_service_factory(input_data, input_type, source=source)
 
         if not service:
             return Response(
-                {
-                    'error': 'No service available to handle this input',
-                    'message': f'Could not find a service to process this {input_type}'
-                },
+                {'error': 'No service available to handle this input',
+                 'message': f'Could not find a service to process this {input_type}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Extract property data
         try:
-            # If property_list provided, create Property model using service
+            if input_type == 'html':
+                if not property_list:
+                    return Response(
+                        {'error': 'property_list_uuid is required for html batch import'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                return self._handle_html_batch(service, input_data, property_list)
+
             if property_list:
                 property_obj, created = service.create_property(input_data, input_type, property_list)
-
                 property_serializer = PropertySerializer(property_obj, context={'request': request})
-
                 if created:
                     return Response({
                         'success': True,
@@ -1694,17 +1688,15 @@ class PropertyViewSet(viewsets.ModelViewSet):
                         'message': 'Property created successfully',
                         'source': service.__class__.__name__
                     }, status=status.HTTP_201_CREATED)
-                else:
-                    return Response({
-                        'success': True,
-                        'property': property_serializer.data,
-                        'created': False,
-                        'updated': True,
-                        'message': 'Property already exists, added to list and updated with latest data',
-                        'source': service.__class__.__name__
-                    })
+                return Response({
+                    'success': True,
+                    'property': property_serializer.data,
+                    'created': False,
+                    'updated': True,
+                    'message': 'Property already exists, added to list and updated with latest data',
+                    'source': service.__class__.__name__
+                })
 
-            # No property_list_uuid, just extract and return data
             property_data = service.extract_property_data(input_data, input_type)
             return Response({
                 'success': True,
@@ -1714,21 +1706,75 @@ class PropertyViewSet(viewsets.ModelViewSet):
             })
 
         except ValueError as e:
-            return Response(
-                {
-                    'error': 'Extraction failed',
-                    'message': str(e)
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'Extraction failed', 'message': str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response(
-                {
-                    'error': 'Unexpected error',
-                    'message': str(e)
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({'error': 'Unexpected error', 'message': str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _handle_html_batch(self, service, html: str, property_list):
+        properties_data = service.parse_search_results_html(html)
+
+        created_count = 0
+        updated_count = 0
+        failed_count = 0
+
+        for property_data in properties_data:
+            try:
+                images_data = property_data.pop('images', [])
+                property_fields = service._map_extracted_to_property(property_data)
+
+                from property.models import Property, PropertyImage
+
+                existing = None
+                if property_fields.get('external_id'):
+                    existing = Property.objects.filter(
+                        external_id=property_fields['external_id']
+                    ).first()
+
+                if existing:
+                    if not existing.property_lists.filter(uuid=property_list.uuid).exists():
+                        existing.property_lists.add(property_list)
+                    for field, value in property_fields.items():
+                        if field not in ['uuid', 'created_at']:
+                            setattr(existing, field, value)
+                    existing.save()
+                    if images_data:
+                        existing.images.all().delete()
+                        for idx, img in enumerate(images_data):
+                            PropertyImage.objects.create(
+                                property=existing,
+                                source_url=img.get('source_url', img.get('srcUrl', '')),
+                                url=img.get('url', ''),
+                                caption=img.get('caption', ''),
+                                order=idx
+                            )
+                    updated_count += 1
+                else:
+                    prop = Property.objects.create(**property_fields)
+                    prop.property_lists.add(property_list)
+                    for idx, img in enumerate(images_data):
+                        PropertyImage.objects.create(
+                            property=prop,
+                            source_url=img.get('source_url', img.get('srcUrl', '')),
+                            url=img.get('url', ''),
+                            caption=img.get('caption', ''),
+                            order=idx
+                        )
+                    created_count += 1
+            except Exception as e:
+                logger.warning("_handle_html_batch failed to create property: %s", e)
+                failed_count += 1
+
+        total = len(properties_data)
+        return Response({
+            'success': True,
+            'created': created_count,
+            'updated': updated_count,
+            'failed': failed_count,
+            'total': total,
+            'source': service.__class__.__name__,
+        }, status=status.HTTP_201_CREATED if created_count > 0 else status.HTTP_200_OK)
 
 
 

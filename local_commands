@@ -3,3 +3,11 @@ claude --model claude-sonnet-4-5-20250929 --add-dir ../HomelyFrontend
 uvicorn homely_core.asgi:application --reload
 
 claude --add-dir ../HomelyFrontend
+
+Looks like zoopla actually employs property_sub_type for property type query parameters:
+property_sub_type
+semi_detached
+property_sub_type
+detached
+property_sub_type
+terraced
