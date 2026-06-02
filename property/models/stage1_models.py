@@ -218,6 +218,7 @@ class Property(models.Model):
     # Additional details
     council_tax_band = models.CharField(max_length=1, blank=True)
     epc_rating = models.CharField(max_length=1, blank=True)
+    deposit = models.CharField(max_length=50, blank=True)
     lease_length = models.IntegerField(null=True, blank=True)
     floor_level = models.IntegerField(null=True, blank=True)
     child_suitable = models.BooleanField(default=False)
@@ -231,6 +232,8 @@ class Property(models.Model):
     # External references
     external_id = models.CharField(max_length=100, blank=True)
     external_url = models.URLField(max_length=500, blank=True)
+    is_enriched = models.BooleanField(default=False)
+    enriched_at = models.DateTimeField(null=True, blank=True)
 
     # Deduplication
     normalized_address = models.CharField(max_length=500, blank=True, db_index=True)
@@ -252,6 +255,32 @@ class Property(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.postcode}"
+
+    def apply_enrichment(self, enriched: dict) -> 'Property':
+        from property.models.stage1_models import KeyFeature
+
+        ENRICHABLE_FIELDS = [
+            'description', 'furnished_status', 'council_tax_band',
+            'epc_rating', 'parking', 'garden', 'deposit',
+        ]
+        for field in ENRICHABLE_FIELDS:
+            value = enriched.get(field)
+            if value is not None and value != '':
+                setattr(self, field, value)
+
+        if enriched.get('key_features'):
+            self.key_features.all().delete()
+            for feat in enriched['key_features']:
+                KeyFeature.objects.create(
+                    property=self,
+                    description=feat.get('description', ''),
+                    order=feat.get('order'),
+                )
+
+        self.is_enriched = True
+        self.enriched_at = timezone.now()
+        self.save()
+        return self
 
     @transition(field=state, source=['NEW', 'STAGE2_COMPLETE'], target='STAGE2_IN_PROGRESS')
     def run_stage2(self):

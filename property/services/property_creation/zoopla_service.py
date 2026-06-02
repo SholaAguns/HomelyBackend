@@ -62,6 +62,74 @@ class ZooplaService(IPropertyCreationService):
     # Single Property Methods
     # ========================================================================
 
+    def enrich_property_data(self, property_obj) -> Dict[str, Any]:
+        from bs4 import BeautifulSoup
+
+        html = self._fs.fetch(property_obj.external_url)
+        raw = html if isinstance(html, str) else html.decode('utf-8', errors='replace')
+        soup = BeautifulSoup(raw, 'html.parser')
+        enriched = {}
+
+        desc_el = soup.find(id='detailed-desc')
+        if desc_el:
+            enriched['description'] = desc_el.get_text(separator='\n', strip=True)
+
+        zad_tag = soup.find('script', {'id': '__ZAD_TARGETING__'})
+        if zad_tag:
+            try:
+                zad = json.loads(zad_tag.string or '')
+                furnished = zad.get('furnished_state', '')
+                if furnished:
+                    enriched['furnished_status'] = furnished
+            except json.JSONDecodeError:
+                pass
+
+        features_list = soup.select('ul.Features_featuresList__tDAtY li')
+        if features_list:
+            enriched['key_features'] = [
+                {'description': li.get_text(strip=True), 'order': i}
+                for i, li in enumerate(features_list)
+            ]
+
+        epc_el = soup.find(class_='EpcRating_epcRating__l1xC8')
+        if epc_el:
+            m = re.search(r'EPC Rating:\s*([A-G])', epc_el.get_text(strip=True))
+            if m:
+                enriched['epc_rating'] = m.group(1)
+
+        for item in soup.select('li.NtsInfo_ntsInfoListItem__4R0fo'):
+            title_el = item.find(class_='NtsInfo_ntsInfoItemTitle__CSiYU')
+            value_el = item.find('p', class_='fjlmpi8')
+            if not title_el or not value_el:
+                continue
+            key = title_el.get_text(strip=True).lower()
+            val = value_el.get_text(strip=True)
+            if key == 'council tax band':
+                band = re.search(r'[A-I]', val)
+                if band:
+                    enriched['council_tax_band'] = band.group(0)
+
+        if 'furnished_status' not in enriched:
+            tag_el = soup.find(class_='Tags_tagsList__2lsl4')
+            if tag_el:
+                tag_text = tag_el.get_text(strip=True).lower()
+                if 'unfurnished' in tag_text:
+                    enriched['furnished_status'] = 'unfurnished'
+                elif 'part furnished' in tag_text:
+                    enriched['furnished_status'] = 'part_furnished'
+                elif 'furnished' in tag_text:
+                    enriched['furnished_status'] = 'furnished'
+
+        all_feature_text = ' '.join(
+            f.get('description', '') for f in enriched.get('key_features', [])
+        ).lower()
+        if 'garden' in all_feature_text:
+            enriched['garden'] = True
+        if 'parking' in all_feature_text:
+            enriched['parking'] = True
+
+        return enriched
+
     def extract_listing_id_from_url(self, url: str) -> Optional[str]:
         match = re.search(r'/details/(\d+)', url)
         if match:

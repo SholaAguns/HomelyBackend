@@ -133,6 +133,83 @@ class RightmoveService(IPropertyCreationService):
     # Single Property Methods
     # ========================================================================
 
+    def enrich_property_data(self, property_obj) -> Dict[str, Any]:
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+        except ImportError as e:
+            raise ValueError(f"Required packages not installed: {e}")
+
+        response = requests.get(property_obj.external_url, headers=self.HEADERS, timeout=15)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content.decode('cp1252', errors='replace'), 'html.parser')
+        enriched = {}
+
+        script_tag = soup.find('script', id='__NEXT_DATA__', type='application/json')
+        if script_tag and script_tag.string:
+            try:
+                data = json.loads(script_tag.string.replace('\n', '').replace('\r', ''))
+                prop = data.get('props', {}).get('pageProps', {}).get('propertyData', {})
+
+                full_desc = prop.get('fullDescription') or prop.get('description') or ''
+                if full_desc and len(full_desc) > len(property_obj.summary or ''):
+                    enriched['description'] = full_desc
+
+                let = prop.get('letDetails') or {}
+                furnish = let.get('furnishType', '')
+                if furnish:
+                    enriched['furnished_status'] = furnish.lower()
+                council_tax = let.get('councilTaxBand', '')
+                if council_tax:
+                    enriched['council_tax_band'] = council_tax
+
+                features = prop.get('keyFeatures', [])
+                if features:
+                    enriched['key_features'] = [
+                        {'description': f.get('description', ''), 'order': i}
+                        for i, f in enumerate(features)
+                    ]
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+        if 'furnished_status' not in enriched:
+            for row in soup.select('dl._2E1qBJkWUYMJYHfYJzUb_r div'):
+                dt = row.find('dt')
+                dd = row.find('dd')
+                if not dt or not dd:
+                    continue
+                label = dt.get_text(strip=True).lower()
+                value = dd.get_text(strip=True)
+                if 'furnish' in label:
+                    enriched['furnished_status'] = value.lower()
+                elif 'council tax' in label and value.lower() != 'ask agent':
+                    m = re.search(r'[A-I]', value)
+                    if m:
+                        enriched['council_tax_band'] = m.group(0)
+
+        for row in soup.select('dl._1H0UoH91Rh0KKGH7JRGxEd div'):
+            dt = row.find('dt')
+            dd = row.find('dd')
+            if not dt or not dd:
+                continue
+            label = dt.get_text(' ', strip=True).upper()
+            value_span = dd.find('span', class_='_3rQAUgsu_ICdA55QUiiUxg')
+            value = (value_span.get_text(strip=True) if value_span else dd.get_text(strip=True)).lower()
+            if 'PARKING' in label and value == 'yes':
+                enriched['parking'] = True
+            elif 'GARDEN' in label and value == 'yes':
+                enriched['garden'] = True
+
+        if 'key_features' not in enriched:
+            feature_items = soup.select('ul[data-testid="keyFeatures"] li')
+            if feature_items:
+                enriched['key_features'] = [
+                    {'description': li.get_text(strip=True), 'order': i}
+                    for i, li in enumerate(feature_items)
+                ]
+
+        return enriched
+
     def extract_property_id_from_url(self, url: str) -> Optional[str]:
         # Try /properties/ID pattern
         match = re.search(r'/properties/(\d+)', url)

@@ -1249,6 +1249,37 @@ class PropertyListViewSet(viewsets.ModelViewSet):
         serializer.save()
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], url_path='enrich-properties')
+    @require_project_contributor()
+    def enrich_properties(self, request, uuid=None):
+        from property.tasks import enrich_properties_task
+
+        property_list = self.get_object()
+        property_uuids = request.data.get('property_uuids', [])
+
+        if not property_uuids:
+            return Response({'error': 'property_uuids required'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(property_uuids) > 10:
+            return Response({'error': 'Maximum 10 properties per enrichment request'}, status=status.HTTP_400_BAD_REQUEST)
+
+        valid_count = Property.objects.filter(
+            uuid__in=property_uuids,
+            property_lists=property_list
+        ).count()
+        if valid_count != len(property_uuids):
+            return Response({'error': 'One or more property UUIDs not found in this list'}, status=status.HTTP_400_BAD_REQUEST)
+
+        task = PropertyListTask.objects.create(
+            property_list=property_list,
+            task_type='ENRICH_PROPERTIES',
+            status='QUEUED',
+            total_items=len(property_uuids),
+            metadata={'property_uuids': property_uuids}
+        )
+        enrich_properties_task.delay(str(task.uuid))
+
+        return Response(PropertyListTaskSerializer(task).data, status=status.HTTP_202_ACCEPTED)
+
 
 class PropertyViewSet(viewsets.ModelViewSet):
     """
@@ -1372,6 +1403,38 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=True, methods=['post'], url_path='enrich')
+    @require_project_contributor()
+    def enrich(self, request, uuid=None):
+        from property.services.property_creation.factory import property_creation_service_factory
+
+        property_obj = self.get_object()
+
+        if not property_obj.external_url:
+            return Response(
+                {'error': 'No external URL — cannot enrich this property'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        service = property_creation_service_factory(property_obj.external_url, 'url')
+        if not service or not hasattr(service, 'enrich_property_data'):
+            return Response(
+                {'error': 'No enrichment service available for this property source'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            enriched = service.enrich_property_data(property_obj)
+            property_obj = property_obj.apply_enrichment(enriched)
+            serializer = PropertyDetailSerializer(property_obj, context={'request': request})
+            return Response({'success': True, 'property': serializer.data})
+        except Exception as e:
+            logger.error("enrich failed for property uuid=%s: %s", uuid, e, exc_info=True)
+            return Response(
+                {'error': 'Enrichment failed', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     @action(detail=True, methods=['get'], url_path='context-data')

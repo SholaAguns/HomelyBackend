@@ -689,6 +689,53 @@ def scrape_zoopla_properties(self, task_uuid, max_properties=100):
         raise
 
 
+@shared_task(bind=True, max_retries=0)
+def enrich_properties_task(self, task_uuid):
+    from property.models import PropertyListTask, Property
+    from property.services.property_creation.factory import property_creation_service_factory
+
+    task = PropertyListTask.objects.get(uuid=task_uuid)
+    task.status = 'IN_PROGRESS'
+    task.save()
+
+    property_uuids = task.metadata.get('property_uuids', [])
+    completed = 0
+    failed = 0
+    errors = []
+
+    for puuid in property_uuids:
+        try:
+            prop = Property.objects.get(uuid=puuid)
+            if prop.is_enriched:
+                completed += 1
+                continue
+            if not prop.external_url:
+                failed += 1
+                errors.append(f'{puuid}: no external_url')
+                continue
+            service = property_creation_service_factory(prop.external_url, 'url')
+            if not service or not hasattr(service, 'enrich_property_data'):
+                failed += 1
+                errors.append(f'{puuid}: no enrichment service')
+                continue
+            enriched = service.enrich_property_data(prop)
+            prop.apply_enrichment(enriched)
+            completed += 1
+        except Exception as e:
+            failed += 1
+            errors.append(f'{puuid}: {str(e)}')
+            logger.error("enrich_properties_task failed for uuid=%s: %s", puuid, e, exc_info=True)
+
+        task.completed_items = completed
+        task.failed_items = failed
+        task.progress_percentage = int((completed + failed) / len(property_uuids) * 100) if property_uuids else 100
+        task.save()
+
+    task.status = 'COMPLETED'
+    task.errors = errors
+    task.save()
+
+
 def _publish_sse(channel: str, event_type: str, data: dict) -> None:
     """Publish a JSON-encoded SSE event to a Redis pub/sub channel."""
     import redis as _redis
