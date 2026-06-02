@@ -65,7 +65,12 @@ class ZooplaService(IPropertyCreationService):
     def enrich_property_data(self, property_obj) -> Dict[str, Any]:
         from bs4 import BeautifulSoup
 
-        html = self._fs.fetch(property_obj.external_url)
+        session_id = self._fs.create_session()
+        try:
+            self._fs.fetch(self.BASE_URL + '/to-rent/', session_id=session_id)
+            html = self._fs.fetch(property_obj.external_url, session_id=session_id)
+        finally:
+            self._fs.destroy_session(session_id)
         raw = html if isinstance(html, str) else html.decode('utf-8', errors='replace')
         soup = BeautifulSoup(raw, 'html.parser')
         enriched = {}
