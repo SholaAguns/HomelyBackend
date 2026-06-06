@@ -730,7 +730,6 @@ def enrich_properties_task(self, task_uuid):
 
         task.completed_items = completed
         task.failed_items = failed
-        task.progress_percentage = int((completed + failed) / len(property_uuids) * 100) if property_uuids else 100
         task.save()
 
     task.status = 'COMPLETED'
