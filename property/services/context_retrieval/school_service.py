@@ -52,19 +52,11 @@ class SchoolRatingService(IContextService):
         return self.CACHE_TTL
 
     def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
-        """
-        Fetch nearby schools from database with Ofsted ratings.
-
-        Returns schools within radius, separated by phase (primary/secondary).
-        Includes Ofsted ratings for each school (cached 30 days).
-
-        Args:
-            school_types: List of school types to retrieve (nursery, primary, secondary, all_through)
-        """
         from property.models import School
         from property.utils.geolocation import calculate_distance
         from property.services.context_retrieval.ofsted_service import OfstedService
 
+        self.ensure_postcode(property_obj)
         self.validate_property_data(property_obj)
 
         # Get requested school types (default to all if not specified)

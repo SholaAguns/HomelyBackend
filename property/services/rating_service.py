@@ -340,7 +340,13 @@ class RatingService:
     def _score_council_tax(self, criterion) -> Tuple[Any, Decimal]:
         logger.debug(f"🏛️ COUNCIL_TAX: Scoring criterion '{criterion.name}'")
 
-        value = self._extract_from_context_report(criterion, 'band')
+        try:
+            value = self._extract_from_property(criterion)
+        except ValueError:
+            value = None
+
+        if not value:
+            value = self._extract_from_context_report(criterion, 'band')
 
         ordinal_mapping = {
             'A': 100,

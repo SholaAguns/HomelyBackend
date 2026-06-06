@@ -74,6 +74,18 @@ class CouncilTaxService(IContextService):
         return self.CACHE_TTL
 
     def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
+        if property_obj.council_tax_band:
+            logger.info(f"Council tax band already set for property {property_obj.uuid}, skipping fetch")
+            return {
+                'band': property_obj.council_tax_band,
+                'band_range': self._get_band_range(property_obj.council_tax_band),
+                'local_authority': None,
+                'address': None,
+                'is_exact_match': None,
+                'country': 'England',
+                'retrieved_at': self._get_current_timestamp()
+            }
+
         self.ensure_postcode(property_obj)
         self.validate_property_data(property_obj)
 
@@ -105,6 +117,11 @@ class CouncilTaxService(IContextService):
             # Step 3: Extract band and enrich with additional data
             band = matched_property.get('band')
             band_range = self._get_band_range(band, matched_property.get('country', 'England'))
+
+            if band:
+                property_obj.council_tax_band = band
+                property_obj.save(update_fields=['council_tax_band'])
+                logger.info(f"Saved council tax band '{band}' to property {property_obj.uuid}")
 
             return {
                 'band': band,
