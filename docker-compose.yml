@@ -35,7 +35,7 @@ services:
       - redis
 
   flaresolverr:
-    image: 21hsmw/flaresolverr:nodriver
+    image: ghcr.io/flaresolverr/flaresolverr:latest
     ports:
       - "8191:8191"
     environment:
