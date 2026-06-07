@@ -7,27 +7,24 @@ from urllib.parse import quote_plus
 from typing import List, Dict, Tuple, Optional
 from django.conf import settings
 from .igeoservice import IGeoService
-from property.utils.geolocation import calculate_distance
+from property.utils.geolocation import calculate_distance, get_route_info as osrm_route_info
 
 logger = logging.getLogger(__name__)
 
 
 class GoogleMapsService(IGeoService):
     """
-    IGeoService implementation using Google Places & Directions APIs.
+    IGeoService implementation using Google Places Nearby Search + OSRM routing.
 
     APIs used:
     - Places Nearby Search: Find places by type near location
-    - Place Details: Get website, phone number
-    - Directions API: Get driving/walking distance and time
+    - OSRM (via geolocation.get_route_info): Driving/walking distance and time (free)
 
     Rate limits: 100 QPS per project (default)
     Cost: See https://mapsplatform.google.com/pricing/
     """
 
     PLACES_NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
-    PLACE_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
-    DIRECTIONS_URL = "https://maps.googleapis.com/maps/api/directions/json"
 
     # Map our internal place_type keys to Google Place types
     # Some types map to multiple Google types for better coverage
@@ -115,10 +112,7 @@ class GoogleMapsService(IGeoService):
                         lat, lon, lat_place, lon_place
                     )
 
-                    # Fetch Place Details for website and phone
-                    website, phone = self._get_place_details(pid)
-
-                    # Fetch Directions for driving and walking
+                    # Routing via OSRM (free, no Google Directions cost)
                     driving_time, driving_dist = self.get_route_info(
                         lat, lon, lat_place, lon_place, 'driving'
                     )
@@ -139,8 +133,6 @@ class GoogleMapsService(IGeoService):
                             'location': {'lat': lat_place, 'lng': lon_place}
                         },
                         'straight_dist': dist_km,
-                        'website': website,
-                        'phone_number': phone,
                         'driving_dist': driving_dist,
                         'driving_time': driving_time,
                         'walking_dist': walking_dist,
@@ -176,67 +168,8 @@ class GoogleMapsService(IGeoService):
         dest_lon: float,
         profile: str
     ) -> Tuple[Optional[float], Optional[float]]:
-        mode = 'driving' if profile == 'driving' else 'walking'
-
-        try:
-            params = {
-                'origin': f"{orig_lat},{orig_lon}",
-                'destination': f"{dest_lat},{dest_lon}",
-                'mode': mode,
-                'key': self.api_key,
-            }
-
-            logger.debug(f"Calling Directions API (mode={mode})")
-            response = requests.get(
-                self.DIRECTIONS_URL,
-                params=params,
-                timeout=10
-            )
-            response.raise_for_status()
-
-            data = response.json()
-            routes = data.get('routes', [])
-
-            if not routes:
-                logger.warning(f"No {mode} route found")
-                return None, None
-
-            leg = routes[0]['legs'][0]
-            time_min = leg['duration']['value'] / 60.0  # seconds to minutes
-            dist_km = leg['distance']['value'] / 1000.0  # meters to km
-
-            return time_min, dist_km
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to get route info: {e}")
-            # Return None instead of raising - route info is optional
-            return None, None
-
-    def _get_place_details(self, place_id: str) -> Tuple[Optional[str], Optional[str]]:
-        try:
-            params = {
-                'place_id': place_id,
-                'fields': 'website,formatted_phone_number',
-                'key': self.api_key,
-            }
-
-            logger.debug(f"Calling Place Details API for {place_id}")
-            response = requests.get(
-                self.PLACE_DETAILS_URL,
-                params=params,
-                timeout=10
-            )
-            response.raise_for_status()
-
-            result = response.json().get('result', {})
-            website = result.get('website')
-            phone = result.get('formatted_phone_number')
-
-            return website, phone
-
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"Failed to get place details for {place_id}: {e}")
-            return None, None
+        osrm_profile = 'driving' if profile == 'driving' else 'foot'
+        return osrm_route_info(orig_lat, orig_lon, dest_lat, dest_lon, osrm_profile)
 
     def _build_google_maps_url(self, name: str, place_id: str) -> str:
         return (

@@ -1214,6 +1214,30 @@ class PropertyListViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @action(detail=True, methods=['patch'], url_path='search-criteria')
+    @require_project_contributor()
+    def update_search_criteria(self, request, uuid=None):
+        """PATCH search criteria for a property list without triggering a scrape."""
+        property_list = self.get_object()
+
+        if property_list.search_criteria:
+            serializer = SearchCriteriaSerializer(
+                property_list.search_criteria,
+                data=request.data,
+                partial=True
+            )
+        else:
+            serializer = SearchCriteriaSerializer(data=request.data)
+
+        serializer.is_valid(raise_exception=True)
+        search_criteria_obj = serializer.save()
+
+        if not property_list.search_criteria:
+            property_list.search_criteria = search_criteria_obj
+            property_list.save(update_fields=['search_criteria'])
+
+        return Response(SearchCriteriaSerializer(search_criteria_obj).data)
+
     @action(detail=True, methods=['get', 'put', 'patch'], url_path='context-options')
     def context_options(self, request, uuid=None):
         """Get or update context options for a property list"""

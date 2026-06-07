@@ -23,8 +23,8 @@ class POIService(IContextService):
     - Grid-based caching (30 days) by rounded coordinates
     - Stores results in PlaceOfInterest model
 
-    API: Google Maps (Nearby Search + Place Details + Directions)
-    Cost: ~$1.70 per property (15 types, no cache)
+    API: Google Maps (Nearby Search only); routing via OSRM (free)
+    Cost: ~$0.54 per property (15 types, no cache)
     Cache: 30 days by rounded coordinates (3 decimal places)
     """
 
