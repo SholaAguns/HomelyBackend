@@ -307,7 +307,8 @@ def bulk_calculate_ratings(property_ids, project_id=None):
     # Filter to only properties in valid states
     valid_properties = Property.objects.filter(
         id__in=property_ids,
-        state__in=['STAGE2_COMPLETE', 'STAGE3_COMPLETE']
+        state__in=['STAGE2_COMPLETE', 'STAGE3_COMPLETE'],
+        disqualified=False
     )
 
     queued_count = 0
@@ -344,7 +345,7 @@ def bulk_calculate_project_ratings(project_id):
         for property_list in project.property_lists.all():
             property_ids.extend(
                 property_list.properties
-                .filter(state__in=['STAGE2_COMPLETE', 'STAGE3_COMPLETE'])
+                .filter(state__in=['STAGE2_COMPLETE', 'STAGE3_COMPLETE'], disqualified=False)
                 .values_list('id', flat=True)
             )
 

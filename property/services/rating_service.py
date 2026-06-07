@@ -53,6 +53,8 @@ class RatingService:
         """
         logger.debug(f"🎯 RATING: Starting calculation for property {self.property.uuid}. Using rating criteria: {self.rating_criteria.name}")
 
+        if self.property.disqualified:
+            return Decimal('0.00'), {}, True, self.property.disqualification_reason
 
         # Step 2-5: Calculate rating for all enabled criteria
         weighted_scores = []

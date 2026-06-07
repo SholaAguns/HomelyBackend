@@ -10,19 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 class SavedLocationService(IContextService):
-    """
-    Calculates distances between property and user's saved locations.
-
-    Features:
-    - Accepts list of saved location IDs from ContextOptions
-    - Calculates straight-line distance for each location
-    - Returns sorted list by distance
-    - No external API calls (uses local data)
-
-    Cache: 30 days by property coordinates + location IDs
-    Cost: FREE (no API calls)
-    """
-
     CACHE_TTL = 86400 * 30  # 30 days
 
     def get_service_name(self) -> str:
@@ -54,18 +41,8 @@ class SavedLocationService(IContextService):
         return self.CACHE_TTL
 
     def fetch_data(self, property_obj, **kwargs) -> Dict[str, Any]:
-        """
-        Calculate distances to saved locations.
-
-        Args:
-            property_obj: Property instance
-            **kwargs:
-                saved_location_uuids: List of SavedLocation UUIDs to calculate distances for
-
-        Returns:
-            Dict with distances to each saved location, sorted by distance
-        """
         from property.models import SavedLocation
+        self.ensure_coordinates(property_obj)
 
         self.validate_property_data(property_obj)
 

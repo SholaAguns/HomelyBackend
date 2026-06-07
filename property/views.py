@@ -1070,7 +1070,8 @@ class PropertyListViewSet(viewsets.ModelViewSet):
 
         # Get eligible properties
         eligible_properties = property_list.properties.filter(
-            state__in=['NEW', 'STAGE2_COMPLETE']
+            state__in=['NEW', 'STAGE2_COMPLETE'],
+            disqualified=False
         )
 
         if not eligible_properties.exists():
@@ -1109,7 +1110,8 @@ class PropertyListViewSet(viewsets.ModelViewSet):
 
         # Get eligible properties
         eligible_properties = property_list.properties.filter(
-            state='STAGE2_COMPLETE'
+            state='STAGE2_COMPLETE',
+            disqualified=False
         )
 
         if not eligible_properties.exists():
@@ -1419,6 +1421,42 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 {'error': 'Enrichment failed', 'message': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=True, methods=['post'], url_path='disqualify')
+    @require_project_contributor()
+    def disqualify(self, request, uuid=None):
+        property_obj = self.get_object()
+        reason = request.data.get('reason', 'Manually disqualified')
+        property_obj.disqualified = True
+        property_obj.disqualification_reason = reason
+        property_obj.save(update_fields=['disqualified', 'disqualification_reason'])
+        return Response(PropertySerializer(property_obj, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'], url_path='undisqualify')
+    @require_project_contributor()
+    def undisqualify(self, request, uuid=None):
+        property_obj = self.get_object()
+        property_obj.disqualified = False
+        property_obj.disqualification_reason = None
+        property_obj.save(update_fields=['disqualified', 'disqualification_reason'])
+        return Response(PropertySerializer(property_obj, context={'request': request}).data)
+
+    @action(detail=False, methods=['post'], url_path='bulk-disqualify')
+    def bulk_disqualify(self, request):
+        uuids = request.data.get('uuids', [])
+        reason = request.data.get('reason', 'Manually disqualified')
+        if not uuids:
+            return Response({'error': 'No UUIDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+        contributor_property_ids = list(
+            Property.objects.filter(uuid__in=uuids).filter(
+                Q(property_lists__project__owner=request.user) |
+                Q(property_lists__project__contributors=request.user)
+            ).values_list('id', flat=True).distinct()
+        )
+        updated = Property.objects.filter(id__in=contributor_property_ids).update(
+            disqualified=True, disqualification_reason=reason
+        )
+        return Response({'updated': updated})
 
     @action(detail=True, methods=['get'], url_path='context-data')
     def context_data(self, request, uuid=None):
