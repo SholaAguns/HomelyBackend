@@ -517,8 +517,6 @@ class PropertySerializer(serializers.ModelSerializer):
         if not self.partial:
             if not data.get('title'):
                 raise serializers.ValidationError({'title': 'Property title is required'})
-            if not data.get('postcode'):
-                raise serializers.ValidationError({'postcode': 'Postcode is required'})
         return data
 
 

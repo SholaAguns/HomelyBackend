@@ -10,7 +10,7 @@ logger = logging.getLogger('property.tasks')
 
 
 @shared_task(bind=True, max_retries=3)
-def retrieve_context_data(self, property_id, property_list_id=None, services=None):
+def retrieve_context_data(self, property_id, property_list_id=None, services=None, skip_cache=False):
     from property.models import Property, ContextData, PropertyList
 
     try:
@@ -60,7 +60,7 @@ def retrieve_context_data(self, property_id, property_list_id=None, services=Non
 
         # Launch individual service tasks
         for service_name in enabled_services:
-            run_service_task.delay(property_id, service_name)
+            run_service_task.delay(property_id, service_name, skip_cache=skip_cache)
 
         logger.info(f'Launched {len(enabled_services)} service tasks for property {property_id}')
 
@@ -74,7 +74,7 @@ def retrieve_context_data(self, property_id, property_list_id=None, services=Non
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def run_service_task(self, property_id, service_name):
+def run_service_task(self, property_id, service_name, skip_cache=False):
     """
     Execute individual context service with caching and retry logic.
 
@@ -110,15 +110,19 @@ def run_service_task(self, property_id, service_name):
         # Prepare service-specific parameters
         service_params = _get_service_params(property_obj, service_name)
 
-        # Check cache first
+        # Check cache first (skipped when explicitly re-running services)
         cache_key = service.get_cache_key(property_obj)
-        cached_data = cache.get(cache_key)
+        cached_data = None if skip_cache else cache.get(cache_key)
 
         if cached_data:
             logger.info(f'Cache hit for {service_name} - {cache_key}')
             data = cached_data
         else:
-            logger.info(f'Cache miss for {service_name} - {cache_key}, fetching from API')
+            if skip_cache:
+                logger.info(f'Cache bypassed for {service_name} - {cache_key}, fetching fresh data')
+                cache.delete(cache_key)
+            else:
+                logger.info(f'Cache miss for {service_name} - {cache_key}, fetching from API')
             # Fetch from external API
             data = service.fetch_data(property_obj, **service_params)
 

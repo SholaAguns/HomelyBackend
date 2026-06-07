@@ -37,16 +37,18 @@ class SavedLocationService(IContextService):
         return True
 
     def get_cache_key(self, property_obj) -> str:
-        """
-        Generate cache key based on property coordinates.
-
-        Format: saved_locations:{lat}:{lon}
-        Note: saved_location_uuids are not included in cache key as distances
-        are calculated dynamically based on requested locations.
-        """
         lat = round(float(property_obj.latitude), 4)
         lon = round(float(property_obj.longitude), 4)
-        return f"saved_locations:{lat}:{lon}"
+
+        uuids: set = set()
+        for property_list in property_obj.property_lists.all():
+            project = property_list.project
+            context_options = getattr(project, 'context_options', None)
+            if context_options and context_options.enable_saved_locations and context_options.saved_location_uuids:
+                uuids.update(context_options.saved_location_uuids)
+
+        uuids_part = '_'.join(sorted(uuids)) if uuids else 'none'
+        return f"saved_locations:{lat}:{lon}:{uuids_part}"
 
     def get_cache_ttl(self) -> int:
         return self.CACHE_TTL

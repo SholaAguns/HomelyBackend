@@ -1363,15 +1363,19 @@ class PropertyViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     @require_project_contributor()
     def rerun_services(self, request, uuid=None):
-        """Rerun context services (STAGE2_COMPLETE/STAGE3_* → STAGE2_IN_PROGRESS)"""
+        """Rerun context services (STAGE2_COMPLETE/STAGE3_* → STAGE2_IN_PROGRESS)
+
+        Optional body: { "services": ["crime", "schools"] } to rerun specific services only
+        """
         property_obj = self.get_object()
+        services = request.data.get('services', None)
 
         try:
             property_obj.rerun_services()
             property_obj.save()
 
-            # Queue Celery task (uses internal id)
-            retrieve_context_data.delay(property_obj.id)
+            # Queue Celery task (uses internal id) — always bypass cache on re-run
+            retrieve_context_data.delay(property_obj.id, services=services, skip_cache=True)
 
             return Response({
                 'status': 'services_rerun_started',
