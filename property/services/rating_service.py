@@ -177,6 +177,10 @@ class RatingService:
             return self._score_broadband(criterion)
         elif 'garden' in field:
             return self._score_garden(criterion)
+        elif 'epc' in field:
+            return self._score_epc(criterion)
+        elif 'parking' in field:
+            return self._score_parking(criterion)
         else:
             raise ValueError(f"No scoring function for criterion with name: {field}")
 
@@ -410,6 +414,32 @@ class RatingService:
         return value, score
     
     def _score_garden(self, criterion) -> Tuple[Any, Decimal]:
+
+        value = self._extract_from_property(criterion)
+
+        score = score_boolean(bool(value), true_is_better=True)
+        return value, score
+
+    def _score_epc(self, criterion) -> Tuple[Any, Decimal]:
+        logger.debug(f"⚡ EPC: Scoring criterion '{criterion.name}'")
+
+        value = self._extract_from_property(criterion)
+
+        ordinal_mapping = {
+            'A': 100,
+            'B': 85,
+            'C': 70,
+            'D': 55,
+            'E': 40,
+            'F': 25,
+            'G': 0,
+        }
+
+        band = str(value).upper() if value else ''
+        score = score_ordinal(band, ordinal_mapping)
+        return value, score
+
+    def _score_parking(self, criterion) -> Tuple[Any, Decimal]:
 
         value = self._extract_from_property(criterion)
 
