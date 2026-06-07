@@ -4,7 +4,7 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
 from decimal import Decimal
-from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, Project, TaskList, Task, ProjectInvitation, AppNotification, PropertyFavorite, KeyFeature, ProjectComment
+from property.models.stage1_models import Property, PropertyList, SavedLocation, SearchCriteria, PropertyListTask, PropertyImage, Project, TaskList, Task, ProjectInvitation, AppNotification, PropertyFavorite, KeyFeature, ProjectComment, PropertyShortlist
 from property.models.stage2_models import ContextOptions
 from property.models.stage3_models import RatingCriteria, Criterion, CriterionScore
 from property.models.models_poi import PlaceOfInterest
@@ -380,6 +380,7 @@ class PropertySerializer(serializers.ModelSerializer):
     primary_image = serializers.SerializerMethodField()
     overall_rating = serializers.FloatField(allow_null=True, read_only=True)
     is_favorited = serializers.SerializerMethodField()
+    shortlisted_in_lists = serializers.SerializerMethodField()
     key_features = KeyFeatureSerializer(many=True, read_only=True)
 
     class Meta:
@@ -402,7 +403,7 @@ class PropertySerializer(serializers.ModelSerializer):
             'is_enriched', 'enriched_at',
             'normalized_address', 'uprn',
             'overall_rating', 'rating_breakdown', 'disqualified', 'disqualification_reason',
-            'images', 'primary_image', 'is_favorited',
+            'images', 'primary_image', 'is_favorited', 'shortlisted_in_lists',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -413,7 +414,7 @@ class PropertySerializer(serializers.ModelSerializer):
             'is_enriched', 'enriched_at',
             'normalized_address', 'uprn',
             'overall_rating', 'rating_breakdown', 'disqualified', 'disqualification_reason',
-            'images', 'primary_image', 'is_favorited',
+            'images', 'primary_image', 'is_favorited', 'shortlisted_in_lists',
             'created_at', 'updated_at'
         ]
 
@@ -447,6 +448,17 @@ class PropertySerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return PropertyFavorite.objects.filter(user=request.user, property=obj).exists()
         return False
+
+    def get_shortlisted_in_lists(self, obj):
+        """Return list of property list UUIDs where this property is shortlisted (accessible to user)"""
+        request = self.context.get('request')
+        if not (request and request.user.is_authenticated):
+            return []
+        entries = PropertyShortlist.objects.filter(
+            property=obj,
+            property_list__owner=request.user
+        ).values_list('property_list__uuid', flat=True)
+        return [str(list_uuid) for list_uuid in entries]
 
     def validate_postcode(self, value):
         """Validate UK postcode format"""

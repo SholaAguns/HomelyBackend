@@ -345,6 +345,27 @@ class PropertyFavorite(models.Model):
     def __str__(self):
         return f"{self.user.username} → {self.property.title}"
 
+
+class PropertyShortlist(models.Model):
+    """Tracks which properties are shortlisted within a specific property list."""
+
+    property_list = models.ForeignKey(
+        PropertyList, on_delete=models.CASCADE, related_name='shortlisted_properties'
+    )
+    property = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name='shortlist_entries'
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'property_shortlist'
+        unique_together = [['property_list', 'property']]
+        ordering = ['-added_at']
+
+    def __str__(self):
+        return f"{self.property.title} → {self.property_list.title}"
+
+
 class KeyFeature(models.Model):
     property = models.ForeignKey(
         Property,

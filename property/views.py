@@ -2123,6 +2123,96 @@ class PropertyFavoriteViewSet(viewsets.ViewSet):
             )
 
 
+class PropertyShortlistViewSet(viewsets.ViewSet):
+    """
+    ViewSet for Property Shortlists.
+    One shortlist per property list — add/remove/list shortlisted properties.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        """
+        GET /api/property/shortlists/?property_list=<uuid>
+
+        List shortlisted properties for a given list.
+        """
+        property_list_uuid = request.query_params.get('property_list')
+        if not property_list_uuid:
+            return Response({'error': 'property_list query param is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            property_list = PropertyList.objects.get(uuid=property_list_uuid, owner=request.user)
+        except PropertyList.DoesNotExist:
+            return Response({'error': 'Property list not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        entries = PropertyShortlist.objects.filter(property_list=property_list).select_related('property')
+        shortlisted_properties = [entry.property for entry in entries]
+        serializer = PropertySerializer(shortlisted_properties, many=True, context={'request': request})
+        return Response({'properties': serializer.data, 'total': len(shortlisted_properties)})
+
+    def create(self, request):
+        """
+        POST /api/property/shortlists/
+        Body: {"property_uuid": "<uuid>", "property_list_uuid": "<uuid>"}
+
+        Add property to a list's shortlist.
+        """
+        property_uuid = request.data.get('property_uuid')
+        property_list_uuid = request.data.get('property_list_uuid')
+
+        if not property_uuid or not property_list_uuid:
+            return Response(
+                {'error': 'property_uuid and property_list_uuid are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            property_obj = Property.objects.get(uuid=property_uuid)
+        except Property.DoesNotExist:
+            return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            property_list = PropertyList.objects.get(uuid=property_list_uuid, owner=request.user)
+        except PropertyList.DoesNotExist:
+            return Response({'error': 'Property list not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not property_obj.property_lists.filter(uuid=property_list_uuid).exists():
+            return Response(
+                {'error': 'Property does not belong to this list'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        entry, created = PropertyShortlist.objects.get_or_create(
+            property_list=property_list,
+            property=property_obj
+        )
+        return Response(
+            {'status': 'added' if created else 'already_shortlisted'},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        )
+
+    def destroy(self, request, pk=None):
+        """
+        DELETE /api/property/shortlists/{property_uuid}/?property_list={list_uuid}
+
+        Remove property from a list's shortlist.
+        """
+        property_list_uuid = request.query_params.get('property_list')
+        if not property_list_uuid:
+            return Response({'error': 'property_list query param is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            entry = PropertyShortlist.objects.get(
+                property__uuid=pk,
+                property_list__uuid=property_list_uuid,
+                property_list__owner=request.user
+            )
+            entry.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except PropertyShortlist.DoesNotExist:
+            return Response({'error': 'Shortlist entry not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
 class ProjectCommentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for ProjectComment CRUD.

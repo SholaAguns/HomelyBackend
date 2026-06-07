@@ -4,7 +4,7 @@ from property.views import (
     ProjectViewSet, TaskListViewSet, TaskViewSet,
     PropertyListViewSet, PropertyViewSet, SavedLocationViewSet, SchoolViewSet,
     RatingCriteriaViewSet, NotificationViewSet, PropertyFavoriteViewSet,
-    ProjectCommentViewSet
+    ProjectCommentViewSet, PropertyShortlistViewSet
 )
 from property.sse_views import property_stream, property_list_stream, project_comment_stream
 from property.admin_views import (
@@ -26,6 +26,7 @@ router.register(r'saved-locations', SavedLocationViewSet, basename='savedlocatio
 router.register(r'rating-criteria', RatingCriteriaViewSet, basename='ratingcriteria')
 router.register(r'notifications', NotificationViewSet, basename='notification')
 router.register(r'favorites', PropertyFavoriteViewSet, basename='favorites')
+router.register(r'shortlists', PropertyShortlistViewSet, basename='shortlists')
 router.register(r'comments', ProjectCommentViewSet, basename='comment')
 router.register(r'admin/schools', SchoolAdminViewSet, basename='admin-schools')
 
