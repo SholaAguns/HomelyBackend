@@ -314,9 +314,7 @@ class RatingService:
             places_by_category = context_data.data.get('poi_types', {})
             logger.debug(f"📍 POI: Available categories: {list(places_by_category.keys())}")
             logger.debug(f"📍 POI: Looking for category: {criterion.poi_category}")
-            places = places_by_category[criterion.poi_category]
-
-
+            places = places_by_category.get(criterion.poi_category)
 
             if not places:
                 raise ValueError(f"Distance to place of interest={criterion.poi_category} for property {self.property.uuid}  not found in context data")
