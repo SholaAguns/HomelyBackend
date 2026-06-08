@@ -282,7 +282,7 @@ class Property(models.Model):
         self.save()
         return self
 
-    @transition(field=state, source=['NEW', 'STAGE2_COMPLETE'], target='STAGE2_IN_PROGRESS')
+    @transition(field=state, source=['NEW', 'STAGE2_COMPLETE', 'STAGE3_IN_PROGRESS', 'STAGE3_COMPLETE'], target='STAGE2_IN_PROGRESS')
     def run_stage2(self):
         """User triggers Stage 2 context retrieval"""
         # Clear existing stage2 data if re-running

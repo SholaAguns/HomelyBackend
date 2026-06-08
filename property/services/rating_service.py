@@ -167,7 +167,7 @@ class RatingService:
             return self._score_saved_location_distance(criterion)
         elif 'poi' in field:
             return self._score_poi_distance(criterion)
-        elif 'council' in field or 'tax' in field:
+        elif 'council_tax_band' in field:
             return self._score_council_tax(criterion)
         elif 'crime' in field:
             return self._score_crime(criterion)
@@ -342,8 +342,6 @@ class RatingService:
 
 
     def _score_council_tax(self, criterion) -> Tuple[Any, Decimal]:
-        logger.debug(f"🏛️ COUNCIL_TAX: Scoring criterion '{criterion.name}'")
-
         try:
             value = self._extract_from_property(criterion)
         except ValueError:

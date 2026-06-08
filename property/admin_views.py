@@ -104,7 +104,7 @@ class AdminPropertyViewSet(viewsets.ModelViewSet):
 
         for prop in properties:
             try:
-                if action_name == 'run_stage2' and prop.state in ['NEW', 'STAGE2_COMPLETE']:
+                if action_name == 'run_stage2' and prop.state not in ['STAGE2_IN_PROGRESS']:
                     prop.run_stage2()
                     prop.save()
                     success_count += 1
@@ -1095,7 +1095,7 @@ def admin_bulk_stage_transition(request):
 
     for prop in properties:
         try:
-            if action == 'run_stage2' and prop.state in ['NEW', 'STAGE2_COMPLETE']:
+            if action == 'run_stage2' and prop.state not in ['STAGE2_IN_PROGRESS']:
                 prop.run_stage2()
                 prop.save()
                 success_count += 1

@@ -194,7 +194,7 @@ class CouncilTaxScoringTests(RatingServiceTestCase):
             rating_criteria=self.rating_criteria,
             name='Council Tax',
             source='context_report',
-            field_name='council_tax',
+            field_name='council_tax_band',
             weight=Decimal('1.0')
         )
 
@@ -228,7 +228,7 @@ class CouncilTaxScoringTests(RatingServiceTestCase):
             rating_criteria=self.rating_criteria,
             name='Council Tax',
             source='context_report',
-            field_name='council_tax',
+            field_name='council_tax_band',
             weight=Decimal('1.0')
         )
 
