@@ -81,7 +81,7 @@ class CouncilTaxService(IContextService):
                 'band_range': self._get_band_range(property_obj.council_tax_band),
                 'local_authority': None,
                 'address': None,
-                'is_exact_match': None,
+                'is_exact_match': True,
                 'country': 'England',
                 'retrieved_at': self._get_current_timestamp()
             }
@@ -99,6 +99,8 @@ class CouncilTaxService(IContextService):
                     'band': None,
                     'band_range': None,
                     'local_authority': None,
+                    'is_exact_match': False,
+                    'country': 'England',
                     'error': 'No results found for this postcode',
                     'retrieved_at': None
                 }
