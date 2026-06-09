@@ -1509,16 +1509,18 @@ class PropertyViewSet(viewsets.ModelViewSet):
         DATE_ONLY_FIELDS = {'let_available_date', 'first_visible_date', 'listing_update_date'}
         EXTRA_FIELDS = [
             'description', 'summary', 'furnished_status', 'council_tax_band',
+            'epc_rating', 'deposit', 'garden', 'parking',
             'added_or_reduced', 'display_size', 'let_available_date',
             'first_visible_date', 'listing_update_date', 'listing_update_reason',
             'property_type', 'property_type_full_description',
         ]
         for field in EXTRA_FIELDS:
             value = property_data.get(field)
-            if value not in (None, ''):
-                if field in DATE_ONLY_FIELDS and isinstance(value, dt_module.datetime):
-                    value = value.date()
-                setattr(property_obj, field, value)
+            if value is None or value == '':
+                continue
+            if field in DATE_ONLY_FIELDS and isinstance(value, dt_module.datetime):
+                value = value.date()
+            setattr(property_obj, field, value)
 
         property_obj.is_enriched = True
         from django.utils import timezone as django_tz
