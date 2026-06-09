@@ -290,6 +290,71 @@ class ZooplaService(IPropertyCreationService):
                 })
             property_data['images'] = images
 
+        # NtsInfo block: Deposit, Council tax band, Letting arrangements
+        for item in soup.find_all(class_=re.compile(r'NtsInfo_ntsInfoListItem')):
+            title_el = item.find(class_=re.compile(r'NtsInfo_ntsInfoItemTitle'))
+            wrapper_el = item.find(class_=re.compile(r'NtsInfo_ntsInfoItemTextWrapper'))
+            if not title_el or not wrapper_el:
+                continue
+            label = title_el.get_text(strip=True).lower()
+            value_el = wrapper_el.find('p')
+            value = value_el.get_text(strip=True) if value_el else wrapper_el.get_text(strip=True)
+            if 'council tax' in label:
+                band_match = re.search(r'[A-I]', value)
+                if band_match:
+                    property_data['council_tax_band'] = band_match.group(0)
+            elif 'deposit' in label:
+                deposit_match = re.search(r'[\d,]+', value.replace('£', '').replace(',', ''))
+                if not deposit_match:
+                    deposit_match = re.search(r'[\d]+', re.sub(r'[^\d]', '', value))
+                clean_deposit = re.sub(r'[^\d.]', '', value)
+                if clean_deposit:
+                    try:
+                        property_data['deposit'] = Decimal(clean_deposit)
+                    except Exception:
+                        pass
+
+        # EPC rating
+        epc_el = soup.find(class_=re.compile(r'EpcRating_epcRating'))
+        if epc_el:
+            epc_text = epc_el.get_text(strip=True)
+            epc_match = re.search(r'EPC\s+Rating[:\s]*([A-G])', epc_text, re.IGNORECASE)
+            if not epc_match:
+                epc_match = re.search(r'\b([A-G])\b', epc_text)
+            if epc_match:
+                property_data['epc_rating'] = epc_match.group(1)
+
+        # Features list: key_features, garden, parking/driveway
+        feature_items_text = []
+        for features_ul in soup.find_all(class_=re.compile(r'Features_featuresList')):
+            for li in features_ul.find_all('li'):
+                span = li.find('span')
+                text = span.get_text(strip=True) if span else li.get_text(strip=True)
+                if text:
+                    feature_items_text.append(text)
+
+        if feature_items_text:
+            property_data['key_features'] = [
+                {'description': t, 'order': i} for i, t in enumerate(feature_items_text)
+            ]
+            lower_features = [t.lower() for t in feature_items_text]
+            if any('garden' in f for f in lower_features):
+                property_data['garden'] = True
+            if any('driveway' in f or 'parking' in f or 'garage' in f for f in lower_features):
+                property_data['parking'] = True
+
+        # Fallback: infer garden/parking from description text
+        desc_text = ''
+        for desc_el in soup.find_all(class_=re.compile(r'description|Description|listing-description', re.I)):
+            desc_text += desc_el.get_text(' ', strip=True) + ' '
+        if not desc_text:
+            desc_text = raw_html
+        desc_lower = desc_text.lower()
+        if 'garden' not in property_data and re.search(r'\bgarden\b', desc_lower):
+            property_data['garden'] = True
+        if 'parking' not in property_data and re.search(r'\b(driveway|parking|garage)\b', desc_lower):
+            property_data['parking'] = True
+
         return property_data
 
     # ========================================================================

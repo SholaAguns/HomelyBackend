@@ -142,73 +142,9 @@ class RightmoveService(IPropertyCreationService):
 
         response = requests.get(property_obj.external_url, headers=self.HEADERS, timeout=15)
         response.raise_for_status()
-        soup = BeautifulSoup(response.content.decode('cp1252', errors='replace'), 'html.parser')
-        enriched = {}
-
-        script_tag = soup.find('script', id='__NEXT_DATA__', type='application/json')
-        if script_tag and script_tag.string:
-            try:
-                data = json.loads(script_tag.string.replace('\n', '').replace('\r', ''))
-                prop = data.get('props', {}).get('pageProps', {}).get('propertyData', {})
-
-                full_desc = prop.get('fullDescription') or prop.get('description') or ''
-                if full_desc and len(full_desc) > len(property_obj.summary or ''):
-                    enriched['description'] = full_desc
-
-                let = prop.get('letDetails') or {}
-                furnish = let.get('furnishType', '')
-                if furnish:
-                    enriched['furnished_status'] = furnish.lower()
-                council_tax = let.get('councilTaxBand', '')
-                if council_tax:
-                    enriched['council_tax_band'] = council_tax
-
-                features = prop.get('keyFeatures', [])
-                if features:
-                    enriched['key_features'] = [
-                        {'description': f.get('description', ''), 'order': i}
-                        for i, f in enumerate(features)
-                    ]
-            except (json.JSONDecodeError, KeyError):
-                pass
-
-        if 'furnished_status' not in enriched:
-            for row in soup.select('dl._2E1qBJkWUYMJYHfYJzUb_r div'):
-                dt = row.find('dt')
-                dd = row.find('dd')
-                if not dt or not dd:
-                    continue
-                label = dt.get_text(strip=True).lower()
-                value = dd.get_text(strip=True)
-                if 'furnish' in label:
-                    enriched['furnished_status'] = value.lower()
-                elif 'council tax' in label and value.lower() != 'ask agent':
-                    m = re.search(r'[A-I]', value)
-                    if m:
-                        enriched['council_tax_band'] = m.group(0)
-
-        for row in soup.select('dl._1H0UoH91Rh0KKGH7JRGxEd div'):
-            dt = row.find('dt')
-            dd = row.find('dd')
-            if not dt or not dd:
-                continue
-            label = dt.get_text(' ', strip=True).upper()
-            value_span = dd.find('span', class_='_3rQAUgsu_ICdA55QUiiUxg')
-            value = (value_span.get_text(strip=True) if value_span else dd.get_text(strip=True)).lower()
-            if 'PARKING' in label and value == 'yes':
-                enriched['parking'] = True
-            elif 'GARDEN' in label and value == 'yes':
-                enriched['garden'] = True
-
-        if 'key_features' not in enriched:
-            feature_items = soup.select('ul[data-testid="keyFeatures"] li')
-            if feature_items:
-                enriched['key_features'] = [
-                    {'description': li.get_text(strip=True), 'order': i}
-                    for i, li in enumerate(feature_items)
-                ]
-
-        return enriched
+        raw_html = response.content.decode('cp1252', errors='replace')
+        soup = BeautifulSoup(raw_html, 'html.parser')
+        return self._parse_enrichment_fields(soup, {}, raw_html)
 
     def parse_single_property_html(self, html: str) -> Dict[str, Any]:
         try:
@@ -247,15 +183,15 @@ class RightmoveService(IPropertyCreationService):
             property_data.setdefault('external_url', canonical_url)
 
         # Supplement with enrich-style selectors for fields not in base parse
-        enriched = self._parse_enrichment_fields(soup, property_data)
+        enriched = self._parse_enrichment_fields(soup, property_data, raw)
         for k, v in enriched.items():
             if k not in property_data or not property_data[k]:
                 property_data[k] = v
 
         return property_data
 
-    def _parse_enrichment_fields(self, soup, existing_data: dict) -> dict:
-        """Extract description, furnished, council tax, parking, garden, key_features from HTML."""
+    def _parse_enrichment_fields(self, soup, existing_data: dict, raw_html: str = '') -> dict:
+        """Extract description, furnished, council tax, deposit, parking, garden, key_features from HTML."""
         enriched = {}
 
         script_tag = soup.find('script', id='__NEXT_DATA__', type='application/json')
@@ -285,20 +221,39 @@ class RightmoveService(IPropertyCreationService):
             except (json.JSONDecodeError, KeyError):
                 pass
 
-        if 'furnished_status' not in enriched:
-            for row in soup.select('dl._2E1qBJkWUYMJYHfYJzUb_r div'):
-                dt = row.find('dt')
-                dd = row.find('dd')
-                if not dt or not dd:
-                    continue
-                label = dt.get_text(strip=True).lower()
-                value = dd.get_text(strip=True)
-                if 'furnish' in label:
-                    enriched['furnished_status'] = value.lower()
-                elif 'council tax' in label and value.lower() != 'ask agent':
-                    m = re.search(r'[A-I]', value)
-                    if m:
-                        enriched['council_tax_band'] = m.group(0)
+        # DL-based letting details: covers _2RnXSVJcWbWv4IpBC1Sng6 (newer) and _2E1qBJkWUYMJYHfYJzUb_r (older)
+        for row in soup.find_all('div', class_=re.compile(r'_2RnXSVJcWbWv4IpBC1Sng6|_2E1qBJkWUYMJYHfYJzUb_r')):
+            dt = row.find('dt')
+            dd = row.find('dd')
+            if not dt or not dd:
+                continue
+            label = dt.get_text(strip=True).lower().rstrip(':')
+            raw_value = dd.get_text(strip=True, separator=' ')
+            if 'furnish' in label and 'furnished_status' not in enriched:
+                first_word = raw_value.split()[0].lower() if raw_value else ''
+                if first_word:
+                    enriched['furnished_status'] = first_word
+            elif 'council tax' in label and 'council_tax_band' not in enriched:
+                if raw_value.lower() != 'ask agent':
+                    band_match = re.search(r'\b([A-I])\b', raw_value)
+                    if band_match:
+                        enriched['council_tax_band'] = band_match.group(1)
+            elif 'deposit' in label and 'deposit' not in enriched:
+                clean = re.sub(r'[^\d]', '', raw_value)
+                if clean:
+                    try:
+                        enriched['deposit'] = Decimal(clean)
+                    except Exception:
+                        pass
+
+        # Fallback: extract council tax band from window.__PAGE_MODEL reference encoding
+        # Format: "councilTaxBand\":211,...},\"C\"," (escaped quotes inside JSON string)
+        if 'council_tax_band' not in enriched and raw_html:
+            ctb_match = re.search(r'councilTaxBand[^}]*},\\"([A-I])\\"', raw_html)
+            if not ctb_match:
+                ctb_match = re.search(r'councilTaxBand[^}]*},"([A-I])"', raw_html)
+            if ctb_match:
+                enriched['council_tax_band'] = ctb_match.group(1)
 
         for row in soup.select('dl._1H0UoH91Rh0KKGH7JRGxEd div'):
             dt = row.find('dt')
