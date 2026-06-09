@@ -1446,6 +1446,108 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=True, methods=['post'], url_path='enrich-from-html')
+    @require_project_contributor()
+    def enrich_from_html(self, request, uuid=None):
+        from property.services.property_creation.factory import property_creation_service_factory
+        from property.models import PropertyImage
+        from property.models.stage1_models import KeyFeature
+
+        html = request.data.get('html', '')
+        source = request.data.get('source', '')
+
+        if not html:
+            return Response({'error': 'html is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Auto-detect source from HTML content if not provided
+        if not source:
+            snippet = html[:5000].lower()
+            if 'rightmove' in snippet:
+                source = 'rightmove'
+            elif 'zoopla' in snippet:
+                source = 'zoopla'
+            else:
+                return Response(
+                    {'error': 'Could not detect source. Specify rightmove or zoopla.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        service = property_creation_service_factory(html[:2000], 'html', source=source)
+        if not service:
+            return Response(
+                {'error': f'No parsing service available for source: {source}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        property_obj = self.get_object()
+
+        try:
+            property_data = service.parse_single_property_html(html)
+        except NotImplementedError:
+            return Response(
+                {'error': f'{source} does not support single property HTML parsing'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.error("enrich_from_html parse failed uuid=%s: %s", uuid, e, exc_info=True)
+            return Response(
+                {'error': 'Parsing failed', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        images_data = property_data.pop('images', [])
+        key_features_data = property_data.pop('key_features', [])
+
+        mapped_fields = service._map_extracted_to_property(property_data)
+
+        SKIP_ON_EMPTY = {'uuid', 'created_at', 'external_id'}
+        for field, value in mapped_fields.items():
+            if field not in SKIP_ON_EMPTY and value not in (None, '', 0, False):
+                setattr(property_obj, field, value)
+
+        import datetime as dt_module
+        DATE_ONLY_FIELDS = {'let_available_date', 'first_visible_date', 'listing_update_date'}
+        EXTRA_FIELDS = [
+            'description', 'summary', 'furnished_status', 'council_tax_band',
+            'added_or_reduced', 'display_size', 'let_available_date',
+            'first_visible_date', 'listing_update_date', 'listing_update_reason',
+            'property_type', 'property_type_full_description',
+        ]
+        for field in EXTRA_FIELDS:
+            value = property_data.get(field)
+            if value not in (None, ''):
+                if field in DATE_ONLY_FIELDS and isinstance(value, dt_module.datetime):
+                    value = value.date()
+                setattr(property_obj, field, value)
+
+        property_obj.is_enriched = True
+        from django.utils import timezone as django_tz
+        property_obj.enriched_at = django_tz.now()
+        property_obj.save()
+
+        if images_data:
+            property_obj.images.all().delete()
+            for idx, img in enumerate(images_data):
+                PropertyImage.objects.create(
+                    property=property_obj,
+                    source_url=img.get('source_url', img.get('srcUrl', '')),
+                    url=img.get('url', ''),
+                    caption=img.get('caption', ''),
+                    order=idx
+                )
+
+        if key_features_data:
+            property_obj.key_features.all().delete()
+            for feat in key_features_data:
+                KeyFeature.objects.create(
+                    property=property_obj,
+                    description=feat.get('description', ''),
+                    order=feat.get('order'),
+                )
+
+        serializer = PropertyDetailSerializer(property_obj, context={'request': request})
+        return Response({'success': True, 'property': serializer.data})
+
     @action(detail=True, methods=['post'], url_path='disqualify')
     @require_project_contributor()
     def disqualify(self, request, uuid=None):

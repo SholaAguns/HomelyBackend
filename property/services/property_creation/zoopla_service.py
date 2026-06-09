@@ -62,6 +62,9 @@ class ZooplaService(IPropertyCreationService):
     # Single Property Methods
     # ========================================================================
 
+    def parse_single_property_html(self, html: str) -> Dict[str, Any]:
+        return self.parse_single_property(html)
+
     def deprecated_enrich_property_data(self, property_obj) -> Dict[str, Any]:
         from bs4 import BeautifulSoup
 

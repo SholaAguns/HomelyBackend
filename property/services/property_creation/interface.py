@@ -127,6 +127,13 @@ class IPropertyCreationService(ABC):
 
         return property_obj, True
 
+    def parse_single_property_html(self, html: str) -> Dict[str, Any]:
+        """
+        Parse raw HTML of a single property detail page and return extracted data.
+        Default implementation raises NotImplementedError; override in services that support it.
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} does not support HTML parsing")
+
     def _map_extracted_to_property(self, property_data: dict) -> dict:
         """
         Map extracted property data to Property model fields.
