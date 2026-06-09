@@ -181,24 +181,6 @@ class CouncilTaxService(IContextService):
                 timeout=15
             )
 
-            # Log response details
-
-            # Write full response to log file
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            log_file = f"logs/council_tax_response_{formatted_postcode.replace(' ', '')}_{timestamp}.html"
-            try:
-                with open(log_file, 'w', encoding='utf-8') as f:
-                    f.write(f"Request URL: {response.url}\n")
-                    f.write(f"Status Code: {response.status_code}\n")
-                    f.write(f"Headers: {dict(response.headers)}\n")
-                    f.write(f"\n{'='*80}\n")
-                    f.write(f"Response Body:\n")
-                    f.write(f"{'='*80}\n\n")
-                    f.write(response.text)
-                logger.debug(f"Response written to {log_file}")
-            except Exception as e:
-                logger.warning(f"Failed to write response to file: {e}")
-
             response.raise_for_status()
 
             # Parse HTML response
