@@ -269,6 +269,8 @@ class PropertyListSerializer(serializers.ModelSerializer):
     average_price = serializers.SerializerMethodField()
     highest_price = serializers.SerializerMethodField()
     lowest_price = serializers.SerializerMethodField()
+    shortlisted_count = serializers.SerializerMethodField()
+    favourited_count = serializers.SerializerMethodField()
     search_criteria = SearchCriteriaSerializer(read_only=True)
 
     class Meta:
@@ -279,6 +281,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
             'search_criteria',
             'properties_count', 'status_summary',
             'average_price', 'highest_price', 'lowest_price',
+            'shortlisted_count', 'favourited_count',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['uuid', 'owner', 'created_at', 'updated_at']
@@ -303,6 +306,13 @@ class PropertyListSerializer(serializers.ModelSerializer):
         from django.db.models import Min
         result = obj.properties.aggregate(min_price=Min('price'))
         return result['min_price']
+
+    def get_shortlisted_count(self, obj):
+        return obj.shortlisted_properties.count()
+
+    def get_favourited_count(self, obj):
+        user = self.context['request'].user
+        return obj.properties.filter(favorited_by__user=user).count()
 
     def create(self, validated_data):
         user = self.context['request'].user

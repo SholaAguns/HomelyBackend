@@ -483,6 +483,32 @@ class ProjectViewSet(viewsets.ModelViewSet):
             'properties': serializer.data
         })
 
+    @action(detail=True, methods=['get'], url_path='shortlisted')
+    def shortlisted(self, request, uuid=None):
+        """
+        GET /api/property/projects/{uuid}/shortlisted/
+
+        Get all shortlisted properties across all lists in this project.
+        """
+        project = self.get_object()
+
+        shortlisted_properties = Property.objects.filter(
+            shortlist_entries__property_list__project=project
+        ).distinct()
+
+        serializer = PropertySerializer(
+            shortlisted_properties,
+            many=True,
+            context={'request': request}
+        )
+
+        return Response({
+            'project_id': str(project.uuid),
+            'project_name': project.title,
+            'total_shortlisted': shortlisted_properties.count(),
+            'properties': serializer.data
+        })
+
     @action(detail=True, methods=['get'], url_path='members')
     def members(self, request, uuid=None):
         """GET /api/property/projects/{uuid}/members/"""
